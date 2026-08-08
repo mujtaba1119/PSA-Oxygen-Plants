@@ -69,13 +69,35 @@ async function deleteEmail(id) {
   return !error;
 }
 
+const RESEND_KEY = "re_KBcPovEP_MYNRjWF5KMMqhcGxWBx9Wnrc";
+
 async function sendNotificationEmails(hospital, title, description, provider, emails) {
   if (!emails.length) return;
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
+      <div style="background:#0e7c6b;color:white;padding:16px 24px;border-radius:8px 8px 0 0;">
+        <h2 style="margin:0;font-size:18px;">O₂ PSA Oxygen Plant — New Complaint</h2>
+      </div>
+      <div style="border:1px solid #e2e8f0;border-top:none;padding:24px;border-radius:0 0 8px 8px;">
+        <p style="margin:0 0 8px;"><strong>Hospital:</strong> ${hospital}</p>
+        <p style="margin:0 0 8px;"><strong>Service Provider:</strong> ${provider}</p>
+        <p style="margin:0 0 8px;"><strong>Complaint:</strong> ${title}</p>
+        <p style="margin:0 0 16px;"><strong>Description:</strong></p>
+        <p style="margin:0;padding:12px;background:#f0f4f8;border-radius:6px;">${description}</p>
+        <hr style="border:none;border-top:1px solid #e2e8f0;margin:20px 0;" />
+        <p style="margin:0;font-size:13px;color:#718096;">Visit <a href="https://psacomplaints.com">psacomplaints.com</a> to view details.</p>
+      </div>
+    </div>`;
   try {
-    await fetch("/api/send-email", {
+    await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to: emails, hospital, title, description, provider }),
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + RESEND_KEY },
+      body: JSON.stringify({
+        from: "PSA Oxygen Plant <alerts@psacomplaints.com>",
+        to: emails,
+        subject: "New Complaint: " + hospital + " — " + title,
+        html,
+      }),
     });
   } catch (e) { console.error("Email send failed:", e); }
 }
