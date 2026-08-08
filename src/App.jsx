@@ -18,9 +18,14 @@ async function fetchComplaints() {
 }
 
 async function insertComplaint(hospital, title, description) {
-  const { data, error } = await supabase.from("complaints").insert([{ hospital, title, description }]).select();
+  const { data, error } = await supabase.from("complaints").insert([{ hospital, title, description, status: "Open" }]).select();
   if (error) { console.error(error); return null; }
   return data[0];
+}
+
+async function resolveComplaint(id) {
+  const { error } = await supabase.from("complaints").update({ status: "Resolved" }).eq("id", id);
+  return !error;
 }
 
 async function fetchUsers() {
@@ -32,6 +37,27 @@ async function fetchUsers() {
 async function updatePassword(userId, newPassword) {
   const { error } = await supabase.from("users").update({ password: newPassword }).eq("id", userId);
   return !error;
+}
+
+/* ─── CSV Download ─── */
+function downloadCSV(complaints, filename) {
+  const headers = ["Date", "Hospital", "Service Provider", "Title", "Description", "Status"];
+  const getProvider = h => Object.entries(GROUPS).find(([, hospitals]) => hospitals.includes(h))?.[0] || "Unknown";
+  const escape = s => '"' + String(s || "").replace(/"/g, '""') + '"';
+  const rows = complaints.map(c => [
+    new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+    c.hospital,
+    getProvider(c.hospital),
+    c.title,
+    c.description,
+    c.status || "Open"
+  ].map(escape).join(","));
+  const csv = [headers.join(","), ...rows].join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename + ".csv"; a.click();
+  URL.revokeObjectURL(url);
 }
 
 /* ─── App ─── */
@@ -104,10 +130,26 @@ function LoginScreen({ users, onLogin }) {
   );
 }
 
+/* ─── Status Badge ─── */
+function StatusBadge({ status }) {
+  const isResolved = status === "Resolved";
+  return (
+    <span style={{
+      fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 12,
+      color: isResolved ? "#276749" : "#9c4221",
+      background: isResolved ? "#c6f6d5" : "#feebc8",
+    }}>
+      {isResolved ? "Resolved" : "Open"}
+    </span>
+  );
+}
+
 /* ─── Grouped Hospital List ─── */
 function GroupedHospitalList({ groups, complaints, onSelect }) {
   const countFor = h => complaints.filter(c => c.hospital === h).length;
+  const openCountFor = h => complaints.filter(c => c.hospital === h && c.status !== "Resolved").length;
   const groupCountFor = hospitals => complaints.filter(c => hospitals.includes(c.hospital)).length;
+  const groupOpenFor = hospitals => complaints.filter(c => hospitals.includes(c.hospital) && c.status !== "Resolved").length;
 
   return (
     <>
@@ -115,16 +157,23 @@ function GroupedHospitalList({ groups, complaints, onSelect }) {
         <div key={provider} style={styles.groupSection}>
           <div style={styles.groupHeader}>
             <h3 style={styles.groupTitle}>{provider}</h3>
-            <span style={styles.groupBadge}>{groupCountFor(hospitals)} complaints</span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <span style={styles.groupBadge}>{groupCountFor(hospitals)} total</span>
+              <span style={{ ...styles.groupBadge, color: "#9c4221", background: "#feebc8" }}>{groupOpenFor(hospitals)} open</span>
+            </div>
           </div>
           <div style={styles.hospitalGrid}>
-            {hospitals.map((h, i) => (
-              <button key={h} style={styles.hospitalBtn} onClick={() => onSelect(h)}>
-                <span style={styles.hospitalIndex}>{i + 1}</span>
-                <span style={styles.hospitalName}>{h}</span>
-                <span style={styles.hospitalBadge}>{countFor(h)}</span>
-              </button>
-            ))}
+            {hospitals.map((h, i) => {
+              const open = openCountFor(h);
+              return (
+                <button key={h} style={styles.hospitalBtn} onClick={() => onSelect(h)}>
+                  <span style={styles.hospitalIndex}>{i + 1}</span>
+                  <span style={styles.hospitalName}>{h}</span>
+                  <span style={styles.hospitalBadge}>{countFor(h)}</span>
+                  {open > 0 && <span style={styles.openBadge}>{open}</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
       ))}
@@ -133,8 +182,16 @@ function GroupedHospitalList({ groups, complaints, onSelect }) {
 }
 
 /* ─── Complaint List ─── */
-function ComplaintList({ hospital, complaints, onBack }) {
+function ComplaintList({ hospital, complaints, onBack, canResolve, onResolve }) {
   const hospitalComplaints = complaints.filter(c => c.hospital === hospital);
+  const [resolving, setResolving] = useState(null);
+
+  const handleResolve = async (id) => {
+    setResolving(id);
+    await onResolve(id);
+    setResolving(null);
+  };
+
   return (
     <>
       <button style={styles.backBtn} onClick={onBack}>← Back</button>
@@ -144,9 +201,17 @@ function ComplaintList({ hospital, complaints, onBack }) {
         <div key={c.id} style={styles.card}>
           <div style={styles.cardTop}>
             <strong style={styles.cardTitle}>{c.title}</strong>
-            <span style={styles.cardDate}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <StatusBadge status={c.status} />
+              <span style={styles.cardDate}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+            </div>
           </div>
           <p style={styles.cardDesc}>{c.description}</p>
+          {canResolve && c.status !== "Resolved" && (
+            <button style={styles.resolveBtn} onClick={() => handleResolve(c.id)} disabled={resolving === c.id}>
+              {resolving === c.id ? "Resolving…" : "Mark as Resolved"}
+            </button>
+          )}
         </div>
       ))}
     </>
@@ -161,6 +226,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const [submitting, setSubmitting] = useState(false);
 
   const mine = complaints.filter(c => c.hospital === user.name);
+  const openCount = mine.filter(c => c.status !== "Resolved").length;
 
   const submitComplaint = async () => {
     if (!title.trim() || !desc.trim() || submitting) return;
@@ -173,6 +239,11 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
       setTimeout(() => setSuccess(false), 2500);
       await onRefresh();
     }
+  };
+
+  const handleResolve = async (id) => {
+    const ok = await resolveComplaint(id);
+    if (ok) await onRefresh();
   };
 
   return (
@@ -195,15 +266,24 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
           {success && <p style={styles.successMsg}>Complaint registered successfully.</p>}
         </section>
         <section style={styles.listSection}>
-          <h2 style={styles.sectionTitle}>Your Complaints ({mine.length})</h2>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h2 style={{ ...styles.sectionTitle, margin: 0 }}>Your Complaints ({mine.length})</h2>
+            {openCount > 0 && <span style={{ fontSize: 13, fontWeight: 600, color: "#9c4221", background: "#feebc8", padding: "3px 10px", borderRadius: 12 }}>{openCount} open</span>}
+          </div>
           {mine.length === 0 && <p style={styles.empty}>No complaints registered yet.</p>}
           {mine.map(c => (
             <div key={c.id} style={styles.card}>
               <div style={styles.cardTop}>
                 <strong style={styles.cardTitle}>{c.title}</strong>
-                <span style={styles.cardDate}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <StatusBadge status={c.status} />
+                  <span style={styles.cardDate}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                </div>
               </div>
               <p style={styles.cardDesc}>{c.description}</p>
+              {c.status !== "Resolved" && (
+                <button style={styles.resolveBtn} onClick={() => handleResolve(c.id)}>Mark as Resolved</button>
+              )}
             </div>
           ))}
         </section>
@@ -212,7 +292,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   );
 }
 
-/* ─── Admin Dashboard (Amex) ─── */
+/* ─── Admin Dashboard ─── */
 function AdminDashboard({ user, users, complaints, onRefresh, onLogout }) {
   const [tab, setTab] = useState("complaints");
   const [selected, setSelected] = useState(null);
@@ -223,7 +303,13 @@ function AdminDashboard({ user, users, complaints, onRefresh, onLogout }) {
   const [saving, setSaving] = useState(false);
 
   const totalComplaints = complaints.length;
+  const totalOpen = complaints.filter(c => c.status !== "Resolved").length;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
+
+  const handleResolve = async (id) => {
+    const ok = await resolveComplaint(id);
+    if (ok) await onRefresh();
+  };
 
   const handlePasswordChange = async (userId) => {
     if (!newPw.trim() || saving) return;
@@ -247,9 +333,10 @@ function AdminDashboard({ user, users, complaints, onRefresh, onLogout }) {
       <header style={styles.header}>
         <div style={styles.headerLeft}>
           <span style={styles.headerMark}>O₂</span>
-          <span style={styles.headerName}>{user.name} — Admin</span>
+          <span style={styles.headerName}>Admin</span>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button style={styles.downloadBtn} onClick={() => downloadCSV(complaints, "all-complaints")}>⬇ Download CSV</button>
           <button style={styles.btnLogout} onClick={handleRefresh}>{refreshing ? "Refreshing…" : "Refresh"}</button>
           <button style={styles.btnLogout} onClick={onLogout}>Sign Out</button>
         </div>
@@ -268,13 +355,13 @@ function AdminDashboard({ user, users, complaints, onRefresh, onLogout }) {
                 <div style={styles.statNum}>{totalComplaints}</div>
                 <div style={styles.statLabel}>Total Complaints</div>
               </div>
-              <div style={styles.statBox}>
-                <div style={styles.statNum}>{ALL_HOSPITALS.length}</div>
-                <div style={styles.statLabel}>Hospitals</div>
+              <div style={{ ...styles.statBox }}>
+                <div style={{ ...styles.statNum, color: "#9c4221" }}>{totalOpen}</div>
+                <div style={styles.statLabel}>Open</div>
               </div>
               <div style={styles.statBox}>
-                <div style={styles.statNum}>{Object.keys(GROUPS).length}</div>
-                <div style={styles.statLabel}>Service Providers</div>
+                <div style={{ ...styles.statNum, color: "#276749" }}>{totalComplaints - totalOpen}</div>
+                <div style={styles.statLabel}>Resolved</div>
               </div>
             </div>
             <GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} />
@@ -282,7 +369,7 @@ function AdminDashboard({ user, users, complaints, onRefresh, onLogout }) {
         )}
 
         {tab === "complaints" && selected && (
-          <ComplaintList hospital={selected} complaints={complaints} onBack={() => setSelected(null)} />
+          <ComplaintList hospital={selected} complaints={complaints} onBack={() => setSelected(null)} canResolve={true} onResolve={handleResolve} />
         )}
 
         {tab === "passwords" && (
@@ -349,17 +436,17 @@ function CompanyDashboard({ user, complaints, onRefresh, onLogout }) {
   const [selected, setSelected] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Company sees only their hospitals, UNDP sees all
+  // Novair, Intexim, Z-Corps see only their hospitals. Amex & UNDP see all.
   const myGroups = {};
   if (GROUPS[user.name]) {
     myGroups[user.name] = GROUPS[user.name];
   } else {
-    // UNDP or others see all
     Object.assign(myGroups, GROUPS);
   }
   const myHospitals = Object.values(myGroups).flat();
   const myComplaints = complaints.filter(c => myHospitals.includes(c.hospital));
   const totalComplaints = myComplaints.length;
+  const totalOpen = myComplaints.filter(c => c.status !== "Resolved").length;
 
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
 
@@ -371,6 +458,7 @@ function CompanyDashboard({ user, complaints, onRefresh, onLogout }) {
           <span style={styles.headerName}>{user.name}</span>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button style={styles.downloadBtn} onClick={() => downloadCSV(myComplaints, user.name.toLowerCase() + "-complaints")}>⬇ Download CSV</button>
           <button style={styles.btnLogout} onClick={handleRefresh}>{refreshing ? "Refreshing…" : "Refresh"}</button>
           <button style={styles.btnLogout} onClick={onLogout}>Sign Out</button>
         </div>
@@ -384,14 +472,18 @@ function CompanyDashboard({ user, complaints, onRefresh, onLogout }) {
                 <div style={styles.statLabel}>Total Complaints</div>
               </div>
               <div style={styles.statBox}>
-                <div style={styles.statNum}>{myHospitals.length}</div>
-                <div style={styles.statLabel}>Hospitals</div>
+                <div style={{ ...styles.statNum, color: "#9c4221" }}>{totalOpen}</div>
+                <div style={styles.statLabel}>Open</div>
+              </div>
+              <div style={styles.statBox}>
+                <div style={{ ...styles.statNum, color: "#276749" }}>{totalComplaints - totalOpen}</div>
+                <div style={styles.statLabel}>Resolved</div>
               </div>
             </div>
             <GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} />
           </>
         ) : (
-          <ComplaintList hospital={selected} complaints={complaints} onBack={() => setSelected(null)} />
+          <ComplaintList hospital={selected} complaints={complaints} onBack={() => setSelected(null)} canResolve={false} onResolve={() => {}} />
         )}
       </main>
     </div>
@@ -423,19 +515,20 @@ const styles = {
   headerMark: { fontSize: 22, fontWeight: 800, color: C.brand, letterSpacing: -1 },
   headerName: { fontSize: 15, fontWeight: 600, color: C.text },
   btnLogout: { fontSize: 13, fontWeight: 500, color: C.textMid, background: "none", border: `1px solid ${C.border}`, borderRadius: 6, padding: "6px 14px", cursor: "pointer" },
+  downloadBtn: { fontSize: 13, fontWeight: 500, color: C.brand, background: C.brandLight, border: `1px solid ${C.brand}22`, borderRadius: 6, padding: "6px 14px", cursor: "pointer" },
   main: { maxWidth: 800, margin: "0 auto", padding: "24px 20px" },
   formSection: { background: C.white, borderRadius: 12, padding: 24, marginBottom: 24, border: `1px solid ${C.border}` },
   listSection: { marginBottom: 24 },
   sectionTitle: { fontSize: 17, fontWeight: 700, color: C.text, margin: "0 0 16px" },
   card: { background: C.white, borderRadius: 10, padding: "16px 18px", marginBottom: 10, border: `1px solid ${C.border}` },
-  cardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 6 },
+  cardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 6, flexWrap: "wrap" },
   cardTitle: { fontSize: 15, fontWeight: 600, color: C.text },
   cardDate: { fontSize: 12, color: C.textLight, whiteSpace: "nowrap", marginTop: 2 },
   cardDesc: { fontSize: 14, color: C.textMid, margin: 0, lineHeight: 1.55 },
   empty: { fontSize: 14, color: C.textLight, fontStyle: "italic" },
   successMsg: { color: C.green, fontSize: 14, fontWeight: 500, marginTop: 10, textAlign: "center" },
   statsBar: { display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" },
-  statBox: { flex: 1, minWidth: 120, background: C.white, borderRadius: 10, padding: "18px 20px", border: `1px solid ${C.border}`, textAlign: "center" },
+  statBox: { flex: 1, minWidth: 100, background: C.white, borderRadius: 10, padding: "18px 20px", border: `1px solid ${C.border}`, textAlign: "center" },
   statNum: { fontSize: 28, fontWeight: 800, color: C.brand },
   statLabel: { fontSize: 13, color: C.textLight, marginTop: 4 },
   hospitalGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 },
@@ -443,11 +536,13 @@ const styles = {
   hospitalIndex: { fontSize: 12, fontWeight: 600, color: C.textLight, minWidth: 20 },
   hospitalName: { flex: 1, fontSize: 14, fontWeight: 500, color: C.text },
   hospitalBadge: { fontSize: 12, fontWeight: 700, color: C.brand, background: C.brandLight, borderRadius: 12, padding: "2px 9px", minWidth: 22, textAlign: "center" },
+  openBadge: { fontSize: 11, fontWeight: 700, color: "#9c4221", background: "#feebc8", borderRadius: 12, padding: "2px 8px", minWidth: 18, textAlign: "center" },
   backBtn: { fontSize: 14, fontWeight: 500, color: C.brand, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", display: "block" },
+  resolveBtn: { marginTop: 10, fontSize: 13, fontWeight: 600, color: "#276749", background: "#c6f6d5", border: "none", borderRadius: 6, padding: "6px 16px", cursor: "pointer" },
 
   // Groups
   groupSection: { marginBottom: 28 },
-  groupHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  groupHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 },
   groupTitle: { fontSize: 16, fontWeight: 700, color: C.brand, margin: 0 },
   groupBadge: { fontSize: 13, fontWeight: 600, color: C.textMid, background: C.bg, borderRadius: 12, padding: "4px 12px" },
 
