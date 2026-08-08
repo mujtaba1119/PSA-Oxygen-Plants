@@ -2,13 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 
 /* ─── Data ─── */
-const HOSPITALS = [
-  "Rawalpindi","Bhakkar","Sahiwal","Toba Tek Singh","Kohat","Swat","Larkana","Jamshoro",
-  "Quetta SZ","DM Jamali","Khuzdar","Sibbi","Timergara","Malakand","Bannu","Neelum",
-  "Jhelum","Haveli","Nawabshah","Zhob","Sargodha","Rahim Yar Khan","Nagar","Ghizer",
-  "Khaplu","Astore","Jhang","Quetta Sandeman","Loralai","Islamabad","Faisalabad",
-  "Bhimber","Multan","Pangjur","Kharan","Karachi"
-];
+const GROUPS = {
+  "Novair": ["Rawalpindi","Kohat","Swat","Timergara","Malakand","Bannu","Neelum","Jhelum","Haveli","Nagar","Ghizer","Astore","Khaplu","Islamabad"],
+  "Intexim": ["Bhakkar","Sahiwal","Toba Tek Singh","Sargodha","Rahim Yar Khan","Jhang","Faisalabad","Bhimber","Multan"],
+  "Z-Corps": ["Larkana","Jamshoro","Quetta SZ","DM Jamali","Khuzdar","Sibbi","Nawabshah","Zhob","Quetta Sandeman","Loralai","Pangjur","Kharan","Karachi"],
+};
+
+const ALL_HOSPITALS = Object.values(GROUPS).flat();
 
 /* ─── Supabase helpers ─── */
 async function fetchComplaints() {
@@ -104,6 +104,55 @@ function LoginScreen({ users, onLogin }) {
   );
 }
 
+/* ─── Grouped Hospital List ─── */
+function GroupedHospitalList({ groups, complaints, onSelect }) {
+  const countFor = h => complaints.filter(c => c.hospital === h).length;
+  const groupCountFor = hospitals => complaints.filter(c => hospitals.includes(c.hospital)).length;
+
+  return (
+    <>
+      {Object.entries(groups).map(([provider, hospitals]) => (
+        <div key={provider} style={styles.groupSection}>
+          <div style={styles.groupHeader}>
+            <h3 style={styles.groupTitle}>{provider}</h3>
+            <span style={styles.groupBadge}>{groupCountFor(hospitals)} complaints</span>
+          </div>
+          <div style={styles.hospitalGrid}>
+            {hospitals.map((h, i) => (
+              <button key={h} style={styles.hospitalBtn} onClick={() => onSelect(h)}>
+                <span style={styles.hospitalIndex}>{i + 1}</span>
+                <span style={styles.hospitalName}>{h}</span>
+                <span style={styles.hospitalBadge}>{countFor(h)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+/* ─── Complaint List ─── */
+function ComplaintList({ hospital, complaints, onBack }) {
+  const hospitalComplaints = complaints.filter(c => c.hospital === hospital);
+  return (
+    <>
+      <button style={styles.backBtn} onClick={onBack}>← Back</button>
+      <h2 style={styles.sectionTitle}>{hospital} — Complaints ({hospitalComplaints.length})</h2>
+      {hospitalComplaints.length === 0 && <p style={styles.empty}>No complaints from this hospital.</p>}
+      {hospitalComplaints.map(c => (
+        <div key={c.id} style={styles.card}>
+          <div style={styles.cardTop}>
+            <strong style={styles.cardTitle}>{c.title}</strong>
+            <span style={styles.cardDate}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+          </div>
+          <p style={styles.cardDesc}>{c.description}</p>
+        </div>
+      ))}
+    </>
+  );
+}
+
 /* ─── Hospital Dashboard ─── */
 function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const [title, setTitle] = useState("");
@@ -165,7 +214,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
 
 /* ─── Admin Dashboard (Amex) ─── */
 function AdminDashboard({ user, users, complaints, onRefresh, onLogout }) {
-  const [tab, setTab] = useState("complaints"); // "complaints" or "passwords"
+  const [tab, setTab] = useState("complaints");
   const [selected, setSelected] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -173,10 +222,7 @@ function AdminDashboard({ user, users, complaints, onRefresh, onLogout }) {
   const [pwSuccess, setPwSuccess] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const hospitalComplaints = selected ? complaints.filter(c => c.hospital === selected) : [];
-  const countFor = h => complaints.filter(c => c.hospital === h).length;
   const totalComplaints = complaints.length;
-
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
 
   const handlePasswordChange = async (userId) => {
@@ -209,7 +255,6 @@ function AdminDashboard({ user, users, complaints, onRefresh, onLogout }) {
         </div>
       </header>
 
-      {/* Tabs */}
       <div style={styles.tabBar}>
         <button style={tab === "complaints" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("complaints"); setSelected(null); }}>Complaints</button>
         <button style={tab === "passwords" ? styles.tabActive : styles.tabInactive} onClick={() => setTab("passwords")}>Manage Passwords</button>
@@ -224,38 +269,20 @@ function AdminDashboard({ user, users, complaints, onRefresh, onLogout }) {
                 <div style={styles.statLabel}>Total Complaints</div>
               </div>
               <div style={styles.statBox}>
-                <div style={styles.statNum}>36</div>
+                <div style={styles.statNum}>{ALL_HOSPITALS.length}</div>
                 <div style={styles.statLabel}>Hospitals</div>
               </div>
+              <div style={styles.statBox}>
+                <div style={styles.statNum}>{Object.keys(GROUPS).length}</div>
+                <div style={styles.statLabel}>Service Providers</div>
+              </div>
             </div>
-            <h2 style={styles.sectionTitle}>Hospitals</h2>
-            <div style={styles.hospitalGrid}>
-              {HOSPITALS.map((h, i) => (
-                <button key={h} style={styles.hospitalBtn} onClick={() => setSelected(h)}>
-                  <span style={styles.hospitalIndex}>{i + 1}</span>
-                  <span style={styles.hospitalName}>{h}</span>
-                  <span style={styles.hospitalBadge}>{countFor(h)}</span>
-                </button>
-              ))}
-            </div>
+            <GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} />
           </>
         )}
 
         {tab === "complaints" && selected && (
-          <>
-            <button style={styles.backBtn} onClick={() => setSelected(null)}>← All Hospitals</button>
-            <h2 style={styles.sectionTitle}>{selected} — Complaints ({hospitalComplaints.length})</h2>
-            {hospitalComplaints.length === 0 && <p style={styles.empty}>No complaints from this hospital.</p>}
-            {hospitalComplaints.map(c => (
-              <div key={c.id} style={styles.card}>
-                <div style={styles.cardTop}>
-                  <strong style={styles.cardTitle}>{c.title}</strong>
-                  <span style={styles.cardDate}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-                </div>
-                <p style={styles.cardDesc}>{c.description}</p>
-              </div>
-            ))}
-          </>
+          <ComplaintList hospital={selected} complaints={complaints} onBack={() => setSelected(null)} />
         )}
 
         {tab === "passwords" && (
@@ -285,27 +312,29 @@ function AdminDashboard({ user, users, complaints, onRefresh, onLogout }) {
               </div>
             ))}
 
-            <h2 style={{ ...styles.sectionTitle, marginTop: 28 }}>Hospital Passwords</h2>
-            {hospitalUsers.map(u => (
-              <div key={u.id} style={styles.pwCard}>
-                <div style={styles.pwRow}>
-                  <div>
-                    <strong style={styles.pwName}>{u.name}</strong>
-                  </div>
-                  <div style={styles.pwRight}>
-                    <span style={styles.pwCurrent}>Current: <code>{u.password}</code></span>
-                    {editingUser === u.id ? (
-                      <div style={styles.pwEditRow}>
-                        <input style={styles.pwInput} placeholder="New password" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} />
-                        <button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button>
-                        <button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button>
+            {Object.entries(GROUPS).map(([provider, hospitals]) => (
+              <div key={provider}>
+                <h2 style={{ ...styles.sectionTitle, marginTop: 28 }}>{provider} — Hospital Passwords</h2>
+                {hospitalUsers.filter(u => hospitals.some(h => h.toLowerCase().replace(/\s+/g, "") === u.id.toLowerCase().replace(/\s+/g, ""))).map(u => (
+                  <div key={u.id} style={styles.pwCard}>
+                    <div style={styles.pwRow}>
+                      <div><strong style={styles.pwName}>{u.name}</strong></div>
+                      <div style={styles.pwRight}>
+                        <span style={styles.pwCurrent}>Current: <code>{u.password}</code></span>
+                        {editingUser === u.id ? (
+                          <div style={styles.pwEditRow}>
+                            <input style={styles.pwInput} placeholder="New password" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} />
+                            <button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button>
+                            <button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button>
+                          </div>
+                        ) : (
+                          <button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>
+                        )}
                       </div>
-                    ) : (
-                      <button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>
-                    )}
+                    </div>
+                    {pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}
                   </div>
-                </div>
-                {pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}
+                ))}
               </div>
             ))}
           </>
@@ -320,9 +349,17 @@ function CompanyDashboard({ user, complaints, onRefresh, onLogout }) {
   const [selected, setSelected] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const hospitalComplaints = selected ? complaints.filter(c => c.hospital === selected) : [];
-  const countFor = h => complaints.filter(c => c.hospital === h).length;
-  const totalComplaints = complaints.length;
+  // Company sees only their hospitals, UNDP sees all
+  const myGroups = {};
+  if (GROUPS[user.name]) {
+    myGroups[user.name] = GROUPS[user.name];
+  } else {
+    // UNDP or others see all
+    Object.assign(myGroups, GROUPS);
+  }
+  const myHospitals = Object.values(myGroups).flat();
+  const myComplaints = complaints.filter(c => myHospitals.includes(c.hospital));
+  const totalComplaints = myComplaints.length;
 
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
 
@@ -347,36 +384,14 @@ function CompanyDashboard({ user, complaints, onRefresh, onLogout }) {
                 <div style={styles.statLabel}>Total Complaints</div>
               </div>
               <div style={styles.statBox}>
-                <div style={styles.statNum}>36</div>
+                <div style={styles.statNum}>{myHospitals.length}</div>
                 <div style={styles.statLabel}>Hospitals</div>
               </div>
             </div>
-            <h2 style={styles.sectionTitle}>Hospitals</h2>
-            <div style={styles.hospitalGrid}>
-              {HOSPITALS.map((h, i) => (
-                <button key={h} style={styles.hospitalBtn} onClick={() => setSelected(h)}>
-                  <span style={styles.hospitalIndex}>{i + 1}</span>
-                  <span style={styles.hospitalName}>{h}</span>
-                  <span style={styles.hospitalBadge}>{countFor(h)}</span>
-                </button>
-              ))}
-            </div>
+            <GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} />
           </>
         ) : (
-          <>
-            <button style={styles.backBtn} onClick={() => setSelected(null)}>← All Hospitals</button>
-            <h2 style={styles.sectionTitle}>{selected} — Complaints ({hospitalComplaints.length})</h2>
-            {hospitalComplaints.length === 0 && <p style={styles.empty}>No complaints from this hospital.</p>}
-            {hospitalComplaints.map(c => (
-              <div key={c.id} style={styles.card}>
-                <div style={styles.cardTop}>
-                  <strong style={styles.cardTitle}>{c.title}</strong>
-                  <span style={styles.cardDate}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-                </div>
-                <p style={styles.cardDesc}>{c.description}</p>
-              </div>
-            ))}
-          </>
+          <ComplaintList hospital={selected} complaints={complaints} onBack={() => setSelected(null)} />
         )}
       </main>
     </div>
@@ -419,8 +434,8 @@ const styles = {
   cardDesc: { fontSize: 14, color: C.textMid, margin: 0, lineHeight: 1.55 },
   empty: { fontSize: 14, color: C.textLight, fontStyle: "italic" },
   successMsg: { color: C.green, fontSize: 14, fontWeight: 500, marginTop: 10, textAlign: "center" },
-  statsBar: { display: "flex", gap: 16, marginBottom: 24 },
-  statBox: { flex: 1, background: C.white, borderRadius: 10, padding: "18px 20px", border: `1px solid ${C.border}`, textAlign: "center" },
+  statsBar: { display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" },
+  statBox: { flex: 1, minWidth: 120, background: C.white, borderRadius: 10, padding: "18px 20px", border: `1px solid ${C.border}`, textAlign: "center" },
   statNum: { fontSize: 28, fontWeight: 800, color: C.brand },
   statLabel: { fontSize: 13, color: C.textLight, marginTop: 4 },
   hospitalGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 },
@@ -429,6 +444,12 @@ const styles = {
   hospitalName: { flex: 1, fontSize: 14, fontWeight: 500, color: C.text },
   hospitalBadge: { fontSize: 12, fontWeight: 700, color: C.brand, background: C.brandLight, borderRadius: 12, padding: "2px 9px", minWidth: 22, textAlign: "center" },
   backBtn: { fontSize: 14, fontWeight: 500, color: C.brand, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", display: "block" },
+
+  // Groups
+  groupSection: { marginBottom: 28 },
+  groupHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  groupTitle: { fontSize: 16, fontWeight: 700, color: C.brand, margin: 0 },
+  groupBadge: { fontSize: 13, fontWeight: 600, color: C.textMid, background: C.bg, borderRadius: 12, padding: "4px 12px" },
 
   // Tabs
   tabBar: { display: "flex", gap: 0, maxWidth: 800, margin: "0 auto", padding: "16px 20px 0", borderBottom: `1px solid ${C.border}` },
