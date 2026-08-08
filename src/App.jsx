@@ -69,10 +69,17 @@ async function deleteEmail(id) {
   return !error;
 }
 
-const RESEND_KEY = "re_KBcPovEP_MYNRjWF5KMMqhcGxWBx9Wnrc";
+async function getResendKey() {
+  try {
+    const { data } = await supabase.from("settings").select("value").eq("key", "resend_api_key").single();
+    return data?.value || null;
+  } catch { return null; }
+}
 
 async function sendNotificationEmails(hospital, title, description, provider, emails) {
   if (!emails.length) return;
+  const apiKey = await getResendKey();
+  if (!apiKey) { console.error("No Resend API key found"); return; }
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
       <div style="background:#0e7c6b;color:white;padding:16px 24px;border-radius:8px 8px 0 0;">
@@ -91,7 +98,7 @@ async function sendNotificationEmails(hospital, title, description, provider, em
   try {
     await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + RESEND_KEY },
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + apiKey },
       body: JSON.stringify({
         from: "PSA Oxygen Plant <alerts@psacomplaints.com>",
         to: emails,
