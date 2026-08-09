@@ -73,7 +73,11 @@ async function fetchSiteNotes() {
   return data;
 }
 async function updateSiteNote(hospital, note) {
-  const { error } = await supabase.from("site_notes").upsert({ hospital, equipment_note: note, updated_at: new Date().toISOString() });
+  const { error } = await supabase.from("site_notes").update({ equipment_note: note, updated_at: new Date().toISOString() }).eq("hospital", hospital);
+  return !error;
+}
+async function updateSiteStatus(hospital, status) {
+  const { error } = await supabase.from("site_notes").update({ site_status: status, updated_at: new Date().toISOString() }).eq("hospital", hospital);
   return !error;
 }
 
@@ -90,6 +94,22 @@ function downloadCSV(complaints, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a"); a.href = url; a.download = filename + ".csv"; a.click();
   URL.revokeObjectURL(url);
+}
+
+/* ─── Header Component ─── */
+function AppHeader({ user, children }) {
+  const displayName = user.role === "hospital" ? user.name + " Hospital" : user.name;
+  return (
+    <header style={styles.header}>
+      <div style={styles.headerLeft}>
+        <div>
+          <div style={styles.headerBrand}><span style={styles.headerMark}>O₂</span> PSA Oxygen Plants - Pakistan</div>
+          <div style={styles.headerUser}>User: {displayName}</div>
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>{children}</div>
+    </header>
+  );
 }
 
 /* ─── App ─── */
@@ -151,53 +171,89 @@ function StatusBadge({ status }) {
   return <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 12, color: r ? "#276749" : "#9c4221", background: r ? "#c6f6d5" : "#feebc8" }}>{r ? "Resolved" : "Open"}</span>;
 }
 
+/* ─── Site Status Logic ─── */
+function getSiteDisplayStatus(hospital, complaints, siteNotes) {
+  const hasOpen = complaints.some(c => c.hospital === hospital && c.status !== "Resolved");
+  if (hasOpen) return "Issues";
+  const note = siteNotes.find(s => s.hospital === hospital);
+  return note?.site_status || "Fully Functional";
+}
+
+function SiteStatusBadge({ status }) {
+  let color, bg, icon;
+  if (status === "Issues") { color = "#9c4221"; bg = "#feebc8"; icon = "⚠"; }
+  else if (status === "Non Functional") { color = "#e53e3e"; bg = "#fed7d7"; icon = "✕"; }
+  else { color = "#276749"; bg = "#c6f6d5"; icon = "✓"; }
+  return <span style={{ fontSize: 12, fontWeight: 600, color, background: bg, padding: "2px 8px", borderRadius: 6 }}>{icon} {status}</span>;
+}
+
 /* ─── Overview Tab ─── */
 function OverviewTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
   const [editingHospital, setEditingHospital] = useState(null);
   const [noteText, setNoteText] = useState("");
   const [saving, setSaving] = useState(false);
+  const [statusEditing, setStatusEditing] = useState(null);
 
   const getNote = h => siteNotes.find(s => s.hospital === h)?.equipment_note || "";
   const openComplaints = h => complaints.filter(c => c.hospital === h && c.status !== "Resolved");
   const allOpen = hospitals.reduce((sum, h) => sum + openComplaints(h).length, 0);
-  const allResolved = hospitals.reduce((sum, h) => sum + complaints.filter(c => c.hospital === h && c.status === "Resolved").length, 0);
+  const issueCount = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Issues").length;
+  const funcCount = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Fully Functional").length;
+  const nonFuncCount = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Non Functional").length;
 
   const saveNote = async (h) => {
-    setSaving(true);
-    await updateSiteNote(h, noteText);
-    setEditingHospital(null); setNoteText("");
-    setSaving(false);
-    await onRefresh();
+    setSaving(true); await updateSiteNote(h, noteText);
+    setEditingHospital(null); setNoteText(""); setSaving(false); await onRefresh();
+  };
+
+  const handleStatusChange = async (h, newStatus) => {
+    await updateSiteStatus(h, newStatus);
+    setStatusEditing(null); await onRefresh();
   };
 
   return (
     <>
       <div style={styles.statsBar}>
         <div style={styles.statBox}><div style={styles.statNum}>{hospitals.length}</div><div style={styles.statLabel}>Sites</div></div>
-        <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{allOpen}</div><div style={styles.statLabel}>Open</div></div>
-        <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#276749" }}>{allResolved}</div><div style={styles.statLabel}>Resolved</div></div>
+        <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#276749" }}>{funcCount}</div><div style={styles.statLabel}>Functional</div></div>
+        <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{issueCount}</div><div style={styles.statLabel}>Issues</div></div>
+        <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#e53e3e" }}>{nonFuncCount}</div><div style={styles.statLabel}>Non Functional</div></div>
+        <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{allOpen}</div><div style={styles.statLabel}>Open Complaints</div></div>
       </div>
 
       <div style={styles.overviewTable}>
         <div style={styles.overviewHeaderRow}>
           <div style={styles.ovCellSr}>#</div>
           <div style={styles.ovCellSite}>Site</div>
-          <div style={styles.ovCellProvider}>Provider</div>
+          <div style={styles.ovCellProvider}>Service Provider</div>
           <div style={styles.ovCellStatus}>Status</div>
-          <div style={styles.ovCellOpen}>Open</div>
+          <div style={styles.ovCellOpen}>Open Complaints</div>
           <div style={styles.ovCellNote}>Equipment / Notes</div>
         </div>
         {hospitals.map((h, i) => {
           const open = openComplaints(h);
+          const siteStatus = getSiteDisplayStatus(h, complaints, siteNotes);
           const hasOpen = open.length > 0;
           const note = getNote(h);
+          const rowBg = siteStatus === "Issues" ? "#fff5f5" : siteStatus === "Non Functional" ? "#fff5f5" : "#f0fff4";
           return (
-            <div key={h} style={{ ...styles.overviewRow, background: hasOpen ? "#fff5f5" : "#f0fff4" }}>
+            <div key={h} style={{ ...styles.overviewRow, background: rowBg }}>
               <div style={styles.ovCellSr}>{i + 1}</div>
               <div style={styles.ovCellSite}><strong>{h}</strong></div>
               <div style={styles.ovCellProvider}><span style={{ fontSize: 12, color: "#0e7c6b", background: "#e6f5f2", padding: "2px 8px", borderRadius: 6 }}>{getProvider(h)}</span></div>
               <div style={styles.ovCellStatus}>
-                {hasOpen ? <span style={{ fontSize: 12, fontWeight: 600, color: "#9c4221" }}>⚠ Issues</span> : <span style={{ fontSize: 12, fontWeight: 600, color: "#276749" }}>✓ Clear</span>}
+                {isAdmin && !hasOpen ? (
+                  statusEditing === h ? (
+                    <select style={{ fontSize: 11, padding: "2px 4px", borderRadius: 4, border: "1px solid #e2e8f0" }} value={siteStatus} onChange={e => handleStatusChange(h, e.target.value)}>
+                      <option value="Fully Functional">Fully Functional</option>
+                      <option value="Non Functional">Non Functional</option>
+                    </select>
+                  ) : (
+                    <div style={{ cursor: "pointer" }} onClick={() => setStatusEditing(h)}><SiteStatusBadge status={siteStatus} /></div>
+                  )
+                ) : (
+                  <SiteStatusBadge status={siteStatus} />
+                )}
               </div>
               <div style={styles.ovCellOpen}>
                 {open.length > 0 ? open.map(c => (
@@ -248,21 +304,13 @@ function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
     if (!text.trim() || posting) return;
     setPosting(true);
     let author, role;
-    if (isAdmin && asHospital) {
-      author = asHospital + " Hospital";
-      role = "hospital";
-    } else {
-      author = currentUser.role === "hospital" ? currentUser.name + " Hospital" : currentUser.name;
-      role = currentUser.role;
-    }
+    if (isAdmin && asHospital) { author = asHospital + " Hospital"; role = "hospital"; }
+    else { author = currentUser.role === "hospital" ? currentUser.name + " Hospital" : currentUser.name; role = currentUser.role; }
     await insertComment(complaintId, author, role, text.trim());
     setText(""); setPosting(false); await loadComments();
   };
 
-  const handleDelete = async (id) => {
-    await deleteComment(id);
-    await loadComments();
-  };
+  const handleDelete = async (id) => { await deleteComment(id); await loadComments(); };
 
   return (
     <div style={{ marginTop: 10 }}>
@@ -348,7 +396,6 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
   const c = complaint;
   const handleResolve = async () => { setResolving(true); await onResolve(c.id); setResolving(false); };
   const handleDelete = async () => { if (window.confirm("Delete this complaint permanently?")) { await onDelete(c.id); await onRefresh(); } };
-
   return (
     <div style={styles.card}>
       <div style={styles.cardTop}>
@@ -395,7 +442,6 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const [success, setSuccess] = useState(false); const [submitting, setSubmitting] = useState(false);
   const mine = complaints.filter(c => c.hospital === user.name);
   const openCount = mine.filter(c => c.status !== "Resolved").length;
-
   const submitComplaint = async () => {
     if (!title.trim() || !desc.trim() || submitting) return;
     setSubmitting(true);
@@ -404,13 +450,11 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
     if (result) { setTitle(""); setDesc(""); setSuccess(true); setTimeout(() => setSuccess(false), 2500); await onRefresh(); }
   };
   const handleResolve = async (id) => { await resolveComplaint(id); await onRefresh(); };
-
   return (
     <div style={styles.shell}>
-      <header style={styles.header}>
-        <div style={styles.headerLeft}><span style={styles.headerMark}>O₂</span><span style={styles.headerName}>{user.name} Hospital</span></div>
+      <AppHeader user={user}>
         <button style={styles.btnLogout} onClick={onLogout}>Sign Out</button>
-      </header>
+      </AppHeader>
       <main style={styles.main}>
         <section style={styles.formSection}>
           <h2 style={styles.sectionTitle}>Register a Complaint</h2>
@@ -442,7 +486,6 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const [editingUser, setEditingUser] = useState(null);
   const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
-  // Admin complaint submission
   const [adminHospital, setAdminHospital] = useState(ALL_HOSPITALS[0]);
   const [adminTitle, setAdminTitle] = useState(""); const [adminDesc, setAdminDesc] = useState("");
   const [adminSubmitting, setAdminSubmitting] = useState(false); const [adminSuccess, setAdminSuccess] = useState(false);
@@ -452,7 +495,6 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
   const handleResolve = async (id) => { await resolveComplaint(id); await onRefresh(); };
   const handleDelete = async (id) => { await deleteComplaint(id); await onRefresh(); };
-
   const handlePasswordChange = async (userId) => {
     if (!newPw.trim() || saving) return;
     setSaving(true); const ok = await updatePassword(userId, newPw.trim()); setSaving(false);
@@ -463,7 +505,6 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
     setEmailSaving(true); await addEmail(emailGroup, newEmail.trim()); setNewEmail(""); setEmailSaving(false); await onRefresh();
   };
   const handleDeleteEmail = async (id) => { await deleteEmailRecord(id); await onRefresh(); };
-
   const submitAdminComplaint = async () => {
     if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return;
     setAdminSubmitting(true);
@@ -478,14 +519,11 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 
   return (
     <div style={styles.shell}>
-      <header style={styles.header}>
-        <div style={styles.headerLeft}><span style={styles.headerMark}>O₂</span><span style={styles.headerName}>Admin</span></div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button style={styles.downloadBtn} onClick={() => downloadCSV(complaints, "all-complaints")}>⬇ CSV</button>
-          <button style={styles.btnLogout} onClick={handleRefresh}>{refreshing ? "…" : "Refresh"}</button>
-          <button style={styles.btnLogout} onClick={onLogout}>Sign Out</button>
-        </div>
-      </header>
+      <AppHeader user={user}>
+        <button style={styles.downloadBtn} onClick={() => downloadCSV(complaints, "all-complaints")}>⬇ CSV</button>
+        <button style={styles.btnLogout} onClick={handleRefresh}>{refreshing ? "…" : "Refresh"}</button>
+        <button style={styles.btnLogout} onClick={onLogout}>Sign Out</button>
+      </AppHeader>
 
       <div style={styles.tabBar}>
         {["overview","complaints","submit","passwords","emails"].map(t => (
@@ -496,9 +534,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
       </div>
 
       <main style={styles.main}>
-        {tab === "overview" && (
-          <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} isAdmin={true} onRefresh={onRefresh} />
-        )}
+        {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} isAdmin={true} onRefresh={onRefresh} />}
 
         {tab === "complaints" && !selected && (
           <>
@@ -615,7 +651,7 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
   const [selected, setSelected] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const seesAll = ["Novair", "Amex", "UNDP"].includes(user.name);
+  const seesAll = ["Novair", "Amex", "UNDP", "CMU"].includes(user.name);
   const myGroups = {};
   if (seesAll) { Object.assign(myGroups, GROUPS); } else if (GROUPS[user.name]) { myGroups[user.name] = GROUPS[user.name]; } else { Object.assign(myGroups, GROUPS); }
   const myHospitals = Object.values(myGroups).flat();
@@ -632,14 +668,11 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
 
   return (
     <div style={styles.shell}>
-      <header style={styles.header}>
-        <div style={styles.headerLeft}><span style={styles.headerMark}>O₂</span><span style={styles.headerName}>{user.name}</span></div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button style={styles.downloadBtn} onClick={() => downloadCSV(myComplaints, user.name.toLowerCase() + "-complaints")}>⬇ CSV</button>
-          <button style={styles.btnLogout} onClick={handleRefresh}>{refreshing ? "…" : "Refresh"}</button>
-          <button style={styles.btnLogout} onClick={onLogout}>Sign Out</button>
-        </div>
-      </header>
+      <AppHeader user={user}>
+        <button style={styles.downloadBtn} onClick={() => downloadCSV(myComplaints, user.name.toLowerCase() + "-complaints")}>⬇ CSV</button>
+        <button style={styles.btnLogout} onClick={handleRefresh}>{refreshing ? "…" : "Refresh"}</button>
+        <button style={styles.btnLogout} onClick={onLogout}>Sign Out</button>
+      </AppHeader>
 
       <div style={styles.tabBar}>
         <button style={tab === "overview" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("overview"); setSelected(null); }}>Overview</button>
@@ -647,9 +680,7 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
       </div>
 
       <main style={styles.main}>
-        {tab === "overview" && (
-          <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} isAdmin={false} onRefresh={onRefresh} />
-        )}
+        {tab === "overview" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} isAdmin={false} onRefresh={onRefresh} />}
 
         {tab === "complaints" && !selected && (
           <>
@@ -682,14 +713,15 @@ const styles = {
   brandText: { fontSize: 16, fontWeight: 600, color: C.textMid },
   loginTitle: { fontSize: 22, fontWeight: 700, color: C.text, margin: "0 0 4px" },
   loginSub: { fontSize: 14, color: C.textLight, margin: "0 0 20px" },
-  input: { display: "block", width: "100%", padding: "12px 14px", fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 8, marginBottom: 12, outline: "none", boxSizing: "border-box", color: C.text, background: C.bg, transition: "border 0.15s" },
+  input: { display: "block", width: "100%", padding: "12px 14px", fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 8, marginBottom: 12, outline: "none", boxSizing: "border-box", color: C.text, background: C.bg },
   btnPrimary: { display: "block", width: "100%", padding: "12px 0", fontSize: 15, fontWeight: 600, color: "#fff", background: C.brand, border: "none", borderRadius: 8, cursor: "pointer" },
   err: { color: C.red, fontSize: 13, margin: "0 0 10px", textAlign: "center" },
   shell: { minHeight: "100vh", background: C.bg, fontFamily: "'Inter', system-ui, sans-serif" },
-  header: { background: C.white, borderBottom: `1px solid ${C.border}`, padding: "0 24px", height: 56, display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10 },
+  header: { background: C.white, borderBottom: `1px solid ${C.border}`, padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10 },
   headerLeft: { display: "flex", alignItems: "center", gap: 10 },
-  headerMark: { fontSize: 22, fontWeight: 800, color: C.brand, letterSpacing: -1 },
-  headerName: { fontSize: 15, fontWeight: 600, color: C.text },
+  headerBrand: { fontSize: 15, fontWeight: 700, color: C.text, display: "flex", alignItems: "center", gap: 6 },
+  headerMark: { fontSize: 20, fontWeight: 800, color: C.brand, letterSpacing: -1 },
+  headerUser: { fontSize: 13, color: C.textLight, marginTop: 2 },
   btnLogout: { fontSize: 13, fontWeight: 500, color: C.textMid, background: "none", border: `1px solid ${C.border}`, borderRadius: 6, padding: "6px 14px", cursor: "pointer" },
   downloadBtn: { fontSize: 13, fontWeight: 500, color: C.brand, background: C.brandLight, border: `1px solid ${C.brand}22`, borderRadius: 6, padding: "6px 14px", cursor: "pointer" },
   main: { maxWidth: 900, margin: "0 auto", padding: "24px 20px" },
@@ -703,10 +735,10 @@ const styles = {
   cardDesc: { fontSize: 14, color: C.textMid, margin: 0, lineHeight: 1.55 },
   empty: { fontSize: 14, color: C.textLight, fontStyle: "italic" },
   successMsg: { color: C.green, fontSize: 14, fontWeight: 500, marginTop: 10, textAlign: "center" },
-  statsBar: { display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" },
-  statBox: { flex: 1, minWidth: 100, background: C.white, borderRadius: 10, padding: "18px 20px", border: `1px solid ${C.border}`, textAlign: "center" },
-  statNum: { fontSize: 28, fontWeight: 800, color: C.brand },
-  statLabel: { fontSize: 13, color: C.textLight, marginTop: 4 },
+  statsBar: { display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" },
+  statBox: { flex: 1, minWidth: 80, background: C.white, borderRadius: 10, padding: "14px 16px", border: `1px solid ${C.border}`, textAlign: "center" },
+  statNum: { fontSize: 24, fontWeight: 800, color: C.brand },
+  statLabel: { fontSize: 12, color: C.textLight, marginTop: 4 },
   hospitalGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 8 },
   hospitalBtn: { display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "12px 14px", background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, cursor: "pointer", textAlign: "left" },
   hospitalIndex: { fontSize: 12, fontWeight: 600, color: C.textLight, minWidth: 20 },
@@ -741,14 +773,13 @@ const styles = {
   commentInputRow: { display: "flex", gap: 8, marginTop: 10 },
   commentInput: { flex: 1, padding: "8px 10px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 6, outline: "none" },
   commentSendBtn: { fontSize: 13, fontWeight: 600, color: C.white, background: C.brand, border: "none", borderRadius: 6, padding: "8px 16px", cursor: "pointer" },
-  // Overview table
-  overviewTable: { background: C.white, borderRadius: 12, border: `1px solid ${C.border}`, overflow: "hidden" },
-  overviewHeaderRow: { display: "flex", padding: "12px 16px", background: "#edf2f7", fontWeight: 600, fontSize: 12, color: C.textMid, borderBottom: `1px solid ${C.border}`, gap: 8 },
-  overviewRow: { display: "flex", padding: "12px 16px", borderBottom: `1px solid ${C.border}`, gap: 8, alignItems: "flex-start" },
+  overviewTable: { background: C.white, borderRadius: 12, border: `1px solid ${C.border}`, overflow: "auto" },
+  overviewHeaderRow: { display: "flex", padding: "12px 16px", background: "#edf2f7", fontWeight: 600, fontSize: 12, color: C.textMid, borderBottom: `1px solid ${C.border}`, gap: 8, minWidth: 800 },
+  overviewRow: { display: "flex", padding: "12px 16px", borderBottom: `1px solid ${C.border}`, gap: 8, alignItems: "flex-start", minWidth: 800 },
   ovCellSr: { width: 30, flexShrink: 0, fontSize: 12, color: C.textLight },
   ovCellSite: { width: 120, flexShrink: 0, fontSize: 13 },
-  ovCellProvider: { width: 80, flexShrink: 0 },
-  ovCellStatus: { width: 70, flexShrink: 0 },
+  ovCellProvider: { width: 100, flexShrink: 0 },
+  ovCellStatus: { width: 110, flexShrink: 0 },
   ovCellOpen: { flex: 1, minWidth: 150 },
   ovCellNote: { flex: 1, minWidth: 150 },
 };
