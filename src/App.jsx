@@ -218,12 +218,27 @@ function OverviewTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
     return (statusOrder[sa] ?? 1) - (statusOrder[sb] ?? 1);
   });
 
+  const attentionSites = hospitals.filter(h => {
+    const s = getSiteDisplayStatus(h, complaints, siteNotes);
+    return s === "Issues" || s === "Non Functional";
+  });
+
   return (
     <>
+      {attentionSites.length > 0 && (
+        <div style={{ background: "#fff5f5", border: "1px solid #fed7d7", borderRadius: 12, padding: "16px 20px", marginBottom: 20 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#9c4221", marginBottom: 8 }}>⚠ Attention Needed ({attentionSites.length})</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {attentionSites.map(h => (
+              <span key={h} style={{ fontSize: 13, fontWeight: 500, color: getSiteDisplayStatus(h, complaints, siteNotes) === "Issues" ? "#9c4221" : "#e53e3e", background: getSiteDisplayStatus(h, complaints, siteNotes) === "Issues" ? "#feebc8" : "#fed7d7", padding: "4px 12px", borderRadius: 8 }}>{h}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div style={styles.statsBar}>
         <div style={styles.statBox}><div style={styles.statNum}>{hospitals.length}</div><div style={styles.statLabel}>Sites</div></div>
         <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#276749" }}>{funcCount}</div><div style={styles.statLabel}>Functional</div></div>
-        <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{issueCount}</div><div style={styles.statLabel}>Issues</div></div>
         <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#e53e3e" }}>{nonFuncCount}</div><div style={styles.statLabel}>Non Functional</div></div>
         <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{allOpen}</div><div style={styles.statLabel}>Open Complaints</div></div>
       </div>
@@ -465,7 +480,14 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
       <main style={styles.main}>
         <section style={styles.formSection}>
           <h2 style={styles.sectionTitle}>Register a Complaint</h2>
-          <input style={styles.input} placeholder="Complaint title" value={title} onChange={e => setTitle(e.target.value)} />
+          <select style={{ ...styles.input, cursor: "pointer" }} value={title} onChange={e => setTitle(e.target.value)}>
+            <option value="">Select complaint type</option>
+            <option value="Compressor Issue">Compressor Issue</option>
+            <option value="Dryer Issue">Dryer Issue</option>
+            <option value="Booster Filling System Issue">Booster Filling System Issue</option>
+            <option value="Purity Issue">Purity Issue</option>
+            <option value="Other Issue">Other Issue</option>
+          </select>
           <textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue in detail…" value={desc} onChange={e => setDesc(e.target.value)} />
           <button style={{ ...styles.btnPrimary, opacity: (!title.trim() || !desc.trim() || submitting) ? 0.5 : 1 }} onClick={submitComplaint}>{submitting ? "Submitting…" : "Submit Complaint"}</button>
           {success && <p style={styles.successMsg}>Complaint registered successfully.</p>}
@@ -563,7 +585,14 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
             <select style={{ ...styles.input, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>
               {ALL_HOSPITALS.map(h => <option key={h} value={h}>{h} — {getProvider(h)}</option>)}
             </select>
-            <input style={styles.input} placeholder="Complaint title" value={adminTitle} onChange={e => setAdminTitle(e.target.value)} />
+            <select style={{ ...styles.input, cursor: "pointer" }} value={adminTitle} onChange={e => setAdminTitle(e.target.value)}>
+              <option value="">Select complaint type</option>
+              <option value="Compressor Issue">Compressor Issue</option>
+              <option value="Dryer Issue">Dryer Issue</option>
+              <option value="Booster Filling System Issue">Booster Filling System Issue</option>
+              <option value="Purity Issue">Purity Issue</option>
+              <option value="Other Issue">Other Issue</option>
+            </select>
             <textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} />
             <button style={{ ...styles.btnPrimary, opacity: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? 0.5 : 1 }} onClick={submitAdminComplaint}>{adminSubmitting ? "Submitting…" : "Submit Complaint"}</button>
             {adminSuccess && <p style={styles.successMsg}>Complaint submitted for {adminHospital}.</p>}
