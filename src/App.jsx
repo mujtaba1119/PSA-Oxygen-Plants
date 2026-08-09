@@ -274,7 +274,12 @@ function OverviewTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
                     <div style={{ cursor: "pointer" }} onClick={() => setStatusEditing(h)}><SiteStatusBadge status={siteStatus} /></div>
                   )
                 ) : (
-                  <SiteStatusBadge status={siteStatus} />
+                  <>
+                    <SiteStatusBadge status={siteStatus} />
+                    {hasOpen && <div style={{ marginTop: 4 }}>{[...new Set(open.map(c => c.title))].map(t => (
+                      <div key={t} style={{ fontSize: 11, color: "#9c4221", marginTop: 2 }}>• {t}</div>
+                    ))}</div>}
+                  </>
                 )}
               </div>
               <div style={styles.ovCellOpen}>
