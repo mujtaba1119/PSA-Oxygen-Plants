@@ -211,6 +211,13 @@ function OverviewTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
     setStatusEditing(null); await onRefresh();
   };
 
+  const statusOrder = { "Issues": 0, "Fully Functional": 1, "Non Functional": 2 };
+  const sortedHospitals = [...hospitals].sort((a, b) => {
+    const sa = getSiteDisplayStatus(a, complaints, siteNotes);
+    const sb = getSiteDisplayStatus(b, complaints, siteNotes);
+    return (statusOrder[sa] ?? 1) - (statusOrder[sb] ?? 1);
+  });
+
   return (
     <>
       <div style={styles.statsBar}>
@@ -230,12 +237,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
           <div style={styles.ovCellOpen}>Open Complaints</div>
           <div style={styles.ovCellNote}>Equipment / Notes</div>
         </div>
-        {[...hospitals].sort((a, b) => {
-          const order = { "Issues": 0, "Fully Functional": 1, "Non Functional": 2 };
-          const sa = getSiteDisplayStatus(a, complaints, siteNotes);
-          const sb = getSiteDisplayStatus(b, complaints, siteNotes);
-          return (order[sa] ?? 1) - (order[sb] ?? 1);
-        }).map((h, i) => {
+        {sortedHospitals.map((h, i) => {
           const open = openComplaints(h);
           const siteStatus = getSiteDisplayStatus(h, complaints, siteNotes);
           const hasOpen = open.length > 0;
