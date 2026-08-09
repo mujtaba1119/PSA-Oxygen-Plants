@@ -220,7 +220,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
 
   const attentionSites = hospitals.filter(h => {
     const s = getSiteDisplayStatus(h, complaints, siteNotes);
-    return s === "Issues" || s === "Non Functional";
+    return s === "Issues";
   });
 
   return (
