@@ -19,7 +19,7 @@ function AnimatedNumber({ value, color }) {
     };
     requestAnimationFrame(step);
   }, [value]);
-  return <div ref={ref} style={{ ...styles.statNum, ...(color ? { color } : {}) }}>{display}</div>;
+  return <div ref={ref} className="stat-num-resp" style={{ ...styles.statNum, ...(color ? { color } : {}) }}>{display}</div>;
 }
 
 /* ─── Logo URLs ─── */
@@ -175,11 +175,14 @@ function AppHeader({ user, children }) {
   return (
     <div className="header-reveal top-bar-responsive" style={styles.topBar}>
       <div className="top-left-responsive" style={styles.topLeft}>
-        <img src={LOGO_FLAG} alt="Pakistan" style={{ height: 60, objectFit: "contain" }} />
-        <div>
-          <div className="top-title-responsive" style={styles.topTitle}>PSA Oxygen Plants</div>
-          <div style={styles.topUser}>User: {displayName}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <img src={LOGO_FLAG} alt="Pakistan" style={{ height: 60, objectFit: "contain" }} />
+          <div>
+            <div className="top-title-responsive" style={styles.topTitle}>PSA Oxygen Plants</div>
+            <div style={styles.topUser}>User: {displayName}</div>
+          </div>
         </div>
+        <div className="mobile-buttons" style={{ display: "none" }}>{children}</div>
       </div>
       <div className="top-center-responsive" style={styles.topCenter}>
         {LOGO_GLOBALFUND && <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 90, objectFit: "contain" }} />}
@@ -354,10 +357,10 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
       )}
 
       <div className="fade-up stats-responsive" style={{ ...styles.statsBar, animationDelay: "0.15s" }}>
-        <div className="stat-hover" style={styles.statBox}><AnimatedNumber value={hospitals.length} /><div style={styles.statLabel}>Total Sites</div></div>
-        <div className="stat-hover" style={styles.statBox}><AnimatedNumber value={funcCount} color={C.green} /><div style={styles.statLabel}>Functional</div></div>
-        <div className="stat-hover" style={styles.statBox}><AnimatedNumber value={nonFuncCount} color={C.textLight} /><div style={styles.statLabel}>Non Functional</div></div>
-        <div className="stat-hover" style={styles.statBox}><AnimatedNumber value={allOpen} color={C.red} /><div style={styles.statLabel}>Open Complaints</div></div>
+        <div className="stat-hover" style={styles.statBox}><AnimatedNumber value={hospitals.length} /><div className="stat-label-resp" style={styles.statLabel}>Total Sites</div></div>
+        <div className="stat-hover" style={styles.statBox}><AnimatedNumber value={funcCount} color={C.green} /><div className="stat-label-resp" style={styles.statLabel}>Functional</div></div>
+        <div className="stat-hover" style={styles.statBox}><AnimatedNumber value={nonFuncCount} color={C.textLight} /><div className="stat-label-resp" style={styles.statLabel}>Non Functional</div></div>
+        <div className="stat-hover" style={styles.statBox}><AnimatedNumber value={allOpen} color={C.red} /><div className="stat-label-resp" style={styles.statLabel}>Open Complaints</div></div>
       </div>
 
       <div className="fade-up" style={{ borderTop: "1px solid #ddd", margin: "0 0 24px", opacity: 0.6, animationDelay: "0.3s" }}></div>
@@ -669,7 +672,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
       <main className="main-responsive" style={styles.main}>
         <div key={tab} className="scale-in">
         {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} />}
-        {tab === "complaints" && !selected && (<><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><div></div><button style={styles.btnBlack} onClick={() => downloadCSV(complaints, "all-complaints")}>DOWNLOAD DATA</button></div><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} /></>)}
+        {tab === "complaints" && !selected && (<><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><div></div><button style={styles.btnBlack} onClick={() => downloadCSV(complaints, "all-complaints")}>DOWNLOAD DATA</button></div><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div className="stat-label-resp" style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{totalOpen}</div><div className="stat-label-resp" style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{totalComplaints - totalOpen}</div><div className="stat-label-resp" style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} /></>)}
         {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} onBack={() => setSelected(null)} onResolve={handleResolve} onUnresolve={handleUnresolve} onDelete={handleDelete} onRefresh={onRefresh} />)}
         {tab === "submit" && (<section style={styles.formSection}><h2 style={styles.sectionTitle}>Submit Complaint on Behalf of Hospital</h2><select style={{ ...styles.input, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h} — {getProvider(h)}</option>)}</select><ComplaintTypeSelect value={adminTitle} onChange={e => setAdminTitle(e.target.value)} style={styles.input} /><textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} /><div style={{ marginBottom: 12 }}><label style={{ fontSize: 13, color: "#4a5568", marginBottom: 4, display: "block" }}>Date (leave empty for today)</label><input style={styles.input} type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} /></div><button style={{ ...styles.btnPrimary, opacity: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? 0.5 : 1 }} onClick={submitAdminComplaint}>{adminSubmitting ? "Submitting…" : "Submit Complaint"}</button>{adminSuccess && <p style={styles.successMsg}>Complaint submitted for {adminHospital}.</p>}</section>)}
         {tab === "passwords" && (<>
@@ -713,7 +716,7 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
       <main className="main-responsive" style={styles.main}>
         <div key={tab} className="scale-in">
         {tab === "overview" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} />}
-        {tab === "complaints" && !selected && (<><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><div></div><button style={styles.btnBlack} onClick={() => downloadCSV(myComplaints, user.name.toLowerCase() + "-complaints")}>DOWNLOAD DATA</button></div><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} /></>)}
+        {tab === "complaints" && !selected && (<><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><div></div><button style={styles.btnBlack} onClick={() => downloadCSV(myComplaints, user.name.toLowerCase() + "-complaints")}>DOWNLOAD DATA</button></div><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div className="stat-label-resp" style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{totalOpen}</div><div className="stat-label-resp" style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{totalComplaints - totalOpen}</div><div className="stat-label-resp" style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} /></>)}
         {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={false} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onResolve={() => {}} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />)}
         </div>
       </main>
