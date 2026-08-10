@@ -1,5 +1,26 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "./supabase";
+
+/* ─── Animated Number Counter ─── */
+function AnimatedNumber({ value, color }) {
+  const [display, setDisplay] = useState(0);
+  const ref = useRef(null);
+  useEffect(() => {
+    const target = typeof value === "number" ? value : parseInt(value) || 0;
+    if (target === 0) { setDisplay(0); return; }
+    let start = 0;
+    const duration = 800;
+    const startTime = performance.now();
+    const step = (now) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(eased * target));
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [value]);
+  return <div ref={ref} style={{ ...styles.statNum, ...(color ? { color } : {}) }}>{display}</div>;
+}
 
 /* ─── Logo URLs ─── */
 const LOGO_FLAG = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/240_F_1475369941_dBG7IPXXeJLHejjX0ZpyqwykTxo8Wc3M-removebg-preview.png";
@@ -301,10 +322,12 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
     alert("Shutdown notification sent for " + h);
   };
 
+  const [expandedRow, setExpandedRow] = useState(null);
+
   return (
     <>
       {shutdownSites.length > 0 && (
-        <div style={{ background: "#fed7d7", border: "1px solid #fc8181", borderRadius: 12, padding: "16px 20px", marginBottom: 12 }}>
+        <div className="fade-up" style={{ background: "#fed7d7", border: "1px solid #fc8181", borderRadius: 12, padding: "16px 20px", marginBottom: 12, animationDelay: "0s" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#e53e3e", marginBottom: 8 }}>🚨 Plant Shut Down — Not Producing Oxygen ({shutdownSites.length})</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {shutdownSites.map(h => (
@@ -318,17 +341,17 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
         </div>
       )}
 
-      <div style={styles.statsBar}>
-        <div style={styles.statBox}><div style={styles.statNum}>{hospitals.length}</div><div style={styles.statLabel}>Total Sites</div></div>
-        <div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{funcCount}</div><div style={styles.statLabel}>Functional</div></div>
-        <div style={styles.statBox}><div style={{ ...styles.statNum, color: C.textLight }}>{nonFuncCount}</div><div style={styles.statLabel}>Non Functional</div></div>
-        <div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{allOpen}</div><div style={styles.statLabel}>Open Complaints</div></div>
+      <div className="fade-up" style={{ ...styles.statsBar, animationDelay: "0.1s" }}>
+        <div className="stat-hover" style={styles.statBox}><AnimatedNumber value={hospitals.length} /><div style={styles.statLabel}>Total Sites</div></div>
+        <div className="stat-hover" style={styles.statBox}><AnimatedNumber value={funcCount} color={C.green} /><div style={styles.statLabel}>Functional</div></div>
+        <div className="stat-hover" style={styles.statBox}><AnimatedNumber value={nonFuncCount} color={C.textLight} /><div style={styles.statLabel}>Non Functional</div></div>
+        <div className="stat-hover" style={styles.statBox}><AnimatedNumber value={allOpen} color={C.red} /><div style={styles.statLabel}>Open Complaints</div></div>
       </div>
 
-      <div style={{ borderTop: "1px solid #ddd", margin: "0 0 24px", opacity: 0.6 }}></div>
+      <div className="fade-up" style={{ borderTop: "1px solid #ddd", margin: "0 0 24px", opacity: 0.6, animationDelay: "0.2s" }}></div>
 
       {attentionSites.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
+        <div className="fade-up" style={{ marginBottom: 20, animationDelay: "0.25s" }}>
           <div style={{ fontSize: 10, fontWeight: 600, color: C.red, marginBottom: 10, letterSpacing: 1.5, textTransform: "uppercase" }}>⚠ Attention Needed ({attentionSites.length})</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {attentionSites.map(h => <span key={h} style={{ fontSize: 13, fontWeight: 500, color: C.black, background: "#e0e0e0", padding: "4px 12px", borderRadius: 0 }}>{h}</span>)}
@@ -336,7 +359,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
         </div>
       )}
 
-      <div style={styles.overviewTable}>
+      <div className="fade-up" style={{ ...styles.overviewTable, animationDelay: "0.3s" }}>
         <div style={styles.overviewHeaderRow}>
           <div style={{ ...styles.ovCellHeader, ...styles.ovCellSr }}>#</div>
           <div style={{ ...styles.ovCellHeader, ...styles.ovCellSite }}>Site</div>
@@ -351,7 +374,8 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
           const rowBg = i % 2 === 0 ? C.white : "#fafafa";
           const isShutDown = siteStatus === "Shut Down";
           return (
-            <div key={h} style={{ ...styles.overviewRow, background: rowBg, borderLeft: isShutDown ? "3px solid #c0392b" : "3px solid transparent" }} onMouseEnter={e => e.currentTarget.style.background = "#f0f0f0"} onMouseLeave={e => e.currentTarget.style.background = rowBg}>
+            <div key={h} style={{ cursor: "pointer" }} onClick={() => setExpandedRow(expandedRow === h ? null : h)}>
+            <div style={{ ...styles.overviewRow, background: rowBg, borderLeft: isShutDown ? "3px solid #c0392b" : "3px solid transparent" }} onMouseEnter={e => e.currentTarget.style.background = "#f0f0f0"} onMouseLeave={e => e.currentTarget.style.background = rowBg}>
               <div style={{ ...styles.ovCell, ...styles.ovCellSr, color: C.textLight, fontWeight: 500, fontSize: 12 }}>{i + 1}</div>
               <div style={{ ...styles.ovCell, ...styles.ovCellSite }}><span style={{ color: C.black, fontWeight: 600, fontSize: 13 }}>{displayName(h)}</span></div>
               <div style={{ ...styles.ovCell, ...styles.ovCellProvider, color: C.textLight, fontWeight: 400, fontSize: 12 }}>{getProvider(h)}</div>
@@ -421,6 +445,30 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                   </div>
                 )}
               </div>
+            </div>
+            {expandedRow === h && (
+              <div className="fade-in" style={{ background: "#f5f5f5", padding: "16px 24px", borderBottom: `1px solid #eee` }}>
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: C.textLight, marginBottom: 10 }}>Complaint Details — {displayName(h)}</div>
+                {open.length > 0 ? open.map(c => (
+                  <div key={c.id} style={{ background: C.white, borderRadius: 8, padding: "12px 16px", marginBottom: 8, border: `1px solid #eee` }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: C.red }}>{c.title}</span>
+                      <span style={{ fontSize: 11, color: C.textLight }}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</span>
+                    </div>
+                    <p style={{ fontSize: 12, color: C.textMid, margin: 0, lineHeight: 1.6 }}>{c.description}</p>
+                    {getNoteForComplaint(h, c.id) && <div style={{ fontSize: 11, color: C.textMid, marginTop: 6, paddingTop: 6, borderTop: "1px solid #eee" }}>Note: {getNoteForComplaint(h, c.id)}</div>}
+                  </div>
+                )) : <p style={{ fontSize: 12, color: C.textLight }}>No open complaints for this site.</p>}
+                {complaints.filter(c => c.hospital === h && c.status === "Resolved").length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: C.textLight, marginBottom: 6 }}>Resolved ({complaints.filter(c => c.hospital === h && c.status === "Resolved").length})</div>
+                    {complaints.filter(c => c.hospital === h && c.status === "Resolved").slice(0, 3).map(c => (
+                      <div key={c.id} style={{ fontSize: 12, color: C.textLight, padding: "4px 0" }}>✓ {c.title} — {new Date(c.resolved_at || c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             </div>
           );
         })}
@@ -615,6 +663,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         {["overview","complaints","submit","passwords","emails"].map(t => (<button key={t} style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>{t === "overview" ? "Overview" : t === "complaints" ? "Complaints" : t === "submit" ? "Submit" : t === "passwords" ? "Passwords" : "Emails"}</button>))}
       </div>
       <main style={styles.main}>
+        <div key={tab} className="fade-in">
         {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} />}
         {tab === "complaints" && !selected && (<><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><div></div><button style={styles.btnBlack} onClick={() => downloadCSV(complaints, "all-complaints")}>DOWNLOAD DATA</button></div><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} /></>)}
         {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} onBack={() => setSelected(null)} onResolve={handleResolve} onUnresolve={handleUnresolve} onDelete={handleDelete} onRefresh={onRefresh} />)}
@@ -631,6 +680,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
           {emailGroupOptions.map(g => { const ge = notifEmails.filter(e => e.group_name === g); if (!ge.length) return null; return (<div key={g} style={{ marginTop: 20 }}><h3 style={{ fontSize: 15, fontWeight: 600, color: "#0e7c6b", margin: "0 0 10px" }}>{g}</h3>{ge.map(e => (<div key={e.id} style={{ ...styles.pwCard, display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 14, color: "#1a2332" }}>{e.email}</span><button style={{ ...styles.pwCancelBtn, color: "#e53e3e", fontSize: 14 }} onClick={() => handleDeleteEmail(e.id)}>Remove</button></div>))}</div>); })}
           {notifEmails.length === 0 && <p style={styles.empty}>No notification emails configured yet.</p>}
         </>)}
+        </div>
       </main>
     </div>
   );
@@ -657,9 +707,11 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
         <button style={tab === "complaints" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("complaints"); setSelected(null); }}>Complaints</button>
       </div>
       <main style={styles.main}>
+        <div key={tab} className="fade-in">
         {tab === "overview" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} />}
         {tab === "complaints" && !selected && (<><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><div></div><button style={styles.btnBlack} onClick={() => downloadCSV(myComplaints, user.name.toLowerCase() + "-complaints")}>DOWNLOAD DATA</button></div><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} /></>)}
         {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={false} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onResolve={() => {}} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />)}
+        </div>
       </main>
     </div>
   );
