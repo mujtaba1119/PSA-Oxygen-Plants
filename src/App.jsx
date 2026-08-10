@@ -267,12 +267,13 @@ function StatusBadge({ status }) {
 
 /* ─── Overview Tab ─── */
 function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, onRefresh }) {
-  const [editingHospital, setEditingHospital] = useState(null);
+  const [editingNote, setEditingNote] = useState(null);
   const [noteText, setNoteText] = useState(""); const [saving, setSaving] = useState(false);
   const [statusEditing, setStatusEditing] = useState(null);
   const [sendingShutdown, setSendingShutdown] = useState(null);
 
-  const getNote = h => siteNotes.find(s => s.hospital === h)?.equipment_note || "";
+  const getNotesMap = h => { try { const raw = siteNotes.find(s => s.hospital === h)?.equipment_note || ""; const parsed = JSON.parse(raw); return typeof parsed === "object" && parsed !== null ? parsed : { _legacy: raw }; } catch { const raw = siteNotes.find(s => s.hospital === h)?.equipment_note || ""; return raw ? { _legacy: raw } : {}; } };
+  const getNoteForComplaint = (h, cid) => { const m = getNotesMap(h); return m[cid] || m._legacy || ""; };
   const openComplaints = h => complaints.filter(c => c.hospital === h && c.status !== "Resolved");
   const allOpen = hospitals.reduce((sum, h) => sum + openComplaints(h).length, 0);
   const funcCount = hospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
@@ -288,7 +289,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
     return (statusOrder[sa] ?? 2) - (statusOrder[sb] ?? 2);
   });
 
-  const saveNote = async (h) => { setSaving(true); await updateSiteNote(h, noteText); setEditingHospital(null); setNoteText(""); setSaving(false); await onRefresh(); };
+  const saveNote = async (h, cid) => { setSaving(true); const m = getNotesMap(h); if (cid) { m[cid] = noteText; delete m._legacy; } else { m._site = noteText; } await updateSiteNote(h, JSON.stringify(m)); setEditingNote(null); setNoteText(""); setSaving(false); await onRefresh(); };
   const handleStatusChange = async (h, s) => { await updateSiteStatus(h, s); setStatusEditing(null); await onRefresh(); };
   const handleSendShutdownEmail = async (h) => {
     setSendingShutdown(h);
@@ -366,49 +367,52 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
               </div>
               <div style={{ ...styles.ovCell, ...styles.ovCellOpen, padding: 0 }}>
                 {open.length > 0 ? open.map((c, ci) => (
-                  <div key={c.id} style={{ padding: "8px 14px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none" }}>
+                  <div key={c.id} style={{ padding: "10px 16px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none", minHeight: 42, display: "flex", flexDirection: "column", justifyContent: "center" }}>
                     <div style={{ fontSize: 12, color: C.red, fontWeight: 500 }}>{c.title}</div>
                     <div style={{ fontSize: 11, color: C.textLight }}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</div>
                   </div>
-                )) : <div style={{ padding: "12px 14px", fontSize: 12, color: C.textLight }}>—</div>}
+                )) : <div style={{ padding: "10px 16px", fontSize: 12, color: C.textLight, minHeight: 42, display: "flex", alignItems: "center" }}>—</div>}
               </div>
               <div style={{ ...styles.ovCell, ...styles.ovCellNote, borderRight: "none", padding: 0 }}>
-                {open.length > 0 ? open.map((c, ci) => (
-                  <div key={c.id} style={{ padding: "8px 14px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none", minHeight: 20 }}>
+                {open.length > 0 ? open.map((c, ci) => {
+                  const cNote = getNoteForComplaint(h, c.id);
+                  return (
+                  <div key={c.id} style={{ padding: "10px 16px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none", minHeight: 42, display: "flex", alignItems: "center" }}>
                     {isAdmin ? (
-                      editingHospital === h + c.id ? (
-                        <div style={{ display: "flex", gap: 4 }}>
-                          <input style={{ ...styles.pwInput, width: "100%", fontSize: 11 }} value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote(h)} />
-                          <button style={{ ...styles.pwSaveBtn, fontSize: 10, padding: "3px 8px" }} onClick={() => saveNote(h)}>✓</button>
-                          <button style={{ ...styles.pwCancelBtn, fontSize: 10 }} onClick={() => setEditingHospital(null)}>✕</button>
+                      editingNote === c.id ? (
+                        <div style={{ display: "flex", gap: 4, width: "100%" }}>
+                          <input style={{ ...styles.pwInput, width: "100%", fontSize: 11 }} value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote(h, c.id)} />
+                          <button style={{ ...styles.pwSaveBtn, fontSize: 10, padding: "3px 8px" }} onClick={() => saveNote(h, c.id)}>✓</button>
+                          <button style={{ ...styles.pwCancelBtn, fontSize: 10 }} onClick={() => setEditingNote(null)}>✕</button>
                         </div>
                       ) : (
-                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                          <span style={{ fontSize: 12, color: note ? C.black : C.textLight, flex: 1 }}>{note || "—"}</span>
-                          <button style={{ fontSize: 10, color: C.textMid, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={() => { setEditingHospital(h + c.id); setNoteText(note); }}>edit</button>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
+                          <span style={{ fontSize: 12, color: cNote ? C.black : C.textLight, flex: 1 }}>{cNote || "—"}</span>
+                          <button style={{ fontSize: 10, color: C.textMid, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={() => { setEditingNote(c.id); setNoteText(cNote); }}>edit</button>
                         </div>
                       )
                     ) : (
-                      <span style={{ fontSize: 12, color: note ? C.black : C.textLight }}>{note || "—"}</span>
+                      <span style={{ fontSize: 12, color: cNote ? C.black : C.textLight }}>{cNote || "—"}</span>
                     )}
                   </div>
-                )) : (
-                  <div style={{ padding: "8px 14px" }}>
+                  );
+                }) : (
+                  <div style={{ padding: "10px 16px", minHeight: 42, display: "flex", alignItems: "center" }}>
                     {isAdmin ? (
-                      editingHospital === h ? (
-                        <div style={{ display: "flex", gap: 4 }}>
-                          <input style={{ ...styles.pwInput, width: "100%", fontSize: 11 }} value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote(h)} />
-                          <button style={{ ...styles.pwSaveBtn, fontSize: 10, padding: "3px 8px" }} onClick={() => saveNote(h)}>✓</button>
-                          <button style={{ ...styles.pwCancelBtn, fontSize: 10 }} onClick={() => setEditingHospital(null)}>✕</button>
+                      editingNote === h ? (
+                        <div style={{ display: "flex", gap: 4, width: "100%" }}>
+                          <input style={{ ...styles.pwInput, width: "100%", fontSize: 11 }} value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote(h, null)} />
+                          <button style={{ ...styles.pwSaveBtn, fontSize: 10, padding: "3px 8px" }} onClick={() => saveNote(h, null)}>✓</button>
+                          <button style={{ ...styles.pwCancelBtn, fontSize: 10 }} onClick={() => setEditingNote(null)}>✕</button>
                         </div>
                       ) : (
-                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                          <span style={{ fontSize: 12, color: note ? C.black : C.textLight, flex: 1 }}>{note || "—"}</span>
-                          <button style={{ fontSize: 10, color: C.textMid, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={() => { setEditingHospital(h); setNoteText(note); }}>edit</button>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
+                          <span style={{ fontSize: 12, color: C.textLight, flex: 1 }}>—</span>
+                          <button style={{ fontSize: 10, color: C.textMid, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={() => { setEditingNote(h); setNoteText(""); }}>edit</button>
                         </div>
                       )
                     ) : (
-                      <span style={{ fontSize: 12, color: note ? C.black : C.textLight }}>{note || "—"}</span>
+                      <span style={{ fontSize: 12, color: C.textLight }}>—</span>
                     )}
                   </div>
                 )}
