@@ -173,19 +173,21 @@ function ComplaintTypeSelect({ value, onChange, style }) {
 function AppHeader({ user, children }) {
   const displayName = user.role === "hospital" ? user.name + " Hospital" : user.name;
   return (
-    <div className="header-reveal" style={styles.topBar}>
-      <div style={styles.topLeft}>
+    <div className="header-reveal top-bar-responsive" style={styles.topBar}>
+      <div className="top-left-responsive" style={styles.topLeft}>
         <img src={LOGO_FLAG} alt="Pakistan" style={{ height: 60, objectFit: "contain" }} />
-        <div style={styles.topTitle}>PSA Oxygen Plants</div>
-        <div style={styles.topUser}>User: {displayName}</div>
+        <div>
+          <div className="top-title-responsive" style={styles.topTitle}>PSA Oxygen Plants</div>
+          <div style={styles.topUser}>User: {displayName}</div>
+        </div>
       </div>
-      <div style={styles.topCenter}>
+      <div className="top-center-responsive" style={styles.topCenter}>
         {LOGO_GLOBALFUND && <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 90, objectFit: "contain" }} />}
         {LOGO_UNDP && <img src={LOGO_UNDP} alt="UNDP" style={{ height: 60, objectFit: "contain" }} />}
         {LOGO_AMEX && <img src={LOGO_AMEX} alt="Amex" style={{ height: 50, objectFit: "contain" }} />}
         {LOGO_NOXERIOR && <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 44, objectFit: "contain" }} />}
       </div>
-      <div style={styles.topRight}>{children}</div>
+      <div className="top-right-responsive" style={styles.topRight}>{children}</div>
     </div>
   );
 }
@@ -282,7 +284,7 @@ function LoginScreen({ users, onLogin }) {
     onLogin(found);
   };
   return (
-    <div style={styles.loginBg}><div style={styles.loginCard}>
+    <div style={styles.loginBg}><div className="login-card-responsive" style={styles.loginCard}>
       <div style={styles.loginBrand}><span style={styles.brandMark}>O₂</span><span style={styles.brandText}>PSA Oxygen Plant</span></div>
       <h2 style={styles.loginTitle}>Complaint Portal</h2>
       <p style={styles.loginSub}>Sign in with your credentials</p>
@@ -351,7 +353,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
         </div>
       )}
 
-      <div className="fade-up" style={{ ...styles.statsBar, animationDelay: "0.15s" }}>
+      <div className="fade-up stats-responsive" style={{ ...styles.statsBar, animationDelay: "0.15s" }}>
         <div className="stat-hover" style={styles.statBox}><AnimatedNumber value={hospitals.length} /><div style={styles.statLabel}>Total Sites</div></div>
         <div className="stat-hover" style={styles.statBox}><AnimatedNumber value={funcCount} color={C.green} /><div style={styles.statLabel}>Functional</div></div>
         <div className="stat-hover" style={styles.statBox}><AnimatedNumber value={nonFuncCount} color={C.textLight} /><div style={styles.statLabel}>Non Functional</div></div>
@@ -545,8 +547,8 @@ function GroupedHospitalList({ groups, complaints, onSelect }) {
   const groupOpenFor = hs => complaints.filter(c => hs.includes(c.hospital) && c.status !== "Resolved").length;
   return (<>{Object.entries(groups).map(([p, hs]) => (
     <div key={p} style={styles.groupSection}>
-      <div style={styles.groupHeader}><h3 style={styles.groupTitle}>{p}</h3><div style={{ display: "flex", gap: 8 }}><span style={styles.groupBadge}>{groupCountFor(hs)} total</span><span style={{ ...styles.groupBadge, color: "#9c4221", background: "#feebc8" }}>{groupOpenFor(hs)} open</span></div></div>
-      <div style={styles.hospitalGrid}>{hs.map((h, i) => { const open = openCountFor(h); return (<button key={h} style={styles.hospitalBtn} onClick={() => onSelect(h)}><span style={styles.hospitalName}>{h}</span><span style={styles.hospitalBadge}>{countFor(h)}</span>{open > 0 && <span style={styles.openBadge}>{open}</span>}</button>); })}</div>
+      <div className="group-header-responsive" style={styles.groupHeader}><h3 style={styles.groupTitle}>{p}</h3><div style={{ display: "flex", gap: 8 }}><span style={styles.groupBadge}>{groupCountFor(hs)} total</span><span style={{ ...styles.groupBadge, color: "#9c4221", background: "#feebc8" }}>{groupOpenFor(hs)} open</span></div></div>
+      <div className="hospital-grid-responsive" style={styles.hospitalGrid}>{hs.map((h, i) => { const open = openCountFor(h); return (<button key={h} style={styles.hospitalBtn} onClick={() => onSelect(h)}><span style={styles.hospitalName}>{h}</span><span style={styles.hospitalBadge}>{countFor(h)}</span>{open > 0 && <span style={styles.openBadge}>{open}</span>}</button>); })}</div>
     </div>
   ))}</>);
 }
@@ -612,7 +614,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   return (
     <div style={styles.shell}>
       <AppHeader user={user}><button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button></AppHeader>
-      <main style={styles.main}>
+      <main className="main-responsive" style={styles.main}>
         <section style={styles.formSection}>
           <h2 style={styles.sectionTitle}>Register a Complaint</h2>
           <ComplaintTypeSelect value={title} onChange={e => setTitle(e.target.value)} style={styles.input} />
@@ -661,10 +663,10 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         <button style={styles.btnText} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
         <button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button>
       </AppHeader>
-      <div className="slide-down" style={{ ...styles.tabBar, animationDelay: "0.15s" }}>
+      <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s" }}>
         {["overview","complaints","submit","passwords","emails"].map(t => (<button key={t} style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>{t === "overview" ? "Overview" : t === "complaints" ? "Complaints" : t === "submit" ? "Submit" : t === "passwords" ? "Passwords" : "Emails"}</button>))}
       </div>
-      <main style={styles.main}>
+      <main className="main-responsive" style={styles.main}>
         <div key={tab} className="scale-in">
         {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} />}
         {tab === "complaints" && !selected && (<><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><div></div><button style={styles.btnBlack} onClick={() => downloadCSV(complaints, "all-complaints")}>DOWNLOAD DATA</button></div><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} /></>)}
@@ -704,11 +706,11 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
         <button style={styles.btnText} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
         <button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button>
       </AppHeader>
-      <div className="slide-down" style={{ ...styles.tabBar, animationDelay: "0.15s" }}>
+      <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s" }}>
         <button className="tab-btn" style={tab === "overview" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("overview"); setSelected(null); }}>Overview</button>
         <button className="tab-btn" style={tab === "complaints" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("complaints"); setSelected(null); }}>Complaints</button>
       </div>
-      <main style={styles.main}>
+      <main className="main-responsive" style={styles.main}>
         <div key={tab} className="scale-in">
         {tab === "overview" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} />}
         {tab === "complaints" && !selected && (<><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><div></div><button style={styles.btnBlack} onClick={() => downloadCSV(myComplaints, user.name.toLowerCase() + "-complaints")}>DOWNLOAD DATA</button></div><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} /></>)}
