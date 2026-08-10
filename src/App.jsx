@@ -193,7 +193,7 @@ function isFunctional(hospital, complaints, siteNotes) {
 
 function SiteStatusBadge({ status }) {
   let color, bg;
-  if (status === "Issues") { color = "#fff"; bg = "#c0392b"; }
+  if (status === "Issues") { color = "#c0392b"; bg = "transparent"; }
   else if (status === "Non Functional") { color = "#555"; bg = "#e8e8e8"; }
   else if (status === "Shut Down") { color = "#fff"; bg = "#c0392b"; }
   else { color = "#166534"; bg = "#dcfce7"; }
@@ -367,11 +367,10 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
               </div>
               <div style={{ ...styles.ovCell, ...styles.ovCellOpen, padding: 0 }}>
                 {open.length > 0 ? open.map((c, ci) => (
-                  <div key={c.id} style={{ padding: "10px 16px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none", minHeight: 42, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
-                    <div style={{ fontSize: 12, color: C.red, fontWeight: 500 }}>{c.title}</div>
-                    <div style={{ fontSize: 11, color: C.textLight }}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</div>
+                  <div key={c.id} style={{ padding: "10px 16px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none", minHeight: 42, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+                    <span style={{ fontSize: 12, color: C.red, fontWeight: 500 }}>{c.title} <span style={{ fontWeight: 400, color: C.textLight }}>({new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })})</span></span>
                   </div>
-                )) : <div style={{ padding: "10px 16px", fontSize: 12, color: C.textLight, minHeight: 42, display: "flex", alignItems: "center", justifyContent: "center" }}>—</div>}
+                )) : <div style={{ padding: "10px 16px", fontSize: 12, color: C.textLight, minHeight: 42, display: "flex", alignItems: "center", justifyContent: "center" }}></div>}
               </div>
               <div style={{ ...styles.ovCell, ...styles.ovCellNote, borderRight: "none", padding: 0 }}>
                 {open.length > 0 ? open.map((c, ci) => {
@@ -387,12 +386,12 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                         </div>
                       ) : (
                         <div style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
-                          <span style={{ fontSize: 12, color: cNote ? C.black : C.textLight, flex: 1 }}>{cNote || "—"}</span>
+                          <span style={{ fontSize: 12, color: cNote ? C.black : C.textLight, flex: 1 }}>{cNote || ""}</span>
                           <button style={{ fontSize: 10, color: C.textMid, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={() => { setEditingNote(c.id); setNoteText(cNote); }}>edit</button>
                         </div>
                       )
                     ) : (
-                      <span style={{ fontSize: 12, color: cNote ? C.black : C.textLight }}>{cNote || "—"}</span>
+                      <span style={{ fontSize: 12, color: cNote ? C.black : C.textLight }}>{cNote || ""}</span>
                     )}
                   </div>
                   );
@@ -407,12 +406,12 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                         </div>
                       ) : (
                         <div style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
-                          <span style={{ fontSize: 12, color: C.textLight, flex: 1 }}>—</span>
+                          <span style={{ fontSize: 12, color: C.textLight, flex: 1 }}></span>
                           <button style={{ fontSize: 10, color: C.textMid, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={() => { setEditingNote(h); setNoteText(""); }}>edit</button>
                         </div>
                       )
                     ) : (
-                      <span style={{ fontSize: 12, color: C.textLight }}>—</span>
+                      <span style={{ fontSize: 12, color: C.textLight }}></span>
                     )}
                   </div>
                 )}
@@ -735,7 +734,7 @@ const styles = {
   commentInput: { flex: 1, padding: "10px 14px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 0, outline: "none", fontFamily: "'DM Sans', system-ui, sans-serif" },
   commentSendBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, padding: "10px 22px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
   overviewTable: { background: C.white, borderRadius: 12, border: `1px solid ${C.borderLight}`, overflow: "hidden" },
-  overviewHeaderRow: { display: "flex", padding: "0", background: "#1a1a1a", fontWeight: 600, fontSize: 10, color: "#aaa", gap: 0, minWidth: 850, letterSpacing: 1.5, textTransform: "uppercase" },
+  overviewHeaderRow: { display: "flex", padding: "0", background: "#1a1a1a", fontWeight: 600, fontSize: 10, color: "#fff", gap: 0, minWidth: 850, letterSpacing: 1.5, textTransform: "uppercase" },
   overviewRow: { display: "flex", padding: "0", borderBottom: `1px solid ${C.borderLight}`, gap: 0, alignItems: "stretch", minWidth: 850 },
   ovCell: { padding: "14px 16px", borderRight: `1px solid ${C.borderLight}`, fontSize: 13, display: "flex", flexDirection: "column", justifyContent: "center" },
   ovCellHeader: { padding: "14px 16px", borderRight: "1px solid #333", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" },
