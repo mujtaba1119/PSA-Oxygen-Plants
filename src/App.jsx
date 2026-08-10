@@ -23,8 +23,10 @@ async function insertComplaint(hospital, title, description, customDate) {
   if (error) { console.error(error); return null; }
   return data[0];
 }
-async function resolveComplaint(id) {
-  const { error } = await supabase.from("complaints").update({ status: "Resolved" }).eq("id", id);
+async function resolveComplaint(id, resolvedDate) {
+  const update = { status: "Resolved" };
+  if (resolvedDate) update.resolved_at = new Date(resolvedDate).toISOString();
+  const { error } = await supabase.from("complaints").update(update).eq("id", id);
   return !error;
 }
 async function deleteComplaint(id) {
@@ -422,8 +424,9 @@ function GroupedHospitalList({ groups, complaints, onSelect }) {
 /* ─── Complaint Card ─── */
 function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, onResolve, onDelete, onRefresh }) {
   const [resolving, setResolving] = useState(false);
+  const [resolveDate, setResolveDate] = useState("");
   const c = complaint;
-  const handleResolve = async () => { setResolving(true); await onResolve(c.id); setResolving(false); };
+  const handleResolve = async () => { setResolving(true); await onResolve(c.id, resolveDate || null); setResolving(false); };
   const handleDelete = async () => { if (window.confirm("Delete this complaint permanently?")) { await onDelete(c.id); await onRefresh(); } };
   return (
     <div style={styles.card}>
@@ -435,9 +438,15 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
         </div>
       </div>
       <p style={styles.cardDesc}>{c.description}</p>
-      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+      {c.status === "Resolved" && c.resolved_at && (
+        <p style={{ fontSize: 12, color: "#276749", marginTop: 4 }}>Resolved: {new Date(c.resolved_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</p>
+      )}
+      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
         {canResolve && c.status !== "Resolved" && (
-          <button style={styles.resolveBtn} onClick={handleResolve} disabled={resolving}>{resolving ? "Resolving…" : "Mark as Resolved"}</button>
+          <>
+            {isAdmin && <input type="date" style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #e2e8f0", borderRadius: 6 }} value={resolveDate} onChange={e => setResolveDate(e.target.value)} title="Resolve date (leave empty for today)" />}
+            <button style={styles.resolveBtn} onClick={handleResolve} disabled={resolving}>{resolving ? "Resolving…" : "Mark as Resolved"}</button>
+          </>
         )}
         {isAdmin && <button style={styles.deleteBtn} onClick={handleDelete}>Delete</button>}
       </div>
@@ -530,7 +539,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const totalComplaints = complaints.length;
   const totalOpen = complaints.filter(c => c.status !== "Resolved").length;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
-  const handleResolve = async (id) => { await resolveComplaint(id); await onRefresh(); };
+  const handleResolve = async (id, date) => { await resolveComplaint(id, date); await onRefresh(); };
   const handleDelete = async (id) => { await deleteComplaint(id); await onRefresh(); };
   const handlePasswordChange = async (userId) => {
     if (!newPw.trim() || saving) return;
