@@ -322,8 +322,8 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
       </div>
 
       {attentionSites.length > 0 && (
-        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 0, padding: "16px 20px", marginBottom: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: C.black, marginBottom: 8, letterSpacing: 0.5, textTransform: "uppercase" }}>Attention Needed ({attentionSites.length})</div>
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: C.red, marginBottom: 10, letterSpacing: 1.5, textTransform: "uppercase" }}>⚠ Attention Needed ({attentionSites.length})</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {attentionSites.map(h => <span key={h} style={{ fontSize: 13, fontWeight: 500, color: C.black, background: "#e0e0e0", padding: "4px 12px", borderRadius: 0 }}>{h}</span>)}
           </div>
@@ -693,8 +693,8 @@ const styles = {
   cardDesc: { fontSize: 14, color: C.textMid, margin: 0, lineHeight: 1.7 },
   empty: { fontSize: 14, color: C.textLight, fontStyle: "italic" },
   successMsg: { color: C.green, fontSize: 14, fontWeight: 600, marginTop: 12, textAlign: "center" },
-  statsBar: { display: "flex", gap: 16, marginBottom: 28, flexWrap: "wrap" },
-  statBox: { flex: 1, minWidth: 90, background: C.white, borderRadius: 0, padding: "20px 16px", border: `1px solid ${C.borderLight}`, textAlign: "center" },
+  statsBar: { display: "flex", gap: 32, marginBottom: 28, flexWrap: "wrap", justifyContent: "center" },
+  statBox: { textAlign: "center" },
   statNum: { fontSize: 32, fontWeight: 300, color: C.black, letterSpacing: -1 },
   statLabel: { fontSize: 10, color: C.textLight, marginTop: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.5 },
   hospitalGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 },
