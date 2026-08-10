@@ -161,12 +161,11 @@ function AppHeader({ user, children }) {
   return (
     <>
       <div style={styles.logoStrip}>
-        {LOGO_FLAG && <img src={LOGO_FLAG} alt="Pakistan" style={{ height: 32, objectFit: "contain" }} />}
-        {LOGO_GLOBALFUND && <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 26, objectFit: "contain" }} />}
-        {LOGO_GOVT && <img src={LOGO_GOVT} alt="Govt of Pakistan" style={{ height: 32, objectFit: "contain" }} />}
-        {LOGO_UNDP && <img src={LOGO_UNDP} alt="UNDP" style={{ height: 30, objectFit: "contain" }} />}
-        {LOGO_AMEX && <img src={LOGO_AMEX} alt="Amex" style={{ height: 22, objectFit: "contain" }} />}
-        {LOGO_NOXERIOR && <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 20, objectFit: "contain" }} />}
+        {LOGO_GLOBALFUND && <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 44, objectFit: "contain" }} />}
+        {LOGO_GOVT && <img src={LOGO_GOVT} alt="Govt of Pakistan" style={{ height: 50, objectFit: "contain" }} />}
+        {LOGO_UNDP && <img src={LOGO_UNDP} alt="UNDP" style={{ height: 46, objectFit: "contain" }} />}
+        {LOGO_AMEX && <img src={LOGO_AMEX} alt="Amex" style={{ height: 36, objectFit: "contain" }} />}
+        {LOGO_NOXERIOR && <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 32, objectFit: "contain" }} />}
       </div>
       <header style={styles.header}>
         <div style={styles.headerLeft}>
@@ -652,7 +651,7 @@ const styles = {
   btnPrimary: { display: "block", width: "100%", padding: "14px 0", fontSize: 14, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase", transition: "background 0.2s" },
   err: { color: C.red, fontSize: 13, margin: "0 0 10px", textAlign: "center", fontWeight: 500 },
   shell: { minHeight: "100vh", background: C.bg, fontFamily: "'Inter', system-ui, sans-serif" },
-  logoStrip: { background: C.white, padding: "10px 28px", display: "flex", alignItems: "center", justifyContent: "center", gap: 24, borderBottom: `1px solid ${C.border}`, flexWrap: "wrap" },
+  logoStrip: { background: C.white, padding: "16px 28px", display: "flex", alignItems: "center", justifyContent: "center", gap: 36, borderBottom: `1px solid ${C.border}`, flexWrap: "wrap" },
   header: { background: C.black, padding: "14px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10 },
   headerLeft: { display: "flex", alignItems: "center", gap: 10 },
   headerBrand: { fontSize: 14, fontWeight: 500, color: C.white, display: "flex", alignItems: "center", gap: 8, letterSpacing: 0.5 },
