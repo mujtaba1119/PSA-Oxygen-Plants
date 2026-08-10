@@ -185,7 +185,7 @@ function AppHeader({ user, children }) {
         <div className="mobile-buttons" style={{ display: "none" }}>{children}</div>
       </div>
       <div className="top-center-responsive" style={styles.topCenter}>
-        {LOGO_GLOBALFUND && <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 90, objectFit: "contain" }} />}
+        {LOGO_GLOBALFUND && <img className="gf-logo" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 120, objectFit: "contain" }} />}
         {LOGO_UNDP && <img src={LOGO_UNDP} alt="UNDP" style={{ height: 60, objectFit: "contain" }} />}
         {LOGO_AMEX && <img src={LOGO_AMEX} alt="Amex" style={{ height: 50, objectFit: "contain" }} />}
         {LOGO_NOXERIOR && <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 44, objectFit: "contain" }} />}
@@ -729,7 +729,7 @@ const C = { bg: "#f0f0f0", white: "#ffffff", black: "#111111", text: "#111111", 
 const styles = {
   loadWrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif" },
   loadLogo: { fontSize: 56, fontWeight: 800, color: C.black, letterSpacing: -3 },
-  loginBg: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif", padding: 20 },
+  loginBg: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/grok-56ef8c23-e008-43f3-b316-fdf79b7fe10b.jpg') center/cover no-repeat`, fontFamily: "'DM Sans', system-ui, sans-serif", padding: 20 },
   loginCard: { background: C.white, borderRadius: 2, padding: "48px 40px", width: "100%", maxWidth: 420, border: `1px solid ${C.border}` },
   loginBrand: { display: "flex", alignItems: "center", gap: 10, marginBottom: 32 },
   brandMark: { fontSize: 32, fontWeight: 800, color: C.black, letterSpacing: -2 },
