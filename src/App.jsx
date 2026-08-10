@@ -193,11 +193,12 @@ function isFunctional(hospital, complaints, siteNotes) {
 
 function SiteStatusBadge({ status }) {
   let color, bg;
-  if (status === "Issues") { color = "#b45309"; bg = "#fef3c7"; }
+  if (status === "Issues") { color = "#fff"; bg = "#c0392b"; }
   else if (status === "Non Functional") { color = "#555"; bg = "#e8e8e8"; }
   else if (status === "Shut Down") { color = "#fff"; bg = "#c0392b"; }
   else { color = "#166534"; bg = "#dcfce7"; }
-  return <span style={{ fontSize: 11, fontWeight: 600, color, background: bg, padding: "4px 10px", borderRadius: 20, whiteSpace: "nowrap", letterSpacing: 0.3 }}>{status}</span>;
+  const icon = status === "Issues" ? "⚠ " : status === "Shut Down" ? "✕ " : status === "Fully Functional" ? "✓ " : "";
+  return <span style={{ fontSize: 11, fontWeight: 600, color, background: bg, padding: "4px 10px", borderRadius: 20, whiteSpace: "nowrap", letterSpacing: 0.3 }}>{icon}{status}</span>;
 }
 
 /* ─── App ─── */
@@ -366,11 +367,11 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
               </div>
               <div style={{ ...styles.ovCell, ...styles.ovCellOpen, padding: 0 }}>
                 {open.length > 0 ? open.map((c, ci) => (
-                  <div key={c.id} style={{ padding: "10px 16px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none", minHeight: 42, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                  <div key={c.id} style={{ padding: "10px 16px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none", minHeight: 42, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
                     <div style={{ fontSize: 12, color: C.red, fontWeight: 500 }}>{c.title}</div>
                     <div style={{ fontSize: 11, color: C.textLight }}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</div>
                   </div>
-                )) : <div style={{ padding: "10px 16px", fontSize: 12, color: C.textLight, minHeight: 42, display: "flex", alignItems: "center" }}>—</div>}
+                )) : <div style={{ padding: "10px 16px", fontSize: 12, color: C.textLight, minHeight: 42, display: "flex", alignItems: "center", justifyContent: "center" }}>—</div>}
               </div>
               <div style={{ ...styles.ovCell, ...styles.ovCellNote, borderRight: "none", padding: 0 }}>
                 {open.length > 0 ? open.map((c, ci) => {
