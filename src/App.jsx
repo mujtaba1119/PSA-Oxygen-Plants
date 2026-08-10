@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 
+/* ─── Logo URLs ─── */
+const LOGO_FLAG = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/240_F_1475369941_dBG7IPXXeJLHejjX0ZpyqwykTxo8Wc3M.jpg";
+const LOGO_GLOBALFUND = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/Global%20Fund%20Logo.png";
+const LOGO_GOVT = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/GOvt%20of%20Pakistan%20logo.png";
+const LOGO_UNDP = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/UNDP%20logo.png";
+const LOGO_AMEX = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/AMex%20logo.png";
+const LOGO_NOXERIOR = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/Noxerior%20Logo.png";
+
 /* ─── Data ─── */
 const GROUPS = {
   "Novair": ["Rawalpindi","Kohat","Swat","Timergara","Malakand","Bannu","Neelum","Jhelum","Haveli","Nagar","Ghizer","Astore","Khaplu","Islamabad"],
