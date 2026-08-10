@@ -314,21 +314,21 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
         </div>
       )}
 
-      {attentionSites.length > 0 && (
-        <div style={{ background: "#fff5f5", border: "1px solid #fed7d7", borderRadius: 12, padding: "16px 20px", marginBottom: 12 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#9c4221", marginBottom: 8 }}>⚠ Attention Needed ({attentionSites.length})</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {attentionSites.map(h => <span key={h} style={{ fontSize: 13, fontWeight: 500, color: C.black, background: "#e0e0e0", padding: "4px 12px", borderRadius: 0 }}>{h}</span>)}
-          </div>
-        </div>
-      )}
-
       <div style={styles.statsBar}>
         <div style={styles.statBox}><div style={styles.statNum}>{hospitals.length}</div><div style={styles.statLabel}>Total Sites</div></div>
         <div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{funcCount}</div><div style={styles.statLabel}>Functional</div></div>
         <div style={styles.statBox}><div style={{ ...styles.statNum, color: C.textLight }}>{nonFuncCount}</div><div style={styles.statLabel}>Non Functional</div></div>
         <div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{allOpen}</div><div style={styles.statLabel}>Open Complaints</div></div>
       </div>
+
+      {attentionSites.length > 0 && (
+        <div style={{ background: C.white, border: `1px solid ${C.border}`, borderRadius: 0, padding: "16px 20px", marginBottom: 20 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: C.black, marginBottom: 8, letterSpacing: 0.5, textTransform: "uppercase" }}>Attention Needed ({attentionSites.length})</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {attentionSites.map(h => <span key={h} style={{ fontSize: 13, fontWeight: 500, color: C.black, background: "#e0e0e0", padding: "4px 12px", borderRadius: 0 }}>{h}</span>)}
+          </div>
+        </div>
+      )}
 
       <div style={styles.overviewTable}>
         <div style={styles.overviewHeaderRow}>
@@ -674,13 +674,13 @@ const styles = {
   err: { color: C.red, fontSize: 13, margin: "0 0 10px", textAlign: "center", fontWeight: 500 },
   shell: { minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif" },
   topBar: { background: C.bg, padding: "24px 28px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, minHeight: 100 },
-  topLeft: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, width: 140, flexShrink: 0 },
+  topLeft: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, width: 180, flexShrink: 0 },
   topCenter: { display: "flex", alignItems: "center", gap: 28, flexWrap: "wrap", flex: 1, justifyContent: "center", minHeight: 90 },
-  topRight: { display: "flex", gap: 8, alignItems: "center", width: 140, flexShrink: 0, justifyContent: "flex-end" },
-  topTitle: { fontSize: 16, fontWeight: 600, color: C.black, letterSpacing: 0.5 },
+  topRight: { display: "flex", gap: 8, alignItems: "center", width: 180, flexShrink: 0, justifyContent: "flex-end" },
+  topTitle: { fontSize: 14, fontWeight: 600, color: C.black, letterSpacing: 0.5, whiteSpace: "nowrap", textAlign: "center" },
   topUser: { fontSize: 11, color: C.textLight, marginTop: 2, letterSpacing: 0.5, textTransform: "uppercase" },
-  btnBlack: { fontSize: 11, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, padding: "8px 18px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
-  btnText: { fontSize: 11, fontWeight: 600, color: C.black, background: "transparent", border: "none", borderRadius: 0, padding: "8px 12px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
+  btnBlack: { fontSize: 11, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, padding: "8px 18px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" },
+  btnText: { fontSize: 11, fontWeight: 600, color: C.black, background: "transparent", border: "none", borderRadius: 0, padding: "8px 12px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" },
   btnOutline: { fontSize: 11, fontWeight: 500, color: C.black, background: "transparent", border: `1px solid ${C.black}`, borderRadius: 0, padding: "7px 18px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
   main: { maxWidth: 980, margin: "0 auto", padding: "24px 24px" },
   formSection: { background: C.white, borderRadius: 0, padding: 32, marginBottom: 28, border: `1px solid ${C.borderLight}` },
