@@ -24,6 +24,8 @@
       .stat-hover:hover { transform: scale(1.1) translateY(-2px); }
       .tab-btn { transition: all 0.2s ease; }
       .tab-btn:hover { transform: translateY(-1px); }
+      @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.12); opacity: 1; } }
+      @keyframes pulse { 0%, 100% { opacity: 0.2; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.2); } }
       .row-expand { overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; }
     </style>
   </head>
