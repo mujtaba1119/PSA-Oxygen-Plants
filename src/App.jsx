@@ -3,11 +3,11 @@ import { supabase } from "./supabase";
 
 /* ─── Logo URLs ─── */
 const LOGO_FLAG = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/240_F_1475369941_dBG7IPXXeJLHejjX0ZpyqwykTxo8Wc3M-removebg-preview.png";
-const LOGO_GLOBALFUND = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/Global%20Fund%20Logo.png";
+const LOGO_GLOBALFUND = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/GF.png";
 const LOGO_GOVT = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/GOvt%20of%20Pakistan%20logo.png";
-const LOGO_UNDP = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/UNDP%20logo.png";
-const LOGO_AMEX = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/AMex%20logo.png";
-const LOGO_NOXERIOR = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/Noxerior%20Logo.png";
+const LOGO_UNDP = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/UNDP.png";
+const LOGO_AMEX = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/Amex.png";
+const LOGO_NOXERIOR = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/Noxerior.png";
 
 /* ─── Data ─── */
 const GROUPS = {
@@ -159,10 +159,10 @@ function AppHeader({ user, children }) {
         </div>
       </div>
       <div style={styles.topCenter}>
-        {LOGO_GLOBALFUND && <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 40, objectFit: "contain" }} />}
-        {LOGO_UNDP && <img src={LOGO_UNDP} alt="UNDP" style={{ height: 42, objectFit: "contain" }} />}
-        {LOGO_AMEX && <img src={LOGO_AMEX} alt="Amex" style={{ height: 30, objectFit: "contain" }} />}
-        {LOGO_NOXERIOR && <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 26, objectFit: "contain" }} />}
+        {LOGO_GLOBALFUND && <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 56, objectFit: "contain" }} />}
+        {LOGO_UNDP && <img src={LOGO_UNDP} alt="UNDP" style={{ height: 54, objectFit: "contain" }} />}
+        {LOGO_AMEX && <img src={LOGO_AMEX} alt="Amex" style={{ height: 44, objectFit: "contain" }} />}
+        {LOGO_NOXERIOR && <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 38, objectFit: "contain" }} />}
       </div>
       <div style={styles.topRight}>{children}</div>
     </div>
