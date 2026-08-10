@@ -1,6 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 
+
+
+/* ─── Logo URLs ─── */
+const LOGO_FLAG = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/240_F_1475369941_dBG7IPXXeJLHejjX0ZpyqwykTxo8Wc3M.jpg";
+const LOGO_GLOBALFUND = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/Global%20Fund%20Logo.png";
+const LOGO_GOVT = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/GOvt%20of%20Pakistan%20logo.png";
+const LOGO_UNDP = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/UNDP%20logo.png";
+const LOGO_AMEX = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/AMex%20logo.png";
+const LOGO_NOXERIOR = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/Noxerior%20Logo.png";
+
 /* ─── Data ─── */
 const GROUPS = {
   "Novair": ["Rawalpindi","Kohat","Swat","Timergara","Malakand","Bannu","Neelum","Jhelum","Haveli","Nagar","Ghizer","Astore","Khaplu","Islamabad"],
@@ -83,6 +93,13 @@ async function updateCommentContent(id, content) {
   const { error } = await supabase.from("comments").update({ content }).eq("id", id);
   return !error;
 }
+async function fetchAllCommentCounts() {
+  const { data, error } = await supabase.from("comments").select("complaint_id");
+  if (error || !data) return {};
+  const counts = {};
+  data.forEach(c => { counts[c.complaint_id] = (counts[c.complaint_id] || 0) + 1; });
+  return counts;
+}
 async function fetchEmails() {
   const { data, error } = await supabase.from("notification_emails").select("*").order("created_at", { ascending: true });
   if (error) { console.error(error); return []; }
@@ -144,18 +161,21 @@ function AppHeader({ user, children }) {
   return (
     <>
       <div style={styles.logoStrip}>
-        <img src="/flag.jpg" alt="Pakistan" style={{ height: 32, objectFit: "contain" }} />
-        <img src="/logo-globalfund.png" alt="Global Fund" style={{ height: 26, objectFit: "contain" }} />
-        <img src="/logo-govt.png" alt="Govt of Pakistan" style={{ height: 32, objectFit: "contain" }} />
-        <img src="/logo-undp.png" alt="UNDP" style={{ height: 30, objectFit: "contain" }} />
-        <img src="/logo-amex.png" alt="Amex" style={{ height: 22, objectFit: "contain" }} />
-        <img src="/logo-noxerior.png" alt="Noxerior" style={{ height: 20, objectFit: "contain" }} />
+        {LOGO_FLAG && <img src={LOGO_FLAG} alt="Pakistan" style={{ height: 32, objectFit: "contain" }} />}
+        {LOGO_GLOBALFUND && <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 26, objectFit: "contain" }} />}
+        {LOGO_GOVT && <img src={LOGO_GOVT} alt="Govt of Pakistan" style={{ height: 32, objectFit: "contain" }} />}
+        {LOGO_UNDP && <img src={LOGO_UNDP} alt="UNDP" style={{ height: 30, objectFit: "contain" }} />}
+        {LOGO_AMEX && <img src={LOGO_AMEX} alt="Amex" style={{ height: 22, objectFit: "contain" }} />}
+        {LOGO_NOXERIOR && <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 20, objectFit: "contain" }} />}
       </div>
       <header style={styles.header}>
-        <div style={styles.headerLeft}><div>
-          <div style={styles.headerBrand}><span style={styles.headerMark}>O₂</span> PSA Oxygen Plants - Pakistan</div>
-          <div style={styles.headerUser}>User: {displayName}</div>
-        </div></div>
+        <div style={styles.headerLeft}>
+          <img src={LOGO_GOVT} alt="" style={{ height: 36, objectFit: "contain", filter: "brightness(0) invert(1)" }} />
+          <div>
+            <div style={styles.headerBrand}>PSA Oxygen Plants - Pakistan</div>
+            <div style={styles.headerUser}>User: {displayName}</div>
+          </div>
+        </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{children}</div>
       </header>
     </>
@@ -202,11 +222,12 @@ export default function App() {
   const [complaints, setComplaints] = useState([]);
   const [notifEmails, setNotifEmails] = useState([]);
   const [siteNotes, setSiteNotes] = useState([]);
+  const [commentCounts, setCommentCounts] = useState({});
   const [ready, setReady] = useState(false);
 
   const reload = useCallback(async () => {
-    const [c, u, e, s] = await Promise.all([fetchComplaints(), fetchUsers(), fetchEmails(), fetchSiteNotes()]);
-    setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s);
+    const [c, u, e, s, cc] = await Promise.all([fetchComplaints(), fetchUsers(), fetchEmails(), fetchSiteNotes(), fetchAllCommentCounts()]);
+    setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s); setCommentCounts(cc);
   }, []);
 
   useEffect(() => { reload().then(() => setReady(true)); }, [reload]);
@@ -218,9 +239,9 @@ export default function App() {
 
   if (!ready) return <div style={styles.loadWrap}><div style={styles.loadLogo}>O₂</div><p style={{ color: "#6b7280", marginTop: 12 }}>Loading portal…</p></div>;
   if (!user) return <LoginScreen users={users} onLogin={setUser} />;
-  if (user.role === "hospital") return <HospitalDashboard user={user} complaints={complaints} onRefresh={reload} onLogout={() => setUser(null)} />;
-  if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} siteNotes={siteNotes} onRefresh={reload} onLogout={() => setUser(null)} />;
-  return <CompanyDashboard user={user} complaints={complaints} siteNotes={siteNotes} onRefresh={reload} onLogout={() => setUser(null)} />;
+  if (user.role === "hospital") return <HospitalDashboard user={user} complaints={complaints} commentCounts={commentCounts} onRefresh={reload} onLogout={() => setUser(null)} />;
+  if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} commentCounts={commentCounts} notifEmails={notifEmails} siteNotes={siteNotes} onRefresh={reload} onLogout={() => setUser(null)} />;
+  return <CompanyDashboard user={user} complaints={complaints} commentCounts={commentCounts} siteNotes={siteNotes} onRefresh={reload} onLogout={() => setUser(null)} />;
 }
 
 function LoginScreen({ users, onLogin }) {
@@ -378,7 +399,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
 }
 
 /* ─── Comment Section ─── */
-function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
+function CommentSection({ complaintId, currentUser, canComment, isAdmin, initialCount }) {
   const [comments, setComments] = useState([]); const [text, setText] = useState(""); const [posting, setPosting] = useState(false);
   const [loaded, setLoaded] = useState(false); const [expanded, setExpanded] = useState(false);
   const [asHospital, setAsHospital] = useState("");
@@ -397,7 +418,7 @@ function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
   return (
     <div style={{ marginTop: 10 }}>
       <button style={styles.commentToggle} onClick={() => setExpanded(!expanded)}>
-        {expanded ? "▾ Hide Comments" : "▸ Comments" + (loaded && comments.length ? ` (${comments.length})` : "")}
+        {expanded ? "▾ Hide Comments" : "▸ Comments" + ((loaded ? comments.length : initialCount) ? ` (${loaded ? comments.length : initialCount})` : "")}
       </button>
       {expanded && (
         <div style={styles.commentBox}>
@@ -449,7 +470,7 @@ function GroupedHospitalList({ groups, complaints, onSelect }) {
   ))}</>);
 }
 
-function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, onResolve, onUnresolve, onDelete, onRefresh }) {
+function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, onResolve, onUnresolve, onDelete, onRefresh, commentCounts }) {
   const [resolving, setResolving] = useState(false); const [resolveDate, setResolveDate] = useState("");
   const [editing, setEditing] = useState(false); const [editTitle, setEditTitle] = useState(complaint.title);
   const [editDesc, setEditDesc] = useState(complaint.description); const [editSaving, setEditSaving] = useState(false);
@@ -484,23 +505,23 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
           </div>
         </>
       )}
-      <CommentSection complaintId={c.id} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} />
+      <CommentSection complaintId={c.id} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} initialCount={commentCounts?.[c.id] || 0} />
     </div>
   );
 }
 
-function ComplaintListView({ hospital, complaints, currentUser, canResolve, canComment, isAdmin, onBack, onResolve, onUnresolve, onDelete, onRefresh }) {
+function ComplaintListView({ hospital, complaints, currentUser, canResolve, canComment, isAdmin, onBack, onResolve, onUnresolve, onDelete, onRefresh, commentCounts }) {
   const hc = complaints.filter(c => c.hospital === hospital);
   return (<>
-    <button style={styles.backBtn} onClick={onBack}>← Back</button>
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>{hospital}</h2><span style={{ fontSize: 13, color: "#718096" }}>({hc.length})</span><span style={{ fontSize: 12, color: "#0e7c6b", background: "#e6f5f2", padding: "2px 8px", borderRadius: 8 }}>{getProvider(hospital)}</span></div>
+    <button style={styles.backBtn} onClick={onBack}>← BACK</button>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>{hospital}</h2><span style={{ fontSize: 13, color: "#999" }}>({hc.length})</span><span style={{ fontSize: 12, color: "#555", background: "#f0f0f0", padding: "2px 8px", borderRadius: 0 }}>{getProvider(hospital)}</span></div>
     {hc.length === 0 && <p style={styles.empty}>No complaints from this hospital.</p>}
-    {hc.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={currentUser} canResolve={canResolve} canComment={canComment} isAdmin={isAdmin} onResolve={onResolve} onUnresolve={onUnresolve} onDelete={onDelete} onRefresh={onRefresh} />))}
+    {hc.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={currentUser} canResolve={canResolve} canComment={canComment} isAdmin={isAdmin} onResolve={onResolve} onUnresolve={onUnresolve} onDelete={onDelete} onRefresh={onRefresh} commentCounts={commentCounts} />))}
   </>);
 }
 
 /* ─── Hospital Dashboard ─── */
-function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
+function HospitalDashboard({ user, complaints, commentCounts, onRefresh, onLogout }) {
   const [title, setTitle] = useState(""); const [desc, setDesc] = useState("");
   const [success, setSuccess] = useState(false); const [submitting, setSubmitting] = useState(false);
   const mine = complaints.filter(c => c.hospital === user.name);
@@ -521,7 +542,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
         <section style={styles.listSection}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>Your Complaints ({mine.length})</h2>{openCount > 0 && <span style={{ fontSize: 13, fontWeight: 600, color: "#9c4221", background: "#feebc8", padding: "3px 10px", borderRadius: 12 }}>{openCount} open</span>}</div>
           {mine.length === 0 && <p style={styles.empty}>No complaints registered yet.</p>}
-          {mine.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={user} canResolve={true} canComment={true} isAdmin={false} onResolve={handleResolve} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />))}
+          {mine.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={user} canResolve={true} canComment={true} isAdmin={false} onResolve={handleResolve} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} commentCounts={commentCounts} />))}
         </section>
       </main>
     </div>
@@ -529,7 +550,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
 }
 
 /* ─── Admin Dashboard ─── */
-function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRefresh, onLogout }) {
+function AdminDashboard({ user, users, complaints, commentCounts, notifEmails, siteNotes, onRefresh, onLogout }) {
   const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const [editingUser, setEditingUser] = useState(null); const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
@@ -566,7 +587,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
       <main style={styles.main}>
         {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} />}
         {tab === "complaints" && !selected && (<><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: "#276749" }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} /></>)}
-        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} onBack={() => setSelected(null)} onResolve={handleResolve} onUnresolve={handleUnresolve} onDelete={handleDelete} onRefresh={onRefresh} />)}
+        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} onBack={() => setSelected(null)} onResolve={handleResolve} onUnresolve={handleUnresolve} onDelete={handleDelete} onRefresh={onRefresh} commentCounts={commentCounts} />)}
         {tab === "submit" && (<section style={styles.formSection}><h2 style={styles.sectionTitle}>Submit Complaint on Behalf of Hospital</h2><select style={{ ...styles.input, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h} — {getProvider(h)}</option>)}</select><ComplaintTypeSelect value={adminTitle} onChange={e => setAdminTitle(e.target.value)} style={styles.input} /><textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} /><div style={{ marginBottom: 12 }}><label style={{ fontSize: 13, color: "#4a5568", marginBottom: 4, display: "block" }}>Date (leave empty for today)</label><input style={styles.input} type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} /></div><button style={{ ...styles.btnPrimary, opacity: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? 0.5 : 1 }} onClick={submitAdminComplaint}>{adminSubmitting ? "Submitting…" : "Submit Complaint"}</button>{adminSuccess && <p style={styles.successMsg}>Complaint submitted for {adminHospital}.</p>}</section>)}
         {tab === "passwords" && (<>
           <div style={styles.formSection}><h2 style={styles.sectionTitle}>Add New User</h2><div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>ID</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="userid" value={newUserId} onChange={e => setNewUserId(e.target.value)} /></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Display Name</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Name" value={newUserName} onChange={e => setNewUserName(e.target.value)} /></div><div style={{ minWidth: 100 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Role</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserRole} onChange={e => setNewUserRole(e.target.value)}><option value="company">Company (view-only)</option><option value="hospital">Hospital</option></select></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Password</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Password" value={newUserPw} onChange={e => setNewUserPw(e.target.value)} /></div><button style={styles.pwSaveBtn} onClick={handleAddUser}>{addingUser ? "…" : "Add User"}</button></div></div>
@@ -586,7 +607,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 }
 
 /* ─── Company Dashboard ─── */
-function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) {
+function CompanyDashboard({ user, complaints, commentCounts, siteNotes, onRefresh, onLogout }) {
   const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const seesAll = ["Novair", "Amex", "UNDP", "CMU"].includes(user.name);
   const myGroups = {}; if (seesAll) { Object.assign(myGroups, GROUPS); } else if (GROUPS[user.name]) { myGroups[user.name] = GROUPS[user.name]; } else { Object.assign(myGroups, GROUPS); }
@@ -609,7 +630,7 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
       <main style={styles.main}>
         {tab === "overview" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} />}
         {tab === "complaints" && !selected && (<><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: "#276749" }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} /></>)}
-        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={false} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onResolve={() => {}} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />)}
+        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={false} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onResolve={() => {}} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} commentCounts={commentCounts} />)}
       </main>
     </div>
   );
