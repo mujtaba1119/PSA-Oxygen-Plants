@@ -10,6 +10,11 @@ const GROUPS = {
 const ALL_HOSPITALS = Object.values(GROUPS).flat();
 const getProvider = h => Object.entries(GROUPS).find(([, list]) => list.includes(h))?.[0] || "Unknown";
 
+const COMPLAINT_TYPES = [
+  "Compressor Issue","Dryer Issue","Booster Filling System Issue","Purity Issue",
+  "Electrical/Power Issue","Monitoring/CSS Issue","Backup Manifold Issue","Other Issue"
+];
+
 /* ─── Supabase helpers ─── */
 async function fetchComplaints() {
   const { data, error } = await supabase.from("complaints").select("*").order("created_at", { ascending: false });
@@ -22,6 +27,10 @@ async function insertComplaint(hospital, title, description, customDate) {
   const { data, error } = await supabase.from("complaints").insert([row]).select();
   if (error) { console.error(error); return null; }
   return data[0];
+}
+async function updateComplaintFields(id, fields) {
+  const { error } = await supabase.from("complaints").update(fields).eq("id", id);
+  return !error;
 }
 async function resolveComplaint(id, resolvedDate) {
   const update = { status: "Resolved" };
@@ -43,6 +52,15 @@ async function updatePassword(userId, newPassword) {
   const { error } = await supabase.from("users").update({ password: newPassword }).eq("id", userId);
   return !error;
 }
+async function createUser(id, name, role, password) {
+  const { data, error } = await supabase.from("users").insert([{ id, name, role, password }]).select();
+  if (error) { console.error(error); return null; }
+  return data[0];
+}
+async function deleteUser(id) {
+  const { error } = await supabase.from("users").delete().eq("id", id);
+  return !error;
+}
 async function fetchComments(complaintId) {
   const { data, error } = await supabase.from("comments").select("*").eq("complaint_id", complaintId).order("created_at", { ascending: true });
   if (error) { console.error(error); return []; }
@@ -55,6 +73,10 @@ async function insertComment(complaintId, author, authorRole, content) {
 }
 async function deleteComment(id) {
   const { error } = await supabase.from("comments").delete().eq("id", id);
+  return !error;
+}
+async function updateCommentContent(id, content) {
+  const { error } = await supabase.from("comments").update({ content }).eq("id", id);
   return !error;
 }
 async function fetchEmails() {
@@ -84,6 +106,26 @@ async function updateSiteStatus(hospital, status) {
   const { error } = await supabase.from("site_notes").update({ site_status: status, updated_at: new Date().toISOString() }).eq("hospital", hospital);
   return !error;
 }
+async function sendRecoveryEmail(adminEmail) {
+  try {
+    const { data: users } = await supabase.from("users").select("*").eq("role", "admin");
+    if (!users?.length) return false;
+    const { data: keyData } = await supabase.from("settings").select("value").eq("key", "resend_api_key").single();
+    if (!keyData?.value) return false;
+    const pw = users[0].password;
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + keyData.value },
+      body: JSON.stringify({
+        from: "PSA Oxygen Plant <alerts@psacomplaints.com>",
+        to: [adminEmail],
+        subject: "Admin Password Recovery",
+        html: "<div style='font-family:Arial;padding:20px;'><h2>Admin Password Recovery</h2><p>Your admin password is: <strong>" + pw + "</strong></p><p>Login at <a href='https://psacomplaints.com'>psacomplaints.com</a></p></div>",
+      }),
+    });
+    return true;
+  } catch { return false; }
+}
 
 /* ─── CSV Download ─── */
 function downloadCSV(complaints, filename) {
@@ -100,6 +142,16 @@ function downloadCSV(complaints, filename) {
   URL.revokeObjectURL(url);
 }
 
+/* ─── Complaint Type Dropdown ─── */
+function ComplaintTypeSelect({ value, onChange, style }) {
+  return (
+    <select style={{ ...style, cursor: "pointer" }} value={value} onChange={onChange}>
+      <option value="">Select complaint type</option>
+      {COMPLAINT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+    </select>
+  );
+}
+
 /* ─── Header Component ─── */
 function AppHeader({ user, children }) {
   const displayName = user.role === "hospital" ? user.name + " Hospital" : user.name;
@@ -111,7 +163,7 @@ function AppHeader({ user, children }) {
           <div style={styles.headerUser}>User: {displayName}</div>
         </div>
       </div>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>{children}</div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{children}</div>
     </header>
   );
 }
@@ -149,13 +201,22 @@ function LoadingScreen() {
   return (<div style={styles.loadWrap}><div style={styles.loadLogo}>O₂</div><p style={{ color: "#6b7280", marginTop: 12 }}>Loading portal…</p></div>);
 }
 
+/* ─── Login ─── */
 function LoginScreen({ users, onLogin }) {
   const [id, setId] = useState(""); const [pw, setPw] = useState(""); const [err, setErr] = useState("");
+  const [showRecovery, setShowRecovery] = useState(false); const [recovering, setRecovering] = useState(false); const [recoveryMsg, setRecoveryMsg] = useState("");
   const submit = () => {
     const clean = s => s.trim().toLowerCase().replace(/\s+/g, "");
     const found = users.find(u => (clean(u.name) === clean(id) || clean(u.id) === clean(id)) && clean(u.password) === clean(pw));
     if (!found) { setErr("Invalid credentials"); return; }
     onLogin(found);
+  };
+  const handleRecovery = async () => {
+    setRecovering(true);
+    const ok = await sendRecoveryEmail("mujtabausman615@gmail.com");
+    setRecovering(false);
+    setRecoveryMsg(ok ? "Password sent to your email." : "Recovery failed. Try again.");
+    setTimeout(() => setRecoveryMsg(""), 4000);
   };
   return (
     <div style={styles.loginBg}><div style={styles.loginCard}>
@@ -166,6 +227,16 @@ function LoginScreen({ users, onLogin }) {
       <input style={styles.input} type="password" placeholder="Password" value={pw} onChange={e => { setPw(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} />
       {err && <p style={styles.err}>{err}</p>}
       <button style={styles.btnPrimary} onClick={submit}>Sign In</button>
+      <div style={{ textAlign: "center", marginTop: 16 }}>
+        <button style={{ fontSize: 13, color: "#0e7c6b", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={() => setShowRecovery(!showRecovery)}>Forgot Admin Password?</button>
+        {showRecovery && (
+          <div style={{ marginTop: 10 }}>
+            <p style={{ fontSize: 12, color: "#718096", marginBottom: 8 }}>Send admin password to registered email</p>
+            <button style={{ fontSize: 13, fontWeight: 600, color: "#fff", background: "#0e7c6b", border: "none", borderRadius: 6, padding: "8px 20px", cursor: "pointer" }} onClick={handleRecovery} disabled={recovering}>{recovering ? "Sending…" : "Send Password"}</button>
+            {recoveryMsg && <p style={{ fontSize: 13, color: "#0e7c6b", marginTop: 8 }}>{recoveryMsg}</p>}
+          </div>
+        )}
+      </div>
     </div></div>
   );
 }
@@ -175,7 +246,6 @@ function StatusBadge({ status }) {
   return <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 12, color: r ? "#276749" : "#9c4221", background: r ? "#c6f6d5" : "#feebc8" }}>{r ? "Resolved" : "Open"}</span>;
 }
 
-/* ─── Site Status Logic ─── */
 function getSiteDisplayStatus(hospital, complaints, siteNotes) {
   const hasOpen = complaints.some(c => c.hospital === hospital && c.status !== "Resolved");
   if (hasOpen) return "Issues";
@@ -194,26 +264,16 @@ function SiteStatusBadge({ status }) {
 /* ─── Overview Tab ─── */
 function OverviewTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
   const [editingHospital, setEditingHospital] = useState(null);
-  const [noteText, setNoteText] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [noteText, setNoteText] = useState(""); const [saving, setSaving] = useState(false);
   const [statusEditing, setStatusEditing] = useState(null);
 
   const getNote = h => siteNotes.find(s => s.hospital === h)?.equipment_note || "";
   const openComplaints = h => complaints.filter(c => c.hospital === h && c.status !== "Resolved");
   const allOpen = hospitals.reduce((sum, h) => sum + openComplaints(h).length, 0);
-  const issueCount = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Issues").length;
   const funcCount = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Fully Functional").length;
   const nonFuncCount = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Non Functional").length;
 
-  const saveNote = async (h) => {
-    setSaving(true); await updateSiteNote(h, noteText);
-    setEditingHospital(null); setNoteText(""); setSaving(false); await onRefresh();
-  };
-
-  const handleStatusChange = async (h, newStatus) => {
-    await updateSiteStatus(h, newStatus);
-    setStatusEditing(null); await onRefresh();
-  };
+  const attentionSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Issues");
 
   const statusOrder = { "Issues": 0, "Fully Functional": 1, "Non Functional": 2 };
   const sortedHospitals = [...hospitals].sort((a, b) => {
@@ -222,10 +282,8 @@ function OverviewTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
     return (statusOrder[sa] ?? 1) - (statusOrder[sb] ?? 1);
   });
 
-  const attentionSites = hospitals.filter(h => {
-    const s = getSiteDisplayStatus(h, complaints, siteNotes);
-    return s === "Issues";
-  });
+  const saveNote = async (h) => { setSaving(true); await updateSiteNote(h, noteText); setEditingHospital(null); setNoteText(""); setSaving(false); await onRefresh(); };
+  const handleStatusChange = async (h, s) => { await updateSiteStatus(h, s); setStatusEditing(null); await onRefresh(); };
 
   return (
     <>
@@ -233,20 +291,16 @@ function OverviewTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
         <div style={{ background: "#fff5f5", border: "1px solid #fed7d7", borderRadius: 12, padding: "16px 20px", marginBottom: 20 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#9c4221", marginBottom: 8 }}>⚠ Attention Needed ({attentionSites.length})</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {attentionSites.map(h => (
-              <span key={h} style={{ fontSize: 13, fontWeight: 500, color: getSiteDisplayStatus(h, complaints, siteNotes) === "Issues" ? "#9c4221" : "#e53e3e", background: getSiteDisplayStatus(h, complaints, siteNotes) === "Issues" ? "#feebc8" : "#fed7d7", padding: "4px 12px", borderRadius: 8 }}>{h}</span>
-            ))}
+            {attentionSites.map(h => <span key={h} style={{ fontSize: 13, fontWeight: 500, color: "#9c4221", background: "#feebc8", padding: "4px 12px", borderRadius: 8 }}>{h}</span>)}
           </div>
         </div>
       )}
-
       <div style={styles.statsBar}>
         <div style={styles.statBox}><div style={styles.statNum}>{hospitals.length}</div><div style={styles.statLabel}>Sites</div></div>
         <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#276749" }}>{funcCount}</div><div style={styles.statLabel}>Functional</div></div>
         <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#e53e3e" }}>{nonFuncCount}</div><div style={styles.statLabel}>Non Functional</div></div>
         <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{allOpen}</div><div style={styles.statLabel}>Open Complaints</div></div>
       </div>
-
       <div style={styles.overviewTable}>
         <div style={styles.overviewHeaderRow}>
           <div style={styles.ovCellSr}>#</div>
@@ -278,18 +332,13 @@ function OverviewTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
                     <div style={{ cursor: "pointer" }} onClick={() => setStatusEditing(h)}><SiteStatusBadge status={siteStatus} /></div>
                   )
                 ) : (
-                  <>
-                    <SiteStatusBadge status={siteStatus} />
-                    {hasOpen && <div style={{ marginTop: 4 }}>{[...new Set(open.map(c => c.title))].map(t => (
-                      <div key={t} style={{ fontSize: 11, color: "#9c4221", marginTop: 2 }}>• {t}</div>
-                    ))}</div>}
-                  </>
+                  <SiteStatusBadge status={siteStatus} />
                 )}
               </div>
               <div style={styles.ovCellOpen}>
                 {open.length > 0 ? open.map(c => (
                   <div key={c.id} style={{ fontSize: 12, color: "#9c4221", marginBottom: 2 }}>
-                    • {c.title} <span style={{ color: "#a0aec0", fontSize: 11 }}>({new Date(c.created_at).toLocaleDateString("en-PK", { month: "short", day: "numeric" })})</span>
+                    • {c.title} <span style={{ color: "#a0aec0", fontSize: 11 }}>({new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })})</span>
                   </div>
                 )) : <span style={{ fontSize: 12, color: "#a0aec0" }}>—</span>}
               </div>
@@ -318,30 +367,24 @@ function OverviewTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
 /* ─── Comment Section ─── */
 function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
   const [comments, setComments] = useState([]);
-  const [text, setText] = useState("");
-  const [posting, setPosting] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [text, setText] = useState(""); const [posting, setPosting] = useState(false);
+  const [loaded, setLoaded] = useState(false); const [expanded, setExpanded] = useState(false);
   const [asHospital, setAsHospital] = useState("");
+  const [editingComment, setEditingComment] = useState(null); const [editText, setEditText] = useState("");
 
-  const loadComments = useCallback(async () => {
-    const data = await fetchComments(complaintId);
-    setComments(data); setLoaded(true);
-  }, [complaintId]);
-
+  const loadComments = useCallback(async () => { const data = await fetchComments(complaintId); setComments(data); setLoaded(true); }, [complaintId]);
   useEffect(() => { if (expanded) loadComments(); }, [expanded, loadComments]);
 
   const post = async () => {
-    if (!text.trim() || posting) return;
-    setPosting(true);
+    if (!text.trim() || posting) return; setPosting(true);
     let author, role;
     if (isAdmin && asHospital) { author = asHospital + " Hospital"; role = "hospital"; }
     else { author = currentUser.role === "hospital" ? currentUser.name + " Hospital" : currentUser.name; role = currentUser.role; }
     await insertComment(complaintId, author, role, text.trim());
     setText(""); setPosting(false); await loadComments();
   };
-
   const handleDelete = async (id) => { await deleteComment(id); await loadComments(); };
+  const handleEdit = async (id) => { if (!editText.trim()) return; await updateCommentContent(id, editText.trim()); setEditingComment(null); setEditText(""); await loadComments(); };
 
   return (
     <div style={{ marginTop: 10 }}>
@@ -357,10 +400,19 @@ function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
                 <strong style={{ fontSize: 13, color: "#1a2332" }}>{c.author}</strong>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 11, color: "#718096" }}>{new Date(c.created_at).toLocaleDateString("en-PK", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                  {isAdmin && <button style={{ fontSize: 11, color: "#0e7c6b", background: "none", border: "none", cursor: "pointer" }} onClick={() => { setEditingComment(c.id); setEditText(c.content); }}>Edit</button>}
                   {isAdmin && <button style={{ fontSize: 11, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDelete(c.id)}>Delete</button>}
                 </div>
               </div>
-              <p style={{ fontSize: 13, color: "#4a5568", margin: "4px 0 0", lineHeight: 1.4 }}>{c.content}</p>
+              {editingComment === c.id ? (
+                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                  <input style={{ ...styles.commentInput, fontSize: 12 }} value={editText} onChange={e => setEditText(e.target.value)} onKeyDown={e => e.key === "Enter" && handleEdit(c.id)} />
+                  <button style={{ ...styles.pwSaveBtn, fontSize: 11 }} onClick={() => handleEdit(c.id)}>Save</button>
+                  <button style={{ ...styles.pwCancelBtn, fontSize: 11 }} onClick={() => setEditingComment(null)}>✕</button>
+                </div>
+              ) : (
+                <p style={{ fontSize: 13, color: "#4a5568", margin: "4px 0 0", lineHeight: 1.4 }}>{c.content}</p>
+              )}
             </div>
           ))}
           {(canComment || isAdmin) && (
@@ -392,32 +444,27 @@ function GroupedHospitalList({ groups, complaints, onSelect }) {
   const groupCountFor = hospitals => complaints.filter(c => hospitals.includes(c.hospital)).length;
   const groupOpenFor = hospitals => complaints.filter(c => hospitals.includes(c.hospital) && c.status !== "Resolved").length;
   return (
-    <>
-      {Object.entries(groups).map(([provider, hospitals]) => (
-        <div key={provider} style={styles.groupSection}>
-          <div style={styles.groupHeader}>
-            <h3 style={styles.groupTitle}>{provider}</h3>
-            <div style={{ display: "flex", gap: 8 }}>
-              <span style={styles.groupBadge}>{groupCountFor(hospitals)} total</span>
-              <span style={{ ...styles.groupBadge, color: "#9c4221", background: "#feebc8" }}>{groupOpenFor(hospitals)} open</span>
-            </div>
-          </div>
-          <div style={styles.hospitalGrid}>
-            {hospitals.map((h, i) => {
-              const open = openCountFor(h);
-              return (
-                <button key={h} style={styles.hospitalBtn} onClick={() => onSelect(h)}>
-                  <span style={styles.hospitalIndex}>{i + 1}</span>
-                  <span style={styles.hospitalName}>{h}</span>
-                  <span style={styles.hospitalBadge}>{countFor(h)}</span>
-                  {open > 0 && <span style={styles.openBadge}>{open}</span>}
-                </button>
-              );
-            })}
+    <>{Object.entries(groups).map(([provider, hospitals]) => (
+      <div key={provider} style={styles.groupSection}>
+        <div style={styles.groupHeader}>
+          <h3 style={styles.groupTitle}>{provider}</h3>
+          <div style={{ display: "flex", gap: 8 }}>
+            <span style={styles.groupBadge}>{groupCountFor(hospitals)} total</span>
+            <span style={{ ...styles.groupBadge, color: "#9c4221", background: "#feebc8" }}>{groupOpenFor(hospitals)} open</span>
           </div>
         </div>
-      ))}
-    </>
+        <div style={styles.hospitalGrid}>
+          {hospitals.map((h, i) => {
+            const open = openCountFor(h);
+            return (<button key={h} style={styles.hospitalBtn} onClick={() => onSelect(h)}>
+              <span style={styles.hospitalIndex}>{i + 1}</span><span style={styles.hospitalName}>{h}</span>
+              <span style={styles.hospitalBadge}>{countFor(h)}</span>
+              {open > 0 && <span style={styles.openBadge}>{open}</span>}
+            </button>);
+          })}
+        </div>
+      </div>
+    ))}</>
   );
 }
 
@@ -425,31 +472,57 @@ function GroupedHospitalList({ groups, complaints, onSelect }) {
 function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, onResolve, onDelete, onRefresh }) {
   const [resolving, setResolving] = useState(false);
   const [resolveDate, setResolveDate] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(complaint.title);
+  const [editDesc, setEditDesc] = useState(complaint.description);
+  const [editSaving, setEditSaving] = useState(false);
   const c = complaint;
+
   const handleResolve = async () => { setResolving(true); await onResolve(c.id, resolveDate || null); setResolving(false); };
   const handleDelete = async () => { if (window.confirm("Delete this complaint permanently?")) { await onDelete(c.id); await onRefresh(); } };
+  const handleEditSave = async () => {
+    if (!editTitle.trim() || !editDesc.trim()) return;
+    setEditSaving(true);
+    await updateComplaintFields(c.id, { title: editTitle.trim(), description: editDesc.trim() });
+    setEditSaving(false); setEditing(false); await onRefresh();
+  };
+
   return (
     <div style={styles.card}>
-      <div style={styles.cardTop}>
-        <strong style={styles.cardTitle}>{c.title}</strong>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <StatusBadge status={c.status} />
-          <span style={styles.cardDate}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-        </div>
-      </div>
-      <p style={styles.cardDesc}>{c.description}</p>
-      {c.status === "Resolved" && c.resolved_at && (
-        <p style={{ fontSize: 12, color: "#276749", marginTop: 4 }}>Resolved: {new Date(c.resolved_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</p>
+      {editing ? (
+        <>
+          <ComplaintTypeSelect value={editTitle} onChange={e => setEditTitle(e.target.value)} style={{ ...styles.input, marginBottom: 8 }} />
+          <textarea style={{ ...styles.input, minHeight: 80, resize: "vertical", fontFamily: "inherit" }} value={editDesc} onChange={e => setEditDesc(e.target.value)} />
+          <div style={{ display: "flex", gap: 8 }}>
+            <button style={styles.pwSaveBtn} onClick={handleEditSave}>{editSaving ? "…" : "Save"}</button>
+            <button style={styles.pwCancelBtn} onClick={() => { setEditing(false); setEditTitle(c.title); setEditDesc(c.description); }}>Cancel</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={styles.cardTop}>
+            <strong style={styles.cardTitle}>{c.title}</strong>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <StatusBadge status={c.status} />
+              <span style={styles.cardDate}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+            </div>
+          </div>
+          <p style={styles.cardDesc}>{c.description}</p>
+          {c.status === "Resolved" && c.resolved_at && (
+            <p style={{ fontSize: 12, color: "#276749", marginTop: 4 }}>Resolved: {new Date(c.resolved_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</p>
+          )}
+          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
+            {canResolve && c.status !== "Resolved" && (
+              <>
+                {isAdmin && <input type="date" style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #e2e8f0", borderRadius: 6 }} value={resolveDate} onChange={e => setResolveDate(e.target.value)} />}
+                <button style={styles.resolveBtn} onClick={handleResolve} disabled={resolving}>{resolving ? "Resolving…" : "Mark as Resolved"}</button>
+              </>
+            )}
+            {isAdmin && <button style={{ fontSize: 13, fontWeight: 500, color: "#0e7c6b", background: "#e6f5f2", border: "none", borderRadius: 6, padding: "6px 14px", cursor: "pointer" }} onClick={() => setEditing(true)}>Edit</button>}
+            {isAdmin && <button style={styles.deleteBtn} onClick={handleDelete}>Delete</button>}
+          </div>
+        </>
       )}
-      <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
-        {canResolve && c.status !== "Resolved" && (
-          <>
-            {isAdmin && <input type="date" style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #e2e8f0", borderRadius: 6 }} value={resolveDate} onChange={e => setResolveDate(e.target.value)} title="Resolve date (leave empty for today)" />}
-            <button style={styles.resolveBtn} onClick={handleResolve} disabled={resolving}>{resolving ? "Resolving…" : "Mark as Resolved"}</button>
-          </>
-        )}
-        {isAdmin && <button style={styles.deleteBtn} onClick={handleDelete}>Delete</button>}
-      </div>
       <CommentSection complaintId={c.id} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} />
     </div>
   );
@@ -481,8 +554,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const mine = complaints.filter(c => c.hospital === user.name);
   const openCount = mine.filter(c => c.status !== "Resolved").length;
   const submitComplaint = async () => {
-    if (!title.trim() || !desc.trim() || submitting) return;
-    setSubmitting(true);
+    if (!title.trim() || !desc.trim() || submitting) return; setSubmitting(true);
     const result = await insertComplaint(user.name, title.trim(), desc.trim());
     setSubmitting(false);
     if (result) { setTitle(""); setDesc(""); setSuccess(true); setTimeout(() => setSuccess(false), 2500); await onRefresh(); }
@@ -490,20 +562,11 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const handleResolve = async (id) => { await resolveComplaint(id); await onRefresh(); };
   return (
     <div style={styles.shell}>
-      <AppHeader user={user}>
-        <button style={styles.btnLogout} onClick={onLogout}>Sign Out</button>
-      </AppHeader>
+      <AppHeader user={user}><button style={styles.btnLogout} onClick={onLogout}>Sign Out</button></AppHeader>
       <main style={styles.main}>
         <section style={styles.formSection}>
           <h2 style={styles.sectionTitle}>Register a Complaint</h2>
-          <select style={{ ...styles.input, cursor: "pointer" }} value={title} onChange={e => setTitle(e.target.value)}>
-            <option value="">Select complaint type</option>
-            <option value="Compressor Issue">Compressor Issue</option>
-            <option value="Dryer Issue">Dryer Issue</option>
-            <option value="Booster Filling System Issue">Booster Filling System Issue</option>
-            <option value="Purity Issue">Purity Issue</option>
-            <option value="Other Issue">Other Issue</option>
-          </select>
+          <ComplaintTypeSelect value={title} onChange={e => setTitle(e.target.value)} style={styles.input} />
           <textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue in detail…" value={desc} onChange={e => setDesc(e.target.value)} />
           <button style={{ ...styles.btnPrimary, opacity: (!title.trim() || !desc.trim() || submitting) ? 0.5 : 1 }} onClick={submitComplaint}>{submitting ? "Submitting…" : "Submit Complaint"}</button>
           {success && <p style={styles.successMsg}>Complaint registered successfully.</p>}
@@ -514,9 +577,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
             {openCount > 0 && <span style={{ fontSize: 13, fontWeight: 600, color: "#9c4221", background: "#feebc8", padding: "3px 10px", borderRadius: 12 }}>{openCount} open</span>}
           </div>
           {mine.length === 0 && <p style={styles.empty}>No complaints registered yet.</p>}
-          {mine.map(c => (
-            <ComplaintCard key={c.id} complaint={c} currentUser={user} canResolve={true} canComment={true} isAdmin={false} onResolve={handleResolve} onDelete={() => {}} onRefresh={onRefresh} />
-          ))}
+          {mine.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={user} canResolve={true} canComment={true} isAdmin={false} onResolve={handleResolve} onDelete={() => {}} onRefresh={onRefresh} />))}
         </section>
       </main>
     </div>
@@ -525,16 +586,15 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
 
 /* ─── Admin Dashboard ─── */
 function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRefresh, onLogout }) {
-  const [tab, setTab] = useState("overview");
-  const [selected, setSelected] = useState(null);
+  const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
-  const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
+  const [editingUser, setEditingUser] = useState(null); const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
   const [adminHospital, setAdminHospital] = useState(ALL_HOSPITALS[0]);
-  const [adminTitle, setAdminTitle] = useState(""); const [adminDesc, setAdminDesc] = useState("");
-  const [adminDate, setAdminDate] = useState("");
+  const [adminTitle, setAdminTitle] = useState(""); const [adminDesc, setAdminDesc] = useState(""); const [adminDate, setAdminDate] = useState("");
   const [adminSubmitting, setAdminSubmitting] = useState(false); const [adminSuccess, setAdminSuccess] = useState(false);
+  // New user form
+  const [newUserId, setNewUserId] = useState(""); const [newUserName, setNewUserName] = useState(""); const [newUserRole, setNewUserRole] = useState("company"); const [newUserPw, setNewUserPw] = useState(""); const [addingUser, setAddingUser] = useState(false);
 
   const totalComplaints = complaints.length;
   const totalOpen = complaints.filter(c => c.status !== "Resolved").length;
@@ -542,22 +602,24 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const handleResolve = async (id, date) => { await resolveComplaint(id, date); await onRefresh(); };
   const handleDelete = async (id) => { await deleteComplaint(id); await onRefresh(); };
   const handlePasswordChange = async (userId) => {
-    if (!newPw.trim() || saving) return;
-    setSaving(true); const ok = await updatePassword(userId, newPw.trim()); setSaving(false);
+    if (!newPw.trim() || saving) return; setSaving(true);
+    const ok = await updatePassword(userId, newPw.trim()); setSaving(false);
     if (ok) { setPwSuccess(userId); setNewPw(""); setEditingUser(null); await onRefresh(); setTimeout(() => setPwSuccess(""), 2500); }
   };
-  const handleAddEmail = async () => {
-    if (!newEmail.trim() || emailSaving) return;
-    setEmailSaving(true); await addEmail(emailGroup, newEmail.trim()); setNewEmail(""); setEmailSaving(false); await onRefresh();
-  };
+  const handleAddEmail = async () => { if (!newEmail.trim() || emailSaving) return; setEmailSaving(true); await addEmail(emailGroup, newEmail.trim()); setNewEmail(""); setEmailSaving(false); await onRefresh(); };
   const handleDeleteEmail = async (id) => { await deleteEmailRecord(id); await onRefresh(); };
   const submitAdminComplaint = async () => {
-    if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return;
-    setAdminSubmitting(true);
+    if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return; setAdminSubmitting(true);
     const result = await insertComplaint(adminHospital, adminTitle.trim(), adminDesc.trim(), adminDate || null);
     setAdminSubmitting(false);
     if (result) { setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); }
   };
+  const handleAddUser = async () => {
+    if (!newUserId.trim() || !newUserName.trim() || !newUserPw.trim() || addingUser) return; setAddingUser(true);
+    await createUser(newUserId.trim().toLowerCase().replace(/\s+/g, ""), newUserName.trim(), newUserRole, newUserPw.trim());
+    setNewUserId(""); setNewUserName(""); setNewUserPw(""); setAddingUser(false); await onRefresh();
+  };
+  const handleDeleteUser = async (id) => { if (window.confirm("Delete this user?")) { await deleteUser(id); await onRefresh(); } };
 
   const hospitalUsers = users.filter(u => u.role === "hospital");
   const companyUsers = users.filter(u => u.role === "company" || u.role === "admin");
@@ -570,7 +632,6 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         <button style={styles.btnLogout} onClick={handleRefresh}>{refreshing ? "…" : "Refresh"}</button>
         <button style={styles.btnLogout} onClick={onLogout}>Sign Out</button>
       </AppHeader>
-
       <div style={styles.tabBar}>
         {["overview","complaints","submit","passwords","emails"].map(t => (
           <button key={t} style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>
@@ -578,7 +639,6 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
           </button>
         ))}
       </div>
-
       <main style={styles.main}>
         {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} isAdmin={true} onRefresh={onRefresh} />}
 
@@ -602,14 +662,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
             <select style={{ ...styles.input, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>
               {ALL_HOSPITALS.map(h => <option key={h} value={h}>{h} — {getProvider(h)}</option>)}
             </select>
-            <select style={{ ...styles.input, cursor: "pointer" }} value={adminTitle} onChange={e => setAdminTitle(e.target.value)}>
-              <option value="">Select complaint type</option>
-              <option value="Compressor Issue">Compressor Issue</option>
-              <option value="Dryer Issue">Dryer Issue</option>
-              <option value="Booster Filling System Issue">Booster Filling System Issue</option>
-              <option value="Purity Issue">Purity Issue</option>
-              <option value="Other Issue">Other Issue</option>
-            </select>
+            <ComplaintTypeSelect value={adminTitle} onChange={e => setAdminTitle(e.target.value)} style={styles.input} />
             <textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} />
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 13, color: "#4a5568", marginBottom: 4, display: "block" }}>Date (leave empty for today)</label>
@@ -622,7 +675,34 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 
         {tab === "passwords" && (
           <>
-            <h2 style={styles.sectionTitle}>Company & Admin Passwords</h2>
+            {/* Add New User */}
+            <div style={styles.formSection}>
+              <h2 style={styles.sectionTitle}>Add New User</h2>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+                <div style={{ flex: 1, minWidth: 120 }}>
+                  <label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>ID</label>
+                  <input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="userid" value={newUserId} onChange={e => setNewUserId(e.target.value)} />
+                </div>
+                <div style={{ flex: 1, minWidth: 120 }}>
+                  <label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Display Name</label>
+                  <input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Name" value={newUserName} onChange={e => setNewUserName(e.target.value)} />
+                </div>
+                <div style={{ minWidth: 100 }}>
+                  <label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Role</label>
+                  <select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserRole} onChange={e => setNewUserRole(e.target.value)}>
+                    <option value="company">Company</option>
+                    <option value="hospital">Hospital</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1, minWidth: 120 }}>
+                  <label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Password</label>
+                  <input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Password" value={newUserPw} onChange={e => setNewUserPw(e.target.value)} />
+                </div>
+                <button style={styles.pwSaveBtn} onClick={handleAddUser}>{addingUser ? "…" : "Add User"}</button>
+              </div>
+            </div>
+
+            <h2 style={styles.sectionTitle}>Company & Admin Accounts</h2>
             {companyUsers.map(u => (
               <div key={u.id} style={styles.pwCard}>
                 <div style={styles.pwRow}>
@@ -636,6 +716,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
                         <button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button>
                       </div>
                     ) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}
+                    {u.role !== "admin" && <button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button>}
                   </div>
                 </div>
                 {pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}
@@ -643,7 +724,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
             ))}
             {Object.entries(GROUPS).map(([provider, hospitals]) => (
               <div key={provider}>
-                <h2 style={{ ...styles.sectionTitle, marginTop: 28 }}>{provider} — Hospital Passwords</h2>
+                <h2 style={{ ...styles.sectionTitle, marginTop: 28 }}>{provider} — Hospital Accounts</h2>
                 {hospitalUsers.filter(u => hospitals.some(h => h.toLowerCase().replace(/\s+/g, "") === u.id.toLowerCase().replace(/\s+/g, ""))).map(u => (
                   <div key={u.id} style={styles.pwCard}>
                     <div style={styles.pwRow}>
@@ -657,6 +738,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
                             <button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button>
                           </div>
                         ) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}
+                        <button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button>
                       </div>
                     </div>
                     {pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}
@@ -670,7 +752,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         {tab === "emails" && (
           <>
             <h2 style={styles.sectionTitle}>Email Notifications</h2>
-            <p style={{ fontSize: 14, color: "#4a5568", marginBottom: 20, lineHeight: 1.5 }}>When a hospital submits a complaint, emails go to the relevant service provider + Novair + Amex lists.</p>
+            <p style={{ fontSize: 14, color: "#4a5568", marginBottom: 20, lineHeight: 1.5 }}>Emails are sent when a complaint is submitted AND when it is resolved. Recipients: relevant service provider + Novair + Amex.</p>
             <div style={styles.formSection}>
               <h3 style={{ fontSize: 15, fontWeight: 600, color: "#1a2332", margin: "0 0 12px" }}>Add Email</h3>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -704,10 +786,8 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 
 /* ─── Company Dashboard ─── */
 function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) {
-  const [tab, setTab] = useState("overview");
-  const [selected, setSelected] = useState(null);
+  const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-
   const seesAll = ["Novair", "Amex", "UNDP", "CMU"].includes(user.name);
   const myGroups = {};
   if (seesAll) { Object.assign(myGroups, GROUPS); } else if (GROUPS[user.name]) { myGroups[user.name] = GROUPS[user.name]; } else { Object.assign(myGroups, GROUPS); }
@@ -715,14 +795,8 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
   const myComplaints = complaints.filter(c => myHospitals.includes(c.hospital));
   const totalComplaints = myComplaints.length;
   const totalOpen = myComplaints.filter(c => c.status !== "Resolved").length;
-
-  const canCommentOnHospital = (hospital) => {
-    if (["Novair", "Amex"].includes(user.name)) return true;
-    return getProvider(hospital) === user.name;
-  };
-
+  const canCommentOnHospital = (hospital) => { if (["Novair", "Amex"].includes(user.name)) return true; return getProvider(hospital) === user.name; };
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
-
   return (
     <div style={styles.shell}>
       <AppHeader user={user}>
@@ -730,15 +804,12 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
         <button style={styles.btnLogout} onClick={handleRefresh}>{refreshing ? "…" : "Refresh"}</button>
         <button style={styles.btnLogout} onClick={onLogout}>Sign Out</button>
       </AppHeader>
-
       <div style={styles.tabBar}>
         <button style={tab === "overview" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("overview"); setSelected(null); }}>Overview</button>
         <button style={tab === "complaints" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("complaints"); setSelected(null); }}>Complaints</button>
       </div>
-
       <main style={styles.main}>
         {tab === "overview" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} isAdmin={false} onRefresh={onRefresh} />}
-
         {tab === "complaints" && !selected && (
           <>
             <div style={styles.statsBar}>
@@ -759,7 +830,6 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
 
 /* ─── Styles ─── */
 const C = { bg: "#f0f4f8", white: "#ffffff", brand: "#0e7c6b", brandDark: "#095e52", brandLight: "#e6f5f2", text: "#1a2332", textMid: "#4a5568", textLight: "#718096", border: "#e2e8f0", red: "#e53e3e", green: "#38a169" };
-
 const styles = {
   loadWrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: C.bg, fontFamily: "'Inter', system-ui, sans-serif" },
   loadLogo: { fontSize: 48, fontWeight: 800, color: C.brand, letterSpacing: -2 },
