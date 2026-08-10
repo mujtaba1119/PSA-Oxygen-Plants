@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 
 /* ─── Logo URLs ─── */
-const LOGO_FLAG = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/240_F_1475369941_dBG7IPXXeJLHejjX0ZpyqwykTxo8Wc3M.jpg";
+const LOGO_FLAG = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/240_F_1475369941_dBG7IPXXeJLHejjX0ZpyqwykTxo8Wc3M-removebg-preview.png";
 const LOGO_GLOBALFUND = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/Global%20Fund%20Logo.png";
 const LOGO_GOVT = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/GOvt%20of%20Pakistan%20logo.png";
 const LOGO_UNDP = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/UNDP%20logo.png";
@@ -152,7 +152,7 @@ function AppHeader({ user, children }) {
   return (
     <div style={styles.topBar}>
       <div style={styles.topLeft}>
-        <img src={LOGO_GOVT} alt="" style={{ height: 48, objectFit: "contain" }} />
+        <img src={LOGO_FLAG} alt="Pakistan" style={{ height: 56, objectFit: "contain" }} />
         <div>
           <div style={styles.topTitle}>PSA Oxygen Plants</div>
           <div style={styles.topUser}>User: {displayName}</div>
