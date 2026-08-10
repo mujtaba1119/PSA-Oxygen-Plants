@@ -740,7 +740,7 @@ const styles = {
   btnPrimary: { display: "block", width: "100%", padding: "14px 0", fontSize: 14, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase" },
   err: { color: C.red, fontSize: 13, margin: "0 0 10px", textAlign: "center", fontWeight: 500 },
   shell: { minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif" },
-  topBar: { background: C.bg, padding: "24px 28px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, minHeight: 100 },
+  topBar: { background: C.bg, padding: "24px 28px 20px 60px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, minHeight: 100 },
   topLeft: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, width: 180, flexShrink: 0 },
   topCenter: { display: "flex", alignItems: "center", gap: 28, flexWrap: "wrap", flex: 1, justifyContent: "center", minHeight: 90 },
   topRight: { display: "flex", gap: 8, alignItems: "center", width: 180, flexShrink: 0, justifyContent: "flex-end" },
