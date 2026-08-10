@@ -153,13 +153,11 @@ function AppHeader({ user, children }) {
     <div style={styles.topBar}>
       <div style={styles.topLeft}>
         <img src={LOGO_FLAG} alt="Pakistan" style={{ height: 60, objectFit: "contain" }} />
-        <div style={{ marginTop: 6 }}>
-          <div style={styles.topTitle}>PSA Oxygen Plants</div>
-          <div style={styles.topUser}>User: {displayName}</div>
-        </div>
+        <div style={styles.topTitle}>PSA Oxygen Plants</div>
+        <div style={styles.topUser}>User: {displayName}</div>
       </div>
       <div style={styles.topCenter}>
-        {LOGO_GLOBALFUND && <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 72, objectFit: "contain" }} />}
+        {LOGO_GLOBALFUND && <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 90, objectFit: "contain" }} />}
         {LOGO_UNDP && <img src={LOGO_UNDP} alt="UNDP" style={{ height: 60, objectFit: "contain" }} />}
         {LOGO_AMEX && <img src={LOGO_AMEX} alt="Amex" style={{ height: 50, objectFit: "contain" }} />}
         {LOGO_NOXERIOR && <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 44, objectFit: "contain" }} />}
@@ -675,9 +673,9 @@ const styles = {
   btnPrimary: { display: "block", width: "100%", padding: "14px 0", fontSize: 14, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase" },
   err: { color: C.red, fontSize: 13, margin: "0 0 10px", textAlign: "center", fontWeight: 500 },
   shell: { minHeight: "100vh", background: C.bg, fontFamily: "'Inter', system-ui, sans-serif" },
-  topBar: { background: C.bg, padding: "24px 28px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 },
-  topLeft: { display: "flex", alignItems: "center", gap: 14 },
-  topCenter: { display: "flex", alignItems: "center", gap: 28, flexWrap: "wrap", flex: 1, justifyContent: "center" },
+  topBar: { background: C.bg, padding: "24px 28px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, minHeight: 100 },
+  topLeft: { display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 120 },
+  topCenter: { display: "flex", alignItems: "center", gap: 28, flexWrap: "wrap", flex: 1, justifyContent: "center", minHeight: 90 },
   topRight: { display: "flex", gap: 8, alignItems: "center" },
   topTitle: { fontSize: 16, fontWeight: 600, color: C.black, letterSpacing: 0.5 },
   topUser: { fontSize: 11, color: C.textLight, marginTop: 2, letterSpacing: 0.5, textTransform: "uppercase" },
