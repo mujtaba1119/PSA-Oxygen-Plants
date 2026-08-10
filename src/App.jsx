@@ -192,12 +192,12 @@ function isFunctional(hospital, complaints, siteNotes) {
 }
 
 function SiteStatusBadge({ status }) {
-  let color, bg, icon;
-  if (status === "Issues") { color = "#9c4221"; bg = "#feebc8"; icon = "⚠"; }
-  else if (status === "Non Functional") { color = "#718096"; bg = "#e2e8f0"; icon = "○"; }
-  else if (status === "Shut Down") { color = "#e53e3e"; bg = "#fed7d7"; icon = "✕"; }
-  else { color = "#276749"; bg = "#c6f6d5"; icon = "✓"; }
-  return <span style={{ fontSize: 12, fontWeight: 600, color, background: bg, padding: "2px 8px", borderRadius: 6 }}>{icon} {status}</span>;
+  let color, bg;
+  if (status === "Issues") { color = "#b45309"; bg = "#fef3c7"; }
+  else if (status === "Non Functional") { color = "#555"; bg = "#e8e8e8"; }
+  else if (status === "Shut Down") { color = "#fff"; bg = "#c0392b"; }
+  else { color = "#166534"; bg = "#dcfce7"; }
+  return <span style={{ fontSize: 11, fontWeight: 600, color, background: bg, padding: "4px 10px", borderRadius: 20, whiteSpace: "nowrap", letterSpacing: 0.3 }}>{status}</span>;
 }
 
 /* ─── App ─── */
@@ -343,7 +343,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
           const open = openComplaints(h);
           const siteStatus = getSiteDisplayStatus(h, complaints, siteNotes);
           const note = getNote(h);
-          const rowBg = siteStatus === "Shut Down" ? "#fce8e8" : siteStatus === "Issues" ? "#fef9f0" : i % 2 === 0 ? C.white : "#fafafa";
+          const rowBg = i % 2 === 0 ? C.white : "#f8f8f8";
           return (
             <div key={h} style={{ ...styles.overviewRow, background: rowBg }}>
               <div style={{ ...styles.ovCell, ...styles.ovCellSr, color: C.textLight, fontWeight: 500 }}>{i + 1}</div>
@@ -352,7 +352,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
               <div style={{ ...styles.ovCell, ...styles.ovCellStatus }}>
                 {isAdmin ? (
                   statusEditing === h ? (
-                    <select style={{ fontSize: 12, padding: "4px 6px", border: `1px solid ${C.border}`, borderRadius: 0 }} value={getSiteBaseStatus(h, siteNotes)} onChange={e => handleStatusChange(h, e.target.value)}>
+                    <select style={{ fontSize: 11, padding: "4px 8px", borderRadius: 20, border: `1px solid ${C.border}`, background: C.white }} value={getSiteBaseStatus(h, siteNotes)} onChange={e => handleStatusChange(h, e.target.value)}>
                       <option value="Fully Functional">Fully Functional</option>
                       <option value="Non Functional">Non Functional</option>
                       <option value="Shut Down">Shut Down</option>
@@ -695,7 +695,7 @@ const styles = {
   successMsg: { color: C.green, fontSize: 14, fontWeight: 600, marginTop: 12, textAlign: "center" },
   statsBar: { display: "flex", gap: 32, marginBottom: 28, flexWrap: "wrap", justifyContent: "center" },
   statBox: { textAlign: "center" },
-  statNum: { fontSize: 32, fontWeight: 300, color: C.black, letterSpacing: -1 },
+  statNum: { fontSize: 40, fontWeight: 300, color: C.black, letterSpacing: -1 },
   statLabel: { fontSize: 10, color: C.textLight, marginTop: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.5 },
   hospitalGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 },
   hospitalBtn: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", padding: "14px 16px", background: C.white, border: `1px solid ${C.borderLight}`, borderRadius: 0, cursor: "pointer", textAlign: "left" },
@@ -730,15 +730,15 @@ const styles = {
   commentInputRow: { display: "flex", gap: 8, marginTop: 12 },
   commentInput: { flex: 1, padding: "10px 14px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 0, outline: "none", fontFamily: "'DM Sans', system-ui, sans-serif" },
   commentSendBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, padding: "10px 22px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
-  overviewTable: { background: C.white, borderRadius: 0, border: `1px solid ${C.border}`, overflow: "auto", borderCollapse: "collapse" },
-  overviewHeaderRow: { display: "flex", padding: "0", background: C.black, fontWeight: 600, fontSize: 11, color: "#ccc", gap: 0, minWidth: 850, letterSpacing: 1.5, textTransform: "uppercase" },
+  overviewTable: { background: C.white, borderRadius: 12, border: `1px solid ${C.borderLight}`, overflow: "hidden" },
+  overviewHeaderRow: { display: "flex", padding: "0", background: "#1a1a1a", fontWeight: 600, fontSize: 10, color: "#aaa", gap: 0, minWidth: 850, letterSpacing: 1.5, textTransform: "uppercase" },
   overviewRow: { display: "flex", padding: "0", borderBottom: `1px solid ${C.borderLight}`, gap: 0, alignItems: "stretch", minWidth: 850 },
-  ovCell: { padding: "12px 14px", borderRight: `1px solid ${C.borderLight}`, fontSize: 13, display: "flex", flexDirection: "column", justifyContent: "center" },
-  ovCellHeader: { padding: "12px 14px", borderRight: "1px solid #333", fontSize: 11, display: "flex", alignItems: "center" },
-  ovCellSr: { width: 35, flexShrink: 0 },
-  ovCellSite: { width: 110, flexShrink: 0 },
-  ovCellProvider: { width: 90, flexShrink: 0 },
-  ovCellStatus: { width: 110, flexShrink: 0 },
+  ovCell: { padding: "14px 16px", borderRight: `1px solid ${C.borderLight}`, fontSize: 13, display: "flex", flexDirection: "column", justifyContent: "center" },
+  ovCellHeader: { padding: "14px 16px", borderRight: "1px solid #333", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" },
+  ovCellSr: { width: 40, flexShrink: 0, justifyContent: "center", alignItems: "center" },
+  ovCellSite: { width: 120, flexShrink: 0 },
+  ovCellProvider: { width: 100, flexShrink: 0 },
+  ovCellStatus: { width: 120, flexShrink: 0, alignItems: "center" },
   ovCellOpen: { flex: 1, minWidth: 170 },
   ovCellNote: { flex: 1, minWidth: 170, borderRight: "none" },
 };
