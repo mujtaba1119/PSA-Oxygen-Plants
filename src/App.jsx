@@ -227,16 +227,6 @@ function LoginScreen({ users, onLogin }) {
       <input style={styles.input} type="password" placeholder="Password" value={pw} onChange={e => { setPw(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} />
       {err && <p style={styles.err}>{err}</p>}
       <button style={styles.btnPrimary} onClick={submit}>Sign In</button>
-      <div style={{ textAlign: "center", marginTop: 16 }}>
-        <button style={{ fontSize: 13, color: "#0e7c6b", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={() => setShowRecovery(!showRecovery)}>Forgot Admin Password?</button>
-        {showRecovery && (
-          <div style={{ marginTop: 10 }}>
-            <p style={{ fontSize: 12, color: "#718096", marginBottom: 8 }}>Send admin password to registered email</p>
-            <button style={{ fontSize: 13, fontWeight: 600, color: "#fff", background: "#0e7c6b", border: "none", borderRadius: 6, padding: "8px 20px", cursor: "pointer" }} onClick={handleRecovery} disabled={recovering}>{recovering ? "Sending…" : "Send Password"}</button>
-            {recoveryMsg && <p style={{ fontSize: 13, color: "#0e7c6b", marginTop: 8 }}>{recoveryMsg}</p>}
-          </div>
-        )}
-      </div>
     </div></div>
   );
 }
