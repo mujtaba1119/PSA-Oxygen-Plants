@@ -84,11 +84,13 @@ async function fetchUsers() {
   return data;
 }
 async function updatePassword(userId, newPassword) {
-  const { error } = await supabase.from("users").update({ password: newPassword }).eq("id", userId);
+  const hashed = await hashPassword(newPassword);
+  const { error } = await supabase.from("users").update({ password: hashed }).eq("id", userId);
   return !error;
 }
 async function createUser(id, name, role, password) {
-  const { data, error } = await supabase.from("users").insert([{ id, name, role, password }]).select();
+  const hashed = await hashPassword(password);
+  const { data, error } = await supabase.from("users").insert([{ id, name, role, password: hashed }]).select();
   if (error) { console.error(error); return null; }
   return data[0];
 }
@@ -278,13 +280,30 @@ function AppInner() {
   return <CompanyDashboard user={user} complaints={complaints} siteNotes={siteNotes} onRefresh={reload} onLogout={() => setUser(null)} />;
 }
 
+/* ─── Security: Password Hashing ─── */
+async function hashPassword(pw) {
+  const data = new TextEncoder().encode(pw.trim().toLowerCase().replace(/\s+/g, ""));
+  const hash = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 function LoginScreen({ users, onLogin }) {
   const [id, setId] = useState(""); const [pw, setPw] = useState(""); const [err, setErr] = useState("");
-  const submit = () => {
+  const [attempts, setAttempts] = useState(0); const [locked, setLocked] = useState(false); const [submitting, setSubmitting] = useState(false);
+  const submit = async () => {
+    if (locked || submitting) return;
+    setSubmitting(true);
     const clean = s => s.trim().toLowerCase().replace(/\s+/g, "");
-    const found = users.find(u => (clean(u.name) === clean(id) || clean(u.id) === clean(id)) && clean(u.password) === clean(pw));
-    if (!found) { setErr("Invalid credentials"); return; }
-    onLogin(found);
+    const pwHash = await hashPassword(pw);
+    const found = users.find(u => (clean(u.name) === clean(id) || clean(u.id) === clean(id)) && (u.password === pwHash || clean(u.password) === clean(pw)));
+    if (!found) {
+      const newAttempts = attempts + 1;
+      setAttempts(newAttempts);
+      if (newAttempts >= 5) { setLocked(true); setErr("Too many attempts. Try again in 60 seconds."); setTimeout(() => { setLocked(false); setAttempts(0); setErr(""); }, 60000); }
+      else { setErr(`Invalid credentials (${5 - newAttempts} attempts remaining)`); }
+      setSubmitting(false); return;
+    }
+    setSubmitting(false); onLogin(found);
   };
   return (
     <div style={styles.loginBg}><div className="login-card-responsive" style={styles.loginCard}>
@@ -294,7 +313,7 @@ function LoginScreen({ users, onLogin }) {
       <input style={styles.input} placeholder="Username" value={id} onChange={e => { setId(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} />
       <input style={styles.input} type="password" placeholder="Password" value={pw} onChange={e => { setPw(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} />
       {err && <p style={styles.err}>{err}</p>}
-      <button style={styles.btnPrimary} onClick={submit}>Sign In</button>
+      <button style={{ ...styles.btnPrimary, opacity: (locked || submitting) ? 0.5 : 1 }} onClick={submit} disabled={locked || submitting}>{submitting ? "Signing in…" : locked ? "Locked" : "Sign In"}</button>
     </div></div>
   );
 }
@@ -678,8 +697,8 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         {tab === "passwords" && (<>
           <div style={styles.formSection}><h2 style={styles.sectionTitle}>Add New User</h2><div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>ID</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="userid" value={newUserId} onChange={e => setNewUserId(e.target.value)} /></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Display Name</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Name" value={newUserName} onChange={e => setNewUserName(e.target.value)} /></div><div style={{ minWidth: 100 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Role</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserRole} onChange={e => setNewUserRole(e.target.value)}><option value="company">Company (view-only)</option><option value="hospital">Hospital</option></select></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Password</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Password" value={newUserPw} onChange={e => setNewUserPw(e.target.value)} /></div><button style={styles.pwSaveBtn} onClick={handleAddUser}>{addingUser ? "…" : "Add User"}</button></div></div>
           <h2 style={styles.sectionTitle}>Company & Admin Accounts</h2>
-          {companyUsers.map(u => (<div key={u.id} style={styles.pwCard}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong><span style={styles.pwRole}>{u.role === "admin" ? "Admin" : "Company"}</span></div><div style={styles.pwRight}><span style={styles.pwCurrent}>Current: <code>{u.password}</code></span>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} placeholder="New password" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}{u.role !== "admin" && <button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button>}</div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}
-          {Object.entries(GROUPS).map(([provider, hospitals]) => (<div key={provider}><h2 style={{ ...styles.sectionTitle, marginTop: 28 }}>{provider} — Hospital Accounts</h2>{hospitalUsers.filter(u => hospitals.some(h => h.toLowerCase().replace(/\s+/g, "") === u.id.toLowerCase().replace(/\s+/g, ""))).map(u => (<div key={u.id} style={styles.pwCard}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong></div><div style={styles.pwRight}><span style={styles.pwCurrent}>Current: <code>{u.password}</code></span>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} placeholder="New password" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}<button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button></div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}</div>))}
+          {companyUsers.map(u => (<div key={u.id} style={styles.pwCard}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong><span style={styles.pwRole}>{u.role === "admin" ? "Admin" : "Company"}</span></div><div style={styles.pwRight}><span style={styles.pwCurrent}>Current: <code>••••••••</code></span>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} placeholder="New password" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}{u.role !== "admin" && <button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button>}</div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}
+          {Object.entries(GROUPS).map(([provider, hospitals]) => (<div key={provider}><h2 style={{ ...styles.sectionTitle, marginTop: 28 }}>{provider} — Hospital Accounts</h2>{hospitalUsers.filter(u => hospitals.some(h => h.toLowerCase().replace(/\s+/g, "") === u.id.toLowerCase().replace(/\s+/g, ""))).map(u => (<div key={u.id} style={styles.pwCard}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong></div><div style={styles.pwRight}><span style={styles.pwCurrent}>Current: <code>••••••••</code></span>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} placeholder="New password" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}<button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button></div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}</div>))}
         </>)}
         {tab === "emails" && (<>
           <h2 style={styles.sectionTitle}>Email Notifications</h2><p style={{ fontSize: 14, color: "#4a5568", marginBottom: 20, lineHeight: 1.5 }}>Emails are sent when a complaint is submitted and when resolved. Shutdown emails are sent manually from Overview tab.</p>
