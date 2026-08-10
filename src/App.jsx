@@ -16,8 +16,10 @@ async function fetchComplaints() {
   if (error) { console.error(error); return []; }
   return data;
 }
-async function insertComplaint(hospital, title, description) {
-  const { data, error } = await supabase.from("complaints").insert([{ hospital, title, description, status: "Open" }]).select();
+async function insertComplaint(hospital, title, description, customDate) {
+  const row = { hospital, title, description, status: "Open" };
+  if (customDate) row.created_at = new Date(customDate).toISOString();
+  const { data, error } = await supabase.from("complaints").insert([row]).select();
   if (error) { console.error(error); return null; }
   return data[0];
 }
@@ -522,6 +524,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
   const [adminHospital, setAdminHospital] = useState(ALL_HOSPITALS[0]);
   const [adminTitle, setAdminTitle] = useState(""); const [adminDesc, setAdminDesc] = useState("");
+  const [adminDate, setAdminDate] = useState("");
   const [adminSubmitting, setAdminSubmitting] = useState(false); const [adminSuccess, setAdminSuccess] = useState(false);
 
   const totalComplaints = complaints.length;
@@ -542,9 +545,9 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const submitAdminComplaint = async () => {
     if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return;
     setAdminSubmitting(true);
-    const result = await insertComplaint(adminHospital, adminTitle.trim(), adminDesc.trim());
+    const result = await insertComplaint(adminHospital, adminTitle.trim(), adminDesc.trim(), adminDate || null);
     setAdminSubmitting(false);
-    if (result) { setAdminTitle(""); setAdminDesc(""); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); }
+    if (result) { setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); }
   };
 
   const hospitalUsers = users.filter(u => u.role === "hospital");
@@ -599,6 +602,10 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
               <option value="Other Issue">Other Issue</option>
             </select>
             <textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} />
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 13, color: "#4a5568", marginBottom: 4, display: "block" }}>Date (leave empty for today)</label>
+              <input style={styles.input} type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} />
+            </div>
             <button style={{ ...styles.btnPrimary, opacity: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? 0.5 : 1 }} onClick={submitAdminComplaint}>{adminSubmitting ? "Submitting…" : "Submit Complaint"}</button>
             {adminSuccess && <p style={styles.successMsg}>Complaint submitted for {adminHospital}.</p>}
           </section>
