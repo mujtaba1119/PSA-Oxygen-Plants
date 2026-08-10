@@ -397,7 +397,6 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                 )}
               </div>
             </div>
-            </div>
           );
         })}
       </div>
