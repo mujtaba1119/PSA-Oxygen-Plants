@@ -152,17 +152,17 @@ function AppHeader({ user, children }) {
   return (
     <div style={styles.topBar}>
       <div style={styles.topLeft}>
-        <img src={LOGO_FLAG} alt="Pakistan" style={{ height: 56, objectFit: "contain" }} />
-        <div>
+        <img src={LOGO_FLAG} alt="Pakistan" style={{ height: 60, objectFit: "contain" }} />
+        <div style={{ marginTop: 6 }}>
           <div style={styles.topTitle}>PSA Oxygen Plants</div>
           <div style={styles.topUser}>User: {displayName}</div>
         </div>
       </div>
       <div style={styles.topCenter}>
-        {LOGO_GLOBALFUND && <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 56, objectFit: "contain" }} />}
-        {LOGO_UNDP && <img src={LOGO_UNDP} alt="UNDP" style={{ height: 54, objectFit: "contain" }} />}
-        {LOGO_AMEX && <img src={LOGO_AMEX} alt="Amex" style={{ height: 44, objectFit: "contain" }} />}
-        {LOGO_NOXERIOR && <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 38, objectFit: "contain" }} />}
+        {LOGO_GLOBALFUND && <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 72, objectFit: "contain" }} />}
+        {LOGO_UNDP && <img src={LOGO_UNDP} alt="UNDP" style={{ height: 60, objectFit: "contain" }} />}
+        {LOGO_AMEX && <img src={LOGO_AMEX} alt="Amex" style={{ height: 50, objectFit: "contain" }} />}
+        {LOGO_NOXERIOR && <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 44, objectFit: "contain" }} />}
       </div>
       <div style={styles.topRight}>{children}</div>
     </div>
@@ -602,7 +602,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   return (
     <div style={styles.shell}>
       <AppHeader user={user}>
-        <button style={styles.btnBlack} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
+        <button style={styles.btnText} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
         <button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button>
       </AppHeader>
       <div style={styles.tabBar}>
@@ -643,7 +643,7 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
   return (
     <div style={styles.shell}>
       <AppHeader user={user}>
-        <button style={styles.btnBlack} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
+        <button style={styles.btnText} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
         <button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button>
       </AppHeader>
       <div style={styles.tabBar}>
@@ -675,13 +675,14 @@ const styles = {
   btnPrimary: { display: "block", width: "100%", padding: "14px 0", fontSize: 14, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase" },
   err: { color: C.red, fontSize: 13, margin: "0 0 10px", textAlign: "center", fontWeight: 500 },
   shell: { minHeight: "100vh", background: C.bg, fontFamily: "'Inter', system-ui, sans-serif" },
-  topBar: { background: C.bg, padding: "18px 28px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 },
-  topLeft: { display: "flex", alignItems: "center", gap: 12 },
+  topBar: { background: C.bg, padding: "24px 28px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 },
+  topLeft: { display: "flex", alignItems: "center", gap: 14 },
   topCenter: { display: "flex", alignItems: "center", gap: 28, flexWrap: "wrap", flex: 1, justifyContent: "center" },
   topRight: { display: "flex", gap: 8, alignItems: "center" },
   topTitle: { fontSize: 16, fontWeight: 600, color: C.black, letterSpacing: 0.5 },
   topUser: { fontSize: 11, color: C.textLight, marginTop: 2, letterSpacing: 0.5, textTransform: "uppercase" },
   btnBlack: { fontSize: 11, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, padding: "8px 18px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
+  btnText: { fontSize: 11, fontWeight: 600, color: C.black, background: "transparent", border: "none", borderRadius: 0, padding: "8px 12px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
   btnOutline: { fontSize: 11, fontWeight: 500, color: C.black, background: "transparent", border: `1px solid ${C.black}`, borderRadius: 0, padding: "7px 18px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
   main: { maxWidth: 980, margin: "0 auto", padding: "24px 24px" },
   formSection: { background: C.white, borderRadius: 0, padding: 32, marginBottom: 28, border: `1px solid ${C.borderLight}` },
@@ -710,7 +711,7 @@ const styles = {
   groupHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8, paddingBottom: 12, borderBottom: `2px solid ${C.black}` },
   groupTitle: { fontSize: 16, fontWeight: 600, color: C.black, margin: 0, letterSpacing: 0.5, textTransform: "uppercase" },
   groupBadge: { fontSize: 12, fontWeight: 500, color: C.textMid, background: C.white, borderRadius: 0, padding: "4px 14px", border: `1px solid ${C.borderLight}` },
-  tabBar: { display: "flex", gap: 8, maxWidth: 980, margin: "0 auto", padding: "0 24px 20px", flexWrap: "wrap" },
+  tabBar: { display: "flex", gap: 8, maxWidth: 980, margin: "0 auto", padding: "12px 24px 24px", flexWrap: "wrap" },
   tabActive: { padding: "10px 22px", fontSize: 12, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
   tabInactive: { padding: "10px 22px", fontSize: 12, fontWeight: 500, color: C.black, background: "transparent", border: `1px solid ${C.black}`, borderRadius: 0, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
   pwCard: { background: C.white, borderRadius: 0, padding: "14px 18px", marginBottom: 8, border: `1px solid ${C.borderLight}` },
