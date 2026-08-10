@@ -343,7 +343,6 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
         {sortedHospitals.map((h, i) => {
           const open = openComplaints(h);
           const siteStatus = getSiteDisplayStatus(h, complaints, siteNotes);
-          const note = getNote(h);
           const rowBg = i % 2 === 0 ? C.white : "#f8f8f8";
           return (
             <div key={h} style={{ ...styles.overviewRow, background: rowBg }}>
