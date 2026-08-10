@@ -256,7 +256,17 @@ function AppInner() {
     }
   }, [user, reload]);
 
-  if (!ready) return <div style={styles.loadWrap}><div style={styles.loadLogo}>O₂</div><p style={{ color: "#6b7280", marginTop: 12 }}>Loading portal…</p></div>;
+  if (!ready) return <div style={styles.loadWrap}><div style={{ textAlign: "center" }}>
+    <div style={{ width: 100, height: 100, borderRadius: "50%", border: "2px solid #111", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", animation: "breathe 3s ease-in-out infinite" }}>
+      <span style={{ fontSize: 32, fontWeight: 800, color: "#111", letterSpacing: -2 }}>O₂</span>
+    </div>
+    <div style={{ fontSize: 10, fontWeight: 600, color: "#999", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 20 }}>PSA Oxygen Plants</div>
+    <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#111", animation: "pulse 1.2s ease-in-out infinite", animationDelay: "0s" }}></span>
+      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#111", animation: "pulse 1.2s ease-in-out infinite", animationDelay: "0.2s" }}></span>
+      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#111", animation: "pulse 1.2s ease-in-out infinite", animationDelay: "0.4s" }}></span>
+    </div>
+  </div></div>;
   if (!user) return <LoginScreen users={users} onLogin={setUser} />;
   if (user.role === "hospital") return <HospitalDashboard user={user} complaints={complaints} onRefresh={reload} onLogout={() => setUser(null)} />;
   if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} siteNotes={siteNotes} onRefresh={reload} onLogout={() => setUser(null)} />;
