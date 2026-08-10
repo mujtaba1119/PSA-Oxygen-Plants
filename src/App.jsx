@@ -176,7 +176,7 @@ function AppHeader({ user, children }) {
     <div className="header-reveal top-bar-responsive" style={styles.topBar}>
       <div className="top-left-responsive" style={styles.topLeft}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <img src={LOGO_FLAG} alt="Pakistan" style={{ height: 60, objectFit: "contain" }} />
+          <img src={LOGO_FLAG} alt="Pakistan" style={{ height: 60, objectFit: "contain", marginTop: -8, marginLeft: 16 }} />
           <div>
             <div className="top-title-responsive" style={styles.topTitle}>PSA Oxygen Plants</div>
             <div style={styles.topUser}>User: {displayName}</div>
