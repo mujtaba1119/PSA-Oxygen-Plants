@@ -325,6 +325,8 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
         <div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{allOpen}</div><div style={styles.statLabel}>Open Complaints</div></div>
       </div>
 
+      <div style={{ borderTop: "1px solid #ddd", margin: "0 0 24px", opacity: 0.6 }}></div>
+
       {attentionSites.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 10, fontWeight: 600, color: C.red, marginBottom: 10, letterSpacing: 1.5, textTransform: "uppercase" }}>⚠ Attention Needed ({attentionSites.length})</div>
@@ -346,12 +348,13 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
         {sortedHospitals.map((h, i) => {
           const open = openComplaints(h);
           const siteStatus = getSiteDisplayStatus(h, complaints, siteNotes);
-          const rowBg = i % 2 === 0 ? C.white : "#f8f8f8";
+          const rowBg = i % 2 === 0 ? C.white : "#fafafa";
+          const isShutDown = siteStatus === "Shut Down";
           return (
-            <div key={h} style={{ ...styles.overviewRow, background: rowBg }}>
-              <div style={{ ...styles.ovCell, ...styles.ovCellSr, color: C.textLight, fontWeight: 500 }}>{i + 1}</div>
-              <div style={{ ...styles.ovCell, ...styles.ovCellSite }}><strong style={{ color: C.black }}>{displayName(h)}</strong></div>
-              <div style={{ ...styles.ovCell, ...styles.ovCellProvider, color: C.textMid }}>{getProvider(h)}</div>
+            <div key={h} style={{ ...styles.overviewRow, background: rowBg, borderLeft: isShutDown ? "3px solid #c0392b" : "3px solid transparent" }} onMouseEnter={e => e.currentTarget.style.background = "#f0f0f0"} onMouseLeave={e => e.currentTarget.style.background = rowBg}>
+              <div style={{ ...styles.ovCell, ...styles.ovCellSr, color: C.textLight, fontWeight: 500, fontSize: 12 }}>{i + 1}</div>
+              <div style={{ ...styles.ovCell, ...styles.ovCellSite }}><span style={{ color: C.black, fontWeight: 600, fontSize: 13 }}>{displayName(h)}</span></div>
+              <div style={{ ...styles.ovCell, ...styles.ovCellProvider, color: C.textLight, fontWeight: 400, fontSize: 12 }}>{getProvider(h)}</div>
               <div style={{ ...styles.ovCell, ...styles.ovCellStatus }}>
                 {isAdmin ? (
                   statusEditing === h ? (
@@ -735,15 +738,15 @@ const styles = {
   commentInputRow: { display: "flex", gap: 8, marginTop: 12 },
   commentInput: { flex: 1, padding: "10px 14px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 0, outline: "none", fontFamily: "'DM Sans', system-ui, sans-serif" },
   commentSendBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, padding: "10px 22px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
-  overviewTable: { background: C.white, borderRadius: 12, border: `1px solid ${C.borderLight}`, overflow: "hidden" },
-  overviewHeaderRow: { display: "flex", padding: "0", background: "#1a1a1a", fontWeight: 600, fontSize: 10, color: "#fff", gap: 0, minWidth: 850, letterSpacing: 1.5, textTransform: "uppercase" },
-  overviewRow: { display: "flex", padding: "0", borderBottom: `1px solid ${C.borderLight}`, gap: 0, alignItems: "stretch", minWidth: 850 },
-  ovCell: { padding: "14px 16px", borderRight: `1px solid ${C.borderLight}`, fontSize: 13, display: "flex", flexDirection: "column", justifyContent: "center" },
+  overviewTable: { background: C.white, borderRadius: 12, border: `1px solid ${C.borderLight}`, overflow: "auto", WebkitOverflowScrolling: "touch" },
+  overviewHeaderRow: { display: "flex", padding: "0", background: "#1a1a1a", fontWeight: 600, fontSize: 10, color: "#fff", gap: 0, minWidth: 900, letterSpacing: 1.5, textTransform: "uppercase", position: "sticky", top: 0, zIndex: 2 },
+  overviewRow: { display: "flex", padding: "0", borderBottom: `1px solid #eee`, gap: 0, alignItems: "stretch", minWidth: 900, transition: "background 0.15s" },
+  ovCell: { padding: "14px 16px", borderRight: `1px solid #eee`, fontSize: 13, display: "flex", flexDirection: "column", justifyContent: "center" },
   ovCellHeader: { padding: "14px 16px", borderRight: "1px solid #333", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" },
   ovCellSr: { width: 40, flexShrink: 0, justifyContent: "center", alignItems: "center" },
   ovCellSite: { width: 160, flexShrink: 0 },
   ovCellProvider: { width: 100, flexShrink: 0 },
-  ovCellStatus: { width: 120, flexShrink: 0, alignItems: "center" },
+  ovCellStatus: { width: 120, flexShrink: 0, alignItems: "center", justifyContent: "center" },
   ovCellOpen: { flex: 1, minWidth: 170 },
   ovCellNote: { flex: 1, minWidth: 170, borderRight: "none" },
 };
