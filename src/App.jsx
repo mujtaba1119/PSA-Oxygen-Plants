@@ -142,13 +142,23 @@ function ComplaintTypeSelect({ value, onChange, style }) {
 function AppHeader({ user, children }) {
   const displayName = user.role === "hospital" ? user.name + " Hospital" : user.name;
   return (
-    <header style={styles.header}>
-      <div style={styles.headerLeft}><div>
-        <div style={styles.headerBrand}><span style={styles.headerMark}>O₂</span> PSA Oxygen Plants - Pakistan</div>
-        <div style={styles.headerUser}>User: {displayName}</div>
-      </div></div>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{children}</div>
-    </header>
+    <>
+      <div style={styles.logoStrip}>
+        <img src="/flag.jpg" alt="Pakistan" style={{ height: 32, objectFit: "contain" }} />
+        <img src="/logo-globalfund.png" alt="Global Fund" style={{ height: 26, objectFit: "contain" }} />
+        <img src="/logo-govt.png" alt="Govt of Pakistan" style={{ height: 32, objectFit: "contain" }} />
+        <img src="/logo-undp.png" alt="UNDP" style={{ height: 30, objectFit: "contain" }} />
+        <img src="/logo-amex.png" alt="Amex" style={{ height: 22, objectFit: "contain" }} />
+        <img src="/logo-noxerior.png" alt="Noxerior" style={{ height: 20, objectFit: "contain" }} />
+      </div>
+      <header style={styles.header}>
+        <div style={styles.headerLeft}><div>
+          <div style={styles.headerBrand}><span style={styles.headerMark}>O₂</span> PSA Oxygen Plants - Pakistan</div>
+          <div style={styles.headerUser}>User: {displayName}</div>
+        </div></div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{children}</div>
+      </header>
+    </>
   );
 }
 
@@ -606,81 +616,82 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
 }
 
 /* ─── Styles ─── */
-const C = { bg: "#f5f6fa", white: "#ffffff", navy: "#1a2744", navyLight: "#2d3e5f", gold: "#c9a84c", goldLight: "#fdf8ed", brand: "#1a2744", brandLight: "#e8ebf0", text: "#1a2744", textMid: "#4a5068", textLight: "#8890a4", border: "#dfe3ec", red: "#d32f2f", green: "#2e7d32", accent: "#c9a84c" };
+const C = { bg: "#f7f7f7", white: "#ffffff", black: "#111111", dark: "#222222", text: "#111111", textMid: "#555555", textLight: "#999999", border: "#e0e0e0", red: "#c0392b", green: "#27ae60", brand: "#111111", brandLight: "#f0f0f0", accent: "#111111" };
 const styles = {
-  loadWrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: C.bg, fontFamily: "'Inter', system-ui, sans-serif" },
-  loadLogo: { fontSize: 52, fontWeight: 800, color: C.navy, letterSpacing: -2 },
-  loginBg: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(160deg, ${C.navy} 0%, ${C.navyLight} 50%, #3a506b 100%)`, fontFamily: "'Inter', system-ui, sans-serif", padding: 20 },
-  loginCard: { background: C.white, borderRadius: 12, padding: "44px 36px", width: "100%", maxWidth: 420, boxShadow: "0 24px 80px rgba(0,0,0,0.25)", borderTop: `4px solid ${C.gold}` },
-  loginBrand: { display: "flex", alignItems: "center", gap: 10, marginBottom: 28 },
-  brandMark: { fontSize: 30, fontWeight: 800, color: C.navy, letterSpacing: -1 },
-  brandText: { fontSize: 15, fontWeight: 600, color: C.textMid, letterSpacing: 0.3 },
-  loginTitle: { fontSize: 24, fontWeight: 700, color: C.navy, margin: "0 0 4px", letterSpacing: -0.5 },
-  loginSub: { fontSize: 14, color: C.textLight, margin: "0 0 24px" },
-  input: { display: "block", width: "100%", padding: "13px 16px", fontSize: 14, border: `1.5px solid ${C.border}`, borderRadius: 8, marginBottom: 14, outline: "none", boxSizing: "border-box", color: C.text, background: "#fafbfd", transition: "border 0.2s", fontFamily: "'Inter', system-ui, sans-serif" },
-  btnPrimary: { display: "block", width: "100%", padding: "14px 0", fontSize: 15, fontWeight: 700, color: "#fff", background: C.navy, border: "none", borderRadius: 8, cursor: "pointer", letterSpacing: 0.5, transition: "background 0.2s" },
+  loadWrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: C.white, fontFamily: "'Inter', system-ui, sans-serif" },
+  loadLogo: { fontSize: 56, fontWeight: 800, color: C.black, letterSpacing: -3 },
+  loginBg: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.white, fontFamily: "'Inter', system-ui, sans-serif", padding: 20 },
+  loginCard: { background: C.white, borderRadius: 2, padding: "48px 40px", width: "100%", maxWidth: 420, border: `1px solid ${C.border}` },
+  loginBrand: { display: "flex", alignItems: "center", gap: 10, marginBottom: 32 },
+  brandMark: { fontSize: 32, fontWeight: 800, color: C.black, letterSpacing: -2 },
+  brandText: { fontSize: 14, fontWeight: 400, color: C.textMid, letterSpacing: 1, textTransform: "uppercase" },
+  loginTitle: { fontSize: 28, fontWeight: 300, color: C.black, margin: "0 0 4px", letterSpacing: -0.5 },
+  loginSub: { fontSize: 14, color: C.textLight, margin: "0 0 28px", fontWeight: 400 },
+  input: { display: "block", width: "100%", padding: "14px 16px", fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 0, marginBottom: 14, outline: "none", boxSizing: "border-box", color: C.text, background: C.white, fontFamily: "'Inter', system-ui, sans-serif", transition: "border 0.2s" },
+  btnPrimary: { display: "block", width: "100%", padding: "14px 0", fontSize: 14, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase", transition: "background 0.2s" },
   err: { color: C.red, fontSize: 13, margin: "0 0 10px", textAlign: "center", fontWeight: 500 },
   shell: { minHeight: "100vh", background: C.bg, fontFamily: "'Inter', system-ui, sans-serif" },
-  header: { background: C.navy, padding: "14px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10, boxShadow: "0 2px 12px rgba(0,0,0,0.15)" },
+  logoStrip: { background: C.white, padding: "10px 28px", display: "flex", alignItems: "center", justifyContent: "center", gap: 24, borderBottom: `1px solid ${C.border}`, flexWrap: "wrap" },
+  header: { background: C.black, padding: "14px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10 },
   headerLeft: { display: "flex", alignItems: "center", gap: 10 },
-  headerBrand: { fontSize: 15, fontWeight: 700, color: "#fff", display: "flex", alignItems: "center", gap: 8 },
-  headerMark: { fontSize: 22, fontWeight: 800, color: C.gold, letterSpacing: -1 },
-  headerUser: { fontSize: 12, color: "#a8b4cc", marginTop: 3, letterSpacing: 0.3 },
-  btnLogout: { fontSize: 12, fontWeight: 500, color: "#c8d0e0", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 6, padding: "6px 14px", cursor: "pointer", transition: "background 0.2s" },
-  downloadBtn: { fontSize: 12, fontWeight: 600, color: C.navy, background: C.gold, border: "none", borderRadius: 6, padding: "6px 14px", cursor: "pointer", letterSpacing: 0.3 },
-  main: { maxWidth: 960, margin: "0 auto", padding: "28px 24px" },
-  formSection: { background: C.white, borderRadius: 10, padding: 28, marginBottom: 24, border: `1px solid ${C.border}`, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" },
-  listSection: { marginBottom: 24 },
-  sectionTitle: { fontSize: 18, fontWeight: 700, color: C.navy, margin: "0 0 18px", letterSpacing: -0.3 },
-  card: { background: C.white, borderRadius: 10, padding: "18px 20px", marginBottom: 12, border: `1px solid ${C.border}`, boxShadow: "0 1px 4px rgba(0,0,0,0.04)", transition: "box-shadow 0.2s" },
+  headerBrand: { fontSize: 14, fontWeight: 500, color: C.white, display: "flex", alignItems: "center", gap: 8, letterSpacing: 0.5 },
+  headerMark: { fontSize: 20, fontWeight: 800, color: C.white, letterSpacing: -1 },
+  headerUser: { fontSize: 11, color: "#888", marginTop: 3, letterSpacing: 1, textTransform: "uppercase" },
+  btnLogout: { fontSize: 11, fontWeight: 500, color: "#aaa", background: "transparent", border: "1px solid #444", borderRadius: 0, padding: "6px 16px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase", transition: "border-color 0.2s" },
+  downloadBtn: { fontSize: 11, fontWeight: 600, color: C.black, background: C.white, border: "none", borderRadius: 0, padding: "6px 16px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
+  main: { maxWidth: 960, margin: "0 auto", padding: "32px 24px" },
+  formSection: { background: C.white, borderRadius: 0, padding: 32, marginBottom: 28, border: `1px solid ${C.border}` },
+  listSection: { marginBottom: 28 },
+  sectionTitle: { fontSize: 18, fontWeight: 600, color: C.black, margin: "0 0 20px", letterSpacing: -0.3 },
+  card: { background: C.white, borderRadius: 0, padding: "20px 24px", marginBottom: 12, border: `1px solid ${C.border}`, transition: "border-color 0.2s" },
   cardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8, flexWrap: "wrap" },
-  cardTitle: { fontSize: 15, fontWeight: 700, color: C.navy },
-  cardDate: { fontSize: 12, color: C.textLight, whiteSpace: "nowrap", marginTop: 2, fontWeight: 500 },
-  cardDesc: { fontSize: 14, color: C.textMid, margin: 0, lineHeight: 1.6 },
+  cardTitle: { fontSize: 15, fontWeight: 600, color: C.black, letterSpacing: -0.2 },
+  cardDate: { fontSize: 12, color: C.textLight, whiteSpace: "nowrap", marginTop: 2, fontWeight: 400 },
+  cardDesc: { fontSize: 14, color: C.textMid, margin: 0, lineHeight: 1.7 },
   empty: { fontSize: 14, color: C.textLight, fontStyle: "italic" },
   successMsg: { color: C.green, fontSize: 14, fontWeight: 600, marginTop: 12, textAlign: "center" },
-  statsBar: { display: "flex", gap: 14, marginBottom: 28, flexWrap: "wrap" },
-  statBox: { flex: 1, minWidth: 90, background: C.white, borderRadius: 10, padding: "18px 16px", border: `1px solid ${C.border}`, textAlign: "center", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" },
-  statNum: { fontSize: 28, fontWeight: 800, color: C.navy },
-  statLabel: { fontSize: 11, color: C.textLight, marginTop: 4, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 },
+  statsBar: { display: "flex", gap: 16, marginBottom: 28, flexWrap: "wrap" },
+  statBox: { flex: 1, minWidth: 90, background: C.white, borderRadius: 0, padding: "20px 16px", border: `1px solid ${C.border}`, textAlign: "center" },
+  statNum: { fontSize: 32, fontWeight: 300, color: C.black, letterSpacing: -1 },
+  statLabel: { fontSize: 10, color: C.textLight, marginTop: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.5 },
   hospitalGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 },
-  hospitalBtn: { display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "14px 16px", background: C.white, border: `1px solid ${C.border}`, borderRadius: 8, cursor: "pointer", textAlign: "left", boxShadow: "0 1px 3px rgba(0,0,0,0.03)", transition: "box-shadow 0.2s, border-color 0.2s" },
-  hospitalIndex: { fontSize: 11, fontWeight: 700, color: C.textLight, minWidth: 22, background: C.bg, borderRadius: 4, textAlign: "center", padding: "2px 0" },
-  hospitalName: { flex: 1, fontSize: 14, fontWeight: 600, color: C.navy },
-  hospitalBadge: { fontSize: 12, fontWeight: 700, color: C.navy, background: C.brandLight, borderRadius: 12, padding: "2px 10px", minWidth: 22, textAlign: "center" },
-  openBadge: { fontSize: 11, fontWeight: 700, color: "#9c4221", background: "#feebc8", borderRadius: 12, padding: "2px 8px", minWidth: 18, textAlign: "center" },
-  backBtn: { fontSize: 14, fontWeight: 600, color: C.navy, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", display: "block", letterSpacing: 0.2 },
-  resolveBtn: { fontSize: 13, fontWeight: 700, color: "#fff", background: C.green, border: "none", borderRadius: 6, padding: "7px 18px", cursor: "pointer", letterSpacing: 0.3 },
-  deleteBtn: { fontSize: 13, fontWeight: 600, color: "#fff", background: C.red, border: "none", borderRadius: 6, padding: "7px 18px", cursor: "pointer" },
-  groupSection: { marginBottom: 32 },
-  groupHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8, paddingBottom: 10, borderBottom: `2px solid ${C.gold}44` },
-  groupTitle: { fontSize: 17, fontWeight: 700, color: C.navy, margin: 0, letterSpacing: -0.2 },
-  groupBadge: { fontSize: 12, fontWeight: 600, color: C.textMid, background: C.bg, borderRadius: 12, padding: "4px 14px", border: `1px solid ${C.border}` },
-  tabBar: { display: "flex", gap: 0, maxWidth: 960, margin: "0 auto", padding: "0 24px", background: C.white, borderBottom: `2px solid ${C.border}`, flexWrap: "wrap" },
-  tabActive: { padding: "14px 22px", fontSize: 14, fontWeight: 700, color: C.navy, background: "none", border: "none", borderBottom: `3px solid ${C.gold}`, cursor: "pointer", marginBottom: -2, letterSpacing: 0.2 },
-  tabInactive: { padding: "14px 22px", fontSize: 14, fontWeight: 500, color: C.textLight, background: "none", border: "none", borderBottom: "3px solid transparent", cursor: "pointer", marginBottom: -2, transition: "color 0.2s" },
-  pwCard: { background: C.white, borderRadius: 8, padding: "14px 18px", marginBottom: 8, border: `1px solid ${C.border}`, boxShadow: "0 1px 3px rgba(0,0,0,0.03)" },
+  hospitalBtn: { display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "14px 16px", background: C.white, border: `1px solid ${C.border}`, borderRadius: 0, cursor: "pointer", textAlign: "left", transition: "border-color 0.2s" },
+  hospitalIndex: { fontSize: 11, fontWeight: 600, color: C.textLight, minWidth: 22, textAlign: "center" },
+  hospitalName: { flex: 1, fontSize: 14, fontWeight: 500, color: C.black },
+  hospitalBadge: { fontSize: 12, fontWeight: 600, color: C.black, background: C.bg, borderRadius: 0, padding: "2px 10px", minWidth: 22, textAlign: "center" },
+  openBadge: { fontSize: 11, fontWeight: 700, color: "#9c4221", background: "#feebc8", borderRadius: 0, padding: "2px 8px", minWidth: 18, textAlign: "center" },
+  backBtn: { fontSize: 13, fontWeight: 500, color: C.black, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", display: "block", letterSpacing: 0.5, textTransform: "uppercase" },
+  resolveBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.green, border: "none", borderRadius: 0, padding: "8px 20px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
+  deleteBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.red, border: "none", borderRadius: 0, padding: "8px 20px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
+  groupSection: { marginBottom: 36 },
+  groupHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8, paddingBottom: 12, borderBottom: `2px solid ${C.black}` },
+  groupTitle: { fontSize: 16, fontWeight: 600, color: C.black, margin: 0, letterSpacing: 0.5, textTransform: "uppercase" },
+  groupBadge: { fontSize: 12, fontWeight: 500, color: C.textMid, background: C.bg, borderRadius: 0, padding: "4px 14px", border: `1px solid ${C.border}` },
+  tabBar: { display: "flex", gap: 0, maxWidth: 960, margin: "0 auto", padding: "0 24px", background: C.white, borderBottom: `1px solid ${C.border}`, flexWrap: "wrap" },
+  tabActive: { padding: "16px 24px", fontSize: 12, fontWeight: 600, color: C.black, background: "none", border: "none", borderBottom: `2px solid ${C.black}`, cursor: "pointer", marginBottom: -1, letterSpacing: 1, textTransform: "uppercase" },
+  tabInactive: { padding: "16px 24px", fontSize: 12, fontWeight: 400, color: C.textLight, background: "none", border: "none", borderBottom: "2px solid transparent", cursor: "pointer", marginBottom: -1, letterSpacing: 1, textTransform: "uppercase", transition: "color 0.2s" },
+  pwCard: { background: C.white, borderRadius: 0, padding: "14px 18px", marginBottom: 8, border: `1px solid ${C.border}` },
   pwRow: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 },
-  pwName: { fontSize: 15, fontWeight: 700, color: C.navy, marginRight: 8 },
-  pwRole: { fontSize: 11, fontWeight: 600, color: C.white, background: C.navy, borderRadius: 4, padding: "2px 10px", letterSpacing: 0.5, textTransform: "uppercase" },
+  pwName: { fontSize: 15, fontWeight: 600, color: C.black, marginRight: 8 },
+  pwRole: { fontSize: 10, fontWeight: 600, color: C.white, background: C.black, borderRadius: 0, padding: "3px 10px", letterSpacing: 1, textTransform: "uppercase" },
   pwRight: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" },
   pwCurrent: { fontSize: 13, color: C.textLight },
-  pwChangeBtn: { fontSize: 13, fontWeight: 600, color: C.navy, background: C.brandLight, border: `1px solid ${C.border}`, borderRadius: 6, padding: "6px 14px", cursor: "pointer" },
+  pwChangeBtn: { fontSize: 12, fontWeight: 500, color: C.black, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 0, padding: "6px 16px", cursor: "pointer", letterSpacing: 0.5 },
   pwEditRow: { display: "flex", gap: 6, alignItems: "center" },
-  pwInput: { padding: "7px 12px", fontSize: 13, border: `1.5px solid ${C.border}`, borderRadius: 6, width: 140, outline: "none", fontFamily: "'Inter', system-ui, sans-serif" },
-  pwSaveBtn: { fontSize: 13, fontWeight: 700, color: C.white, background: C.navy, border: "none", borderRadius: 6, padding: "7px 14px", cursor: "pointer" },
+  pwInput: { padding: "8px 12px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 0, width: 140, outline: "none", fontFamily: "'Inter', system-ui, sans-serif" },
+  pwSaveBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, padding: "8px 16px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
   pwCancelBtn: { fontSize: 13, color: C.textLight, background: "none", border: "none", cursor: "pointer", padding: "6px" },
-  commentToggle: { fontSize: 13, fontWeight: 600, color: C.navy, background: "none", border: "none", cursor: "pointer", padding: 0, letterSpacing: 0.2 },
-  commentBox: { marginTop: 10, padding: "14px 16px", background: "#f8f9fc", borderRadius: 8, border: `1px solid ${C.border}` },
+  commentToggle: { fontSize: 12, fontWeight: 600, color: C.black, background: "none", border: "none", cursor: "pointer", padding: 0, letterSpacing: 0.5, textTransform: "uppercase" },
+  commentBox: { marginTop: 10, padding: "16px 18px", background: C.bg, borderRadius: 0, border: `1px solid ${C.border}` },
   commentItem: { padding: "10px 0", borderBottom: `1px solid ${C.border}` },
   commentHeader: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   commentInputRow: { display: "flex", gap: 8, marginTop: 12 },
-  commentInput: { flex: 1, padding: "10px 14px", fontSize: 13, border: `1.5px solid ${C.border}`, borderRadius: 6, outline: "none", fontFamily: "'Inter', system-ui, sans-serif" },
-  commentSendBtn: { fontSize: 13, fontWeight: 700, color: C.white, background: C.navy, border: "none", borderRadius: 6, padding: "10px 20px", cursor: "pointer" },
-  overviewTable: { background: C.white, borderRadius: 10, border: `1px solid ${C.border}`, overflow: "auto", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" },
-  overviewHeaderRow: { display: "flex", padding: "14px 18px", background: C.navy, fontWeight: 700, fontSize: 12, color: "#c8d0e0", borderBottom: `1px solid ${C.border}`, gap: 8, minWidth: 800, letterSpacing: 0.5, textTransform: "uppercase" },
+  commentInput: { flex: 1, padding: "10px 14px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 0, outline: "none", fontFamily: "'Inter', system-ui, sans-serif" },
+  commentSendBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, padding: "10px 22px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
+  overviewTable: { background: C.white, borderRadius: 0, border: `1px solid ${C.border}`, overflow: "auto" },
+  overviewHeaderRow: { display: "flex", padding: "14px 18px", background: C.black, fontWeight: 600, fontSize: 11, color: "#ccc", borderBottom: `1px solid ${C.border}`, gap: 8, minWidth: 800, letterSpacing: 1.5, textTransform: "uppercase" },
   overviewRow: { display: "flex", padding: "14px 18px", borderBottom: `1px solid ${C.border}`, gap: 8, alignItems: "flex-start", minWidth: 800, transition: "background 0.15s" },
-  ovCellSr: { width: 30, flexShrink: 0, fontSize: 12, color: C.textLight, fontWeight: 600 },
+  ovCellSr: { width: 30, flexShrink: 0, fontSize: 12, color: C.textLight, fontWeight: 500 },
   ovCellSite: { width: 120, flexShrink: 0, fontSize: 13 },
   ovCellProvider: { width: 100, flexShrink: 0 },
   ovCellStatus: { width: 120, flexShrink: 0 },
