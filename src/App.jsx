@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 
 /* ─── Data ─── */
@@ -195,7 +195,18 @@ function SiteStatusBadge({ status }) {
 }
 
 /* ─── App ─── */
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  render() {
+    if (this.state.error) return <div style={{ padding: 40, fontFamily: "monospace" }}><h2 style={{ color: "red" }}>Something went wrong</h2><pre style={{ whiteSpace: "pre-wrap", fontSize: 13 }}>{this.state.error.toString()}{"\n"}{this.state.error.stack}</pre></div>;
+    return this.props.children;
+  }
+}
 export default function App() {
+  return <ErrorBoundary><AppInner /></ErrorBoundary>;
+}
+function AppInner() {
   const [user, setUser] = useState(null);
   const [users, setUsers] = useState([]);
   const [complaints, setComplaints] = useState([]);
