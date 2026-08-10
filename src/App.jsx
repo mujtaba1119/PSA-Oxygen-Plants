@@ -17,6 +17,8 @@ const GROUPS = {
 };
 const ALL_HOSPITALS = Object.values(GROUPS).flat();
 const getProvider = h => Object.entries(GROUPS).find(([, list]) => list.includes(h))?.[0] || "Unknown";
+const DISPLAY_NAMES = { "Timergara": "Lower Dir - Timergara", "Malakand": "Batkhela - Malakand", "Neelum": "Neelum - AJK", "Jhelum": "Jhelum - AJK", "Haveli": "Haveli - AJK", "Ghizer": "Gahkuch - Ghizer", "Khaplu": "Khaplu - Ghanche", "Quetta SZ": "Quetta Sheikh Zayed", "Pangjur": "Panjgur", "Bhimber": "Bhimber" };
+const displayName = h => DISPLAY_NAMES[h] || h;
 
 const COMPLAINT_TYPES = [
   "Compressor Issue","Dryer Issue","Booster Filling System Issue","Purity Issue",
@@ -348,7 +350,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
           return (
             <div key={h} style={{ ...styles.overviewRow, background: rowBg }}>
               <div style={{ ...styles.ovCell, ...styles.ovCellSr, color: C.textLight, fontWeight: 500 }}>{i + 1}</div>
-              <div style={{ ...styles.ovCell, ...styles.ovCellSite }}><strong style={{ color: C.black }}>{h}</strong></div>
+              <div style={{ ...styles.ovCell, ...styles.ovCellSite }}><strong style={{ color: C.black }}>{displayName(h)}</strong></div>
               <div style={{ ...styles.ovCell, ...styles.ovCellProvider, color: C.textMid }}>{getProvider(h)}</div>
               <div style={{ ...styles.ovCell, ...styles.ovCellStatus }}>
                 {isAdmin ? (
@@ -739,7 +741,7 @@ const styles = {
   ovCell: { padding: "14px 16px", borderRight: `1px solid ${C.borderLight}`, fontSize: 13, display: "flex", flexDirection: "column", justifyContent: "center" },
   ovCellHeader: { padding: "14px 16px", borderRight: "1px solid #333", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" },
   ovCellSr: { width: 40, flexShrink: 0, justifyContent: "center", alignItems: "center" },
-  ovCellSite: { width: 120, flexShrink: 0 },
+  ovCellSite: { width: 160, flexShrink: 0 },
   ovCellProvider: { width: 100, flexShrink: 0 },
   ovCellStatus: { width: 120, flexShrink: 0, alignItems: "center" },
   ovCellOpen: { flex: 1, minWidth: 170 },
