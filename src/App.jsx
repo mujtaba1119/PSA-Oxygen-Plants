@@ -110,26 +110,9 @@ async function updateSiteStatus(hospital, status) {
   const { error } = await supabase.from("site_notes").update({ site_status: status, updated_at: new Date().toISOString() }).eq("hospital", hospital);
   return !error;
 }
-async function sendShutdownEmail(hospital, notifEmails) {
-  try {
-    const { data: keyData } = await supabase.from("settings").select("value").eq("key", "resend_api_key").single();
-    if (!keyData?.value) return false;
-    const provider = getProvider(hospital);
-    const recipientGroups = new Set([provider, "Novair", "Amex"]);
-    const emails = [...new Set(notifEmails.filter(e => recipientGroups.has(e.group_name)).map(e => e.email))];
-    if (!emails.length) return false;
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + keyData.value },
-      body: JSON.stringify({
-        from: "PSA Oxygen Plant <alerts@psacomplaints.com>",
-        to: emails,
-        subject: "🚨 PLANT SHUTDOWN: " + hospital,
-        html: "<div style='font-family:Arial;max-width:600px;margin:0 auto;padding:20px;'><div style='background:#e53e3e;color:white;padding:16px 24px;border-radius:8px 8px 0 0;'><h2 style='margin:0;font-size:18px;'>🚨 Plant Shut Down — " + hospital + "</h2></div><div style='border:1px solid #e2e8f0;border-top:none;padding:24px;border-radius:0 0 8px 8px;'><p style='margin:0 0 12px;font-size:16px;'><strong>" + hospital + "</strong> has been marked as <span style='color:#e53e3e;font-weight:bold;'>SHUT DOWN</span>.</p><p style='margin:0 0 8px;'><strong>Service Provider:</strong> " + provider + "</p><p style='margin:0 0 8px;'>The plant is currently not producing oxygen.</p><hr style='border:none;border-top:1px solid #e2e8f0;margin:20px 0;' /><p style='margin:0;font-size:13px;color:#718096;'>Visit <a href=\"https://psacomplaints.com\">psacomplaints.com</a> for details.</p></div></div>",
-      }),
-    });
-    return true;
-  } catch { return false; }
+async function sendShutdownEmail(hospital) {
+  const { error } = await supabase.rpc("send_shutdown_email", { hospital_name: hospital });
+  return !error;
 }
 
 /* ─── CSV Download ─── */
@@ -283,7 +266,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
   const handleStatusChange = async (h, s) => { await updateSiteStatus(h, s); setStatusEditing(null); await onRefresh(); };
   const handleSendShutdownEmail = async (h) => {
     setSendingShutdown(h);
-    await sendShutdownEmail(h, notifEmails);
+    await sendShutdownEmail(h);
     setSendingShutdown(null);
     alert("Shutdown notification sent for " + h);
   };
