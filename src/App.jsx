@@ -1,16 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 
-
-
-/* ─── Logo URLs ─── */
-const LOGO_FLAG = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/240_F_1475369941_dBG7IPXXeJLHejjX0ZpyqwykTxo8Wc3M.jpg";
-const LOGO_GLOBALFUND = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/Global%20Fund%20Logo.png";
-const LOGO_GOVT = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/GOvt%20of%20Pakistan%20logo.png";
-const LOGO_UNDP = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/UNDP%20logo.png";
-const LOGO_AMEX = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/AMex%20logo.png";
-const LOGO_NOXERIOR = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/Noxerior%20Logo.png";
-
 /* ─── Data ─── */
 const GROUPS = {
   "Novair": ["Rawalpindi","Kohat","Swat","Timergara","Malakand","Bannu","Neelum","Jhelum","Haveli","Nagar","Ghizer","Astore","Khaplu","Islamabad"],
@@ -93,13 +83,6 @@ async function updateCommentContent(id, content) {
   const { error } = await supabase.from("comments").update({ content }).eq("id", id);
   return !error;
 }
-async function fetchAllCommentCounts() {
-  const { data, error } = await supabase.from("comments").select("complaint_id");
-  if (error || !data) return {};
-  const counts = {};
-  data.forEach(c => { counts[c.complaint_id] = (counts[c.complaint_id] || 0) + 1; });
-  return counts;
-}
 async function fetchEmails() {
   const { data, error } = await supabase.from("notification_emails").select("*").order("created_at", { ascending: true });
   if (error) { console.error(error); return []; }
@@ -159,25 +142,22 @@ function ComplaintTypeSelect({ value, onChange, style }) {
 function AppHeader({ user, children }) {
   const displayName = user.role === "hospital" ? user.name + " Hospital" : user.name;
   return (
-    <>
-      <div style={styles.logoStrip}>
-        {LOGO_GLOBALFUND && <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 44, objectFit: "contain" }} />}
-        {LOGO_GOVT && <img src={LOGO_GOVT} alt="Govt of Pakistan" style={{ height: 50, objectFit: "contain" }} />}
-        {LOGO_UNDP && <img src={LOGO_UNDP} alt="UNDP" style={{ height: 46, objectFit: "contain" }} />}
-        {LOGO_AMEX && <img src={LOGO_AMEX} alt="Amex" style={{ height: 36, objectFit: "contain" }} />}
-        {LOGO_NOXERIOR && <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 32, objectFit: "contain" }} />}
-      </div>
-      <header style={styles.header}>
-        <div style={styles.headerLeft}>
-          <img src={LOGO_GOVT} alt="" style={{ height: 36, objectFit: "contain", filter: "brightness(0) invert(1)" }} />
-          <div>
-            <div style={styles.headerBrand}>PSA Oxygen Plants - Pakistan</div>
-            <div style={styles.headerUser}>User: {displayName}</div>
-          </div>
+    <div style={styles.topBar}>
+      <div style={styles.topLeft}>
+        <img src={LOGO_GOVT} alt="" style={{ height: 48, objectFit: "contain" }} />
+        <div>
+          <div style={styles.topTitle}>PSA Oxygen Plants</div>
+          <div style={styles.topUser}>User: {displayName}</div>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{children}</div>
-      </header>
-    </>
+      </div>
+      <div style={styles.topCenter}>
+        {LOGO_GLOBALFUND && <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 40, objectFit: "contain" }} />}
+        {LOGO_UNDP && <img src={LOGO_UNDP} alt="UNDP" style={{ height: 42, objectFit: "contain" }} />}
+        {LOGO_AMEX && <img src={LOGO_AMEX} alt="Amex" style={{ height: 30, objectFit: "contain" }} />}
+        {LOGO_NOXERIOR && <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 26, objectFit: "contain" }} />}
+      </div>
+      <div style={styles.topRight}>{children}</div>
+    </div>
   );
 }
 
@@ -221,12 +201,11 @@ export default function App() {
   const [complaints, setComplaints] = useState([]);
   const [notifEmails, setNotifEmails] = useState([]);
   const [siteNotes, setSiteNotes] = useState([]);
-  const [commentCounts, setCommentCounts] = useState({});
   const [ready, setReady] = useState(false);
 
   const reload = useCallback(async () => {
-    const [c, u, e, s, cc] = await Promise.all([fetchComplaints(), fetchUsers(), fetchEmails(), fetchSiteNotes(), fetchAllCommentCounts()]);
-    setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s); setCommentCounts(cc);
+    const [c, u, e, s] = await Promise.all([fetchComplaints(), fetchUsers(), fetchEmails(), fetchSiteNotes()]);
+    setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s);
   }, []);
 
   useEffect(() => { reload().then(() => setReady(true)); }, [reload]);
@@ -238,9 +217,9 @@ export default function App() {
 
   if (!ready) return <div style={styles.loadWrap}><div style={styles.loadLogo}>O₂</div><p style={{ color: "#6b7280", marginTop: 12 }}>Loading portal…</p></div>;
   if (!user) return <LoginScreen users={users} onLogin={setUser} />;
-  if (user.role === "hospital") return <HospitalDashboard user={user} complaints={complaints} commentCounts={commentCounts} onRefresh={reload} onLogout={() => setUser(null)} />;
-  if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} commentCounts={commentCounts} notifEmails={notifEmails} siteNotes={siteNotes} onRefresh={reload} onLogout={() => setUser(null)} />;
-  return <CompanyDashboard user={user} complaints={complaints} commentCounts={commentCounts} siteNotes={siteNotes} onRefresh={reload} onLogout={() => setUser(null)} />;
+  if (user.role === "hospital") return <HospitalDashboard user={user} complaints={complaints} onRefresh={reload} onLogout={() => setUser(null)} />;
+  if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} siteNotes={siteNotes} onRefresh={reload} onLogout={() => setUser(null)} />;
+  return <CompanyDashboard user={user} complaints={complaints} siteNotes={siteNotes} onRefresh={reload} onLogout={() => setUser(null)} />;
 }
 
 function LoginScreen({ users, onLogin }) {
@@ -322,41 +301,41 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
         <div style={{ background: "#fff5f5", border: "1px solid #fed7d7", borderRadius: 12, padding: "16px 20px", marginBottom: 12 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#9c4221", marginBottom: 8 }}>⚠ Attention Needed ({attentionSites.length})</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {attentionSites.map(h => <span key={h} style={{ fontSize: 13, fontWeight: 500, color: "#9c4221", background: "#feebc8", padding: "4px 12px", borderRadius: 8 }}>{h}</span>)}
+            {attentionSites.map(h => <span key={h} style={{ fontSize: 13, fontWeight: 500, color: C.black, background: "#e0e0e0", padding: "4px 12px", borderRadius: 0 }}>{h}</span>)}
           </div>
         </div>
       )}
 
       <div style={styles.statsBar}>
         <div style={styles.statBox}><div style={styles.statNum}>{hospitals.length}</div><div style={styles.statLabel}>Total Sites</div></div>
-        <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#276749" }}>{funcCount}</div><div style={styles.statLabel}>Functional</div></div>
-        <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#e53e3e" }}>{nonFuncCount}</div><div style={styles.statLabel}>Non Functional</div></div>
-        <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{allOpen}</div><div style={styles.statLabel}>Open Complaints</div></div>
+        <div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{funcCount}</div><div style={styles.statLabel}>Functional</div></div>
+        <div style={styles.statBox}><div style={{ ...styles.statNum, color: C.textLight }}>{nonFuncCount}</div><div style={styles.statLabel}>Non Functional</div></div>
+        <div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{allOpen}</div><div style={styles.statLabel}>Open Complaints</div></div>
       </div>
 
       <div style={styles.overviewTable}>
         <div style={styles.overviewHeaderRow}>
-          <div style={styles.ovCellSr}>#</div>
-          <div style={styles.ovCellSite}>Site</div>
-          <div style={styles.ovCellProvider}>Service Provider</div>
-          <div style={styles.ovCellStatus}>Status</div>
-          <div style={styles.ovCellOpen}>Open Complaints</div>
-          <div style={styles.ovCellNote}>Equipment / Notes</div>
+          <div style={{ ...styles.ovCellHeader, ...styles.ovCellSr }}>#</div>
+          <div style={{ ...styles.ovCellHeader, ...styles.ovCellSite }}>Site</div>
+          <div style={{ ...styles.ovCellHeader, ...styles.ovCellProvider }}>Service Provider</div>
+          <div style={{ ...styles.ovCellHeader, ...styles.ovCellStatus }}>Status</div>
+          <div style={{ ...styles.ovCellHeader, ...styles.ovCellOpen }}>Open Complaints</div>
+          <div style={{ ...styles.ovCellHeader, ...styles.ovCellNote, borderRight: "none" }}>Equipment / Notes</div>
         </div>
         {sortedHospitals.map((h, i) => {
           const open = openComplaints(h);
           const siteStatus = getSiteDisplayStatus(h, complaints, siteNotes);
           const note = getNote(h);
-          const rowBg = siteStatus === "Issues" ? "#fff5f5" : siteStatus === "Shut Down" ? "#fed7d7" : siteStatus === "Non Functional" ? "#f7fafc" : "#f0fff4";
+          const rowBg = siteStatus === "Shut Down" ? "#fce8e8" : siteStatus === "Issues" ? "#fef9f0" : i % 2 === 0 ? C.white : "#fafafa";
           return (
             <div key={h} style={{ ...styles.overviewRow, background: rowBg }}>
-              <div style={styles.ovCellSr}>{i + 1}</div>
-              <div style={styles.ovCellSite}><strong>{h}</strong></div>
-              <div style={styles.ovCellProvider}><span style={{ fontSize: 12, color: "#0e7c6b", background: "#e6f5f2", padding: "2px 8px", borderRadius: 6 }}>{getProvider(h)}</span></div>
-              <div style={styles.ovCellStatus}>
+              <div style={{ ...styles.ovCell, ...styles.ovCellSr, color: C.textLight, fontWeight: 500 }}>{i + 1}</div>
+              <div style={{ ...styles.ovCell, ...styles.ovCellSite }}><strong style={{ color: C.black }}>{h}</strong></div>
+              <div style={{ ...styles.ovCell, ...styles.ovCellProvider, color: C.textMid }}>{getProvider(h)}</div>
+              <div style={{ ...styles.ovCell, ...styles.ovCellStatus }}>
                 {isAdmin ? (
                   statusEditing === h ? (
-                    <select style={{ fontSize: 11, padding: "2px 4px", borderRadius: 4, border: "1px solid #e2e8f0" }} value={getSiteBaseStatus(h, siteNotes)} onChange={e => handleStatusChange(h, e.target.value)}>
+                    <select style={{ fontSize: 12, padding: "4px 6px", border: `1px solid ${C.border}`, borderRadius: 0 }} value={getSiteBaseStatus(h, siteNotes)} onChange={e => handleStatusChange(h, e.target.value)}>
                       <option value="Fully Functional">Fully Functional</option>
                       <option value="Non Functional">Non Functional</option>
                       <option value="Shut Down">Shut Down</option>
@@ -368,27 +347,56 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                   <SiteStatusBadge status={siteStatus} />
                 )}
               </div>
-              <div style={styles.ovCellOpen}>
-                {open.length > 0 ? open.map(c => (
-                  <div key={c.id} style={{ fontSize: 12, color: "#9c4221", marginBottom: 2 }}>
-                    • {c.title} <span style={{ color: "#a0aec0", fontSize: 11 }}>({new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })})</span>
+              <div style={{ ...styles.ovCell, ...styles.ovCellOpen, padding: 0 }}>
+                {open.length > 0 ? open.map((c, ci) => (
+                  <div key={c.id} style={{ padding: "8px 14px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none" }}>
+                    <div style={{ fontSize: 12, color: C.red, fontWeight: 500 }}>{c.title}</div>
+                    <div style={{ fontSize: 11, color: C.textLight }}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</div>
                   </div>
-                )) : <span style={{ fontSize: 12, color: "#a0aec0" }}>—</span>}
+                )) : <div style={{ padding: "12px 14px", fontSize: 12, color: C.textLight }}>—</div>}
               </div>
-              <div style={styles.ovCellNote}>
-                {editingHospital === h ? (
-                  <div style={{ display: "flex", gap: 4 }}>
-                    <input style={{ ...styles.pwInput, width: "100%", fontSize: 12 }} value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote(h)} />
-                    <button style={{ ...styles.pwSaveBtn, fontSize: 11, padding: "4px 8px" }} onClick={() => saveNote(h)}>{saving ? "…" : "✓"}</button>
-                    <button style={{ ...styles.pwCancelBtn, fontSize: 11 }} onClick={() => setEditingHospital(null)}>✕</button>
+              <div style={{ ...styles.ovCell, ...styles.ovCellNote, borderRight: "none", padding: 0 }}>
+                {open.length > 0 ? open.map((c, ci) => (
+                  <div key={c.id} style={{ padding: "8px 14px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none", minHeight: 20 }}>
+                    {isAdmin ? (
+                      editingHospital === h + c.id ? (
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <input style={{ ...styles.pwInput, width: "100%", fontSize: 11 }} value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote(h)} />
+                          <button style={{ ...styles.pwSaveBtn, fontSize: 10, padding: "3px 8px" }} onClick={() => saveNote(h)}>✓</button>
+                          <button style={{ ...styles.pwCancelBtn, fontSize: 10 }} onClick={() => setEditingHospital(null)}>✕</button>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <span style={{ fontSize: 12, color: note ? C.black : C.textLight, flex: 1 }}>{note || "—"}</span>
+                          <button style={{ fontSize: 10, color: C.textMid, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={() => { setEditingHospital(h + c.id); setNoteText(note); }}>edit</button>
+                        </div>
+                      )
+                    ) : (
+                      <span style={{ fontSize: 12, color: note ? C.black : C.textLight }}>{note || "—"}</span>
+                    )}
                   </div>
-                ) : (
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 12, color: note ? "#1a2332" : "#a0aec0", flex: 1 }}>{note || "—"}</span>
-                    {isAdmin && <button style={{ fontSize: 11, color: "#0e7c6b", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={() => { setEditingHospital(h); setNoteText(note); }}>edit</button>}
+                )) : (
+                  <div style={{ padding: "8px 14px" }}>
+                    {isAdmin ? (
+                      editingHospital === h ? (
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <input style={{ ...styles.pwInput, width: "100%", fontSize: 11 }} value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote(h)} />
+                          <button style={{ ...styles.pwSaveBtn, fontSize: 10, padding: "3px 8px" }} onClick={() => saveNote(h)}>✓</button>
+                          <button style={{ ...styles.pwCancelBtn, fontSize: 10 }} onClick={() => setEditingHospital(null)}>✕</button>
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <span style={{ fontSize: 12, color: note ? C.black : C.textLight, flex: 1 }}>{note || "—"}</span>
+                          <button style={{ fontSize: 10, color: C.textMid, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={() => { setEditingHospital(h); setNoteText(note); }}>edit</button>
+                        </div>
+                      )
+                    ) : (
+                      <span style={{ fontSize: 12, color: note ? C.black : C.textLight }}>{note || "—"}</span>
+                    )}
                   </div>
                 )}
               </div>
+            </div>
             </div>
           );
         })}
@@ -398,7 +406,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
 }
 
 /* ─── Comment Section ─── */
-function CommentSection({ complaintId, currentUser, canComment, isAdmin, initialCount }) {
+function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
   const [comments, setComments] = useState([]); const [text, setText] = useState(""); const [posting, setPosting] = useState(false);
   const [loaded, setLoaded] = useState(false); const [expanded, setExpanded] = useState(false);
   const [asHospital, setAsHospital] = useState("");
@@ -417,7 +425,7 @@ function CommentSection({ complaintId, currentUser, canComment, isAdmin, initial
   return (
     <div style={{ marginTop: 10 }}>
       <button style={styles.commentToggle} onClick={() => setExpanded(!expanded)}>
-        {expanded ? "▾ Hide Comments" : "▸ Comments" + ((loaded ? comments.length : initialCount) ? ` (${loaded ? comments.length : initialCount})` : "")}
+        {expanded ? "▾ Hide Comments" : "▸ Comments" + (loaded && comments.length ? ` (${comments.length})` : "")}
       </button>
       {expanded && (
         <div style={styles.commentBox}>
@@ -464,12 +472,12 @@ function GroupedHospitalList({ groups, complaints, onSelect }) {
   return (<>{Object.entries(groups).map(([p, hs]) => (
     <div key={p} style={styles.groupSection}>
       <div style={styles.groupHeader}><h3 style={styles.groupTitle}>{p}</h3><div style={{ display: "flex", gap: 8 }}><span style={styles.groupBadge}>{groupCountFor(hs)} total</span><span style={{ ...styles.groupBadge, color: "#9c4221", background: "#feebc8" }}>{groupOpenFor(hs)} open</span></div></div>
-      <div style={styles.hospitalGrid}>{hs.map((h, i) => { const open = openCountFor(h); return (<button key={h} style={styles.hospitalBtn} onClick={() => onSelect(h)}><span style={styles.hospitalIndex}>{i + 1}</span><span style={styles.hospitalName}>{h}</span><span style={styles.hospitalBadge}>{countFor(h)}</span>{open > 0 && <span style={styles.openBadge}>{open}</span>}</button>); })}</div>
+      <div style={styles.hospitalGrid}>{hs.map((h, i) => { const open = openCountFor(h); return (<button key={h} style={styles.hospitalBtn} onClick={() => onSelect(h)}><span style={styles.hospitalName}>{h}</span><span style={styles.hospitalBadge}>{countFor(h)}</span>{open > 0 && <span style={styles.openBadge}>{open}</span>}</button>); })}</div>
     </div>
   ))}</>);
 }
 
-function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, onResolve, onUnresolve, onDelete, onRefresh, commentCounts }) {
+function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, onResolve, onUnresolve, onDelete, onRefresh }) {
   const [resolving, setResolving] = useState(false); const [resolveDate, setResolveDate] = useState("");
   const [editing, setEditing] = useState(false); const [editTitle, setEditTitle] = useState(complaint.title);
   const [editDesc, setEditDesc] = useState(complaint.description); const [editSaving, setEditSaving] = useState(false);
@@ -504,23 +512,23 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
           </div>
         </>
       )}
-      <CommentSection complaintId={c.id} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} initialCount={commentCounts?.[c.id] || 0} />
+      <CommentSection complaintId={c.id} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} />
     </div>
   );
 }
 
-function ComplaintListView({ hospital, complaints, currentUser, canResolve, canComment, isAdmin, onBack, onResolve, onUnresolve, onDelete, onRefresh, commentCounts }) {
+function ComplaintListView({ hospital, complaints, currentUser, canResolve, canComment, isAdmin, onBack, onResolve, onUnresolve, onDelete, onRefresh }) {
   const hc = complaints.filter(c => c.hospital === hospital);
   return (<>
-    <button style={styles.backBtn} onClick={onBack}>← BACK</button>
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>{hospital}</h2><span style={{ fontSize: 13, color: "#999" }}>({hc.length})</span><span style={{ fontSize: 12, color: "#555", background: "#f0f0f0", padding: "2px 8px", borderRadius: 0 }}>{getProvider(hospital)}</span></div>
+    <button style={styles.backBtn} onClick={onBack}>← Back</button>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>{hospital}</h2><span style={{ fontSize: 13, color: "#718096" }}>({hc.length})</span><span style={{ fontSize: 12, color: "#0e7c6b", background: "#e6f5f2", padding: "2px 8px", borderRadius: 8 }}>{getProvider(hospital)}</span></div>
     {hc.length === 0 && <p style={styles.empty}>No complaints from this hospital.</p>}
-    {hc.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={currentUser} canResolve={canResolve} canComment={canComment} isAdmin={isAdmin} onResolve={onResolve} onUnresolve={onUnresolve} onDelete={onDelete} onRefresh={onRefresh} commentCounts={commentCounts} />))}
+    {hc.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={currentUser} canResolve={canResolve} canComment={canComment} isAdmin={isAdmin} onResolve={onResolve} onUnresolve={onUnresolve} onDelete={onDelete} onRefresh={onRefresh} />))}
   </>);
 }
 
 /* ─── Hospital Dashboard ─── */
-function HospitalDashboard({ user, complaints, commentCounts, onRefresh, onLogout }) {
+function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const [title, setTitle] = useState(""); const [desc, setDesc] = useState("");
   const [success, setSuccess] = useState(false); const [submitting, setSubmitting] = useState(false);
   const mine = complaints.filter(c => c.hospital === user.name);
@@ -529,7 +537,7 @@ function HospitalDashboard({ user, complaints, commentCounts, onRefresh, onLogou
   const handleResolve = async (id) => { await resolveComplaint(id); await onRefresh(); };
   return (
     <div style={styles.shell}>
-      <AppHeader user={user}><button style={styles.btnLogout} onClick={onLogout}>Sign Out</button></AppHeader>
+      <AppHeader user={user}><button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button></AppHeader>
       <main style={styles.main}>
         <section style={styles.formSection}>
           <h2 style={styles.sectionTitle}>Register a Complaint</h2>
@@ -541,7 +549,7 @@ function HospitalDashboard({ user, complaints, commentCounts, onRefresh, onLogou
         <section style={styles.listSection}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>Your Complaints ({mine.length})</h2>{openCount > 0 && <span style={{ fontSize: 13, fontWeight: 600, color: "#9c4221", background: "#feebc8", padding: "3px 10px", borderRadius: 12 }}>{openCount} open</span>}</div>
           {mine.length === 0 && <p style={styles.empty}>No complaints registered yet.</p>}
-          {mine.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={user} canResolve={true} canComment={true} isAdmin={false} onResolve={handleResolve} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} commentCounts={commentCounts} />))}
+          {mine.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={user} canResolve={true} canComment={true} isAdmin={false} onResolve={handleResolve} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />))}
         </section>
       </main>
     </div>
@@ -549,7 +557,7 @@ function HospitalDashboard({ user, complaints, commentCounts, onRefresh, onLogou
 }
 
 /* ─── Admin Dashboard ─── */
-function AdminDashboard({ user, users, complaints, commentCounts, notifEmails, siteNotes, onRefresh, onLogout }) {
+function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRefresh, onLogout }) {
   const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const [editingUser, setEditingUser] = useState(null); const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
@@ -576,17 +584,16 @@ function AdminDashboard({ user, users, complaints, commentCounts, notifEmails, s
   return (
     <div style={styles.shell}>
       <AppHeader user={user}>
-        <button style={styles.downloadBtn} onClick={() => downloadCSV(complaints, "all-complaints")}>⬇ CSV</button>
-        <button style={styles.btnLogout} onClick={handleRefresh}>{refreshing ? "…" : "Refresh"}</button>
-        <button style={styles.btnLogout} onClick={onLogout}>Sign Out</button>
+        <button style={styles.btnBlack} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
+        <button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button>
       </AppHeader>
       <div style={styles.tabBar}>
         {["overview","complaints","submit","passwords","emails"].map(t => (<button key={t} style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>{t === "overview" ? "Overview" : t === "complaints" ? "Complaints" : t === "submit" ? "Submit" : t === "passwords" ? "Passwords" : "Emails"}</button>))}
       </div>
       <main style={styles.main}>
         {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} />}
-        {tab === "complaints" && !selected && (<><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: "#276749" }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} /></>)}
-        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} onBack={() => setSelected(null)} onResolve={handleResolve} onUnresolve={handleUnresolve} onDelete={handleDelete} onRefresh={onRefresh} commentCounts={commentCounts} />)}
+        {tab === "complaints" && !selected && (<><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><div></div><button style={styles.btnBlack} onClick={() => downloadCSV(complaints, "all-complaints")}>DOWNLOAD DATA</button></div><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} /></>)}
+        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} onBack={() => setSelected(null)} onResolve={handleResolve} onUnresolve={handleUnresolve} onDelete={handleDelete} onRefresh={onRefresh} />)}
         {tab === "submit" && (<section style={styles.formSection}><h2 style={styles.sectionTitle}>Submit Complaint on Behalf of Hospital</h2><select style={{ ...styles.input, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h} — {getProvider(h)}</option>)}</select><ComplaintTypeSelect value={adminTitle} onChange={e => setAdminTitle(e.target.value)} style={styles.input} /><textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} /><div style={{ marginBottom: 12 }}><label style={{ fontSize: 13, color: "#4a5568", marginBottom: 4, display: "block" }}>Date (leave empty for today)</label><input style={styles.input} type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} /></div><button style={{ ...styles.btnPrimary, opacity: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? 0.5 : 1 }} onClick={submitAdminComplaint}>{adminSubmitting ? "Submitting…" : "Submit Complaint"}</button>{adminSuccess && <p style={styles.successMsg}>Complaint submitted for {adminHospital}.</p>}</section>)}
         {tab === "passwords" && (<>
           <div style={styles.formSection}><h2 style={styles.sectionTitle}>Add New User</h2><div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>ID</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="userid" value={newUserId} onChange={e => setNewUserId(e.target.value)} /></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Display Name</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Name" value={newUserName} onChange={e => setNewUserName(e.target.value)} /></div><div style={{ minWidth: 100 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Role</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserRole} onChange={e => setNewUserRole(e.target.value)}><option value="company">Company (view-only)</option><option value="hospital">Hospital</option></select></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Password</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Password" value={newUserPw} onChange={e => setNewUserPw(e.target.value)} /></div><button style={styles.pwSaveBtn} onClick={handleAddUser}>{addingUser ? "…" : "Add User"}</button></div></div>
@@ -606,7 +613,7 @@ function AdminDashboard({ user, users, complaints, commentCounts, notifEmails, s
 }
 
 /* ─── Company Dashboard ─── */
-function CompanyDashboard({ user, complaints, commentCounts, siteNotes, onRefresh, onLogout }) {
+function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) {
   const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const seesAll = ["Novair", "Amex", "UNDP", "CMU"].includes(user.name);
   const myGroups = {}; if (seesAll) { Object.assign(myGroups, GROUPS); } else if (GROUPS[user.name]) { myGroups[user.name] = GROUPS[user.name]; } else { Object.assign(myGroups, GROUPS); }
@@ -618,9 +625,8 @@ function CompanyDashboard({ user, complaints, commentCounts, siteNotes, onRefres
   return (
     <div style={styles.shell}>
       <AppHeader user={user}>
-        <button style={styles.downloadBtn} onClick={() => downloadCSV(myComplaints, user.name.toLowerCase() + "-complaints")}>⬇ CSV</button>
-        <button style={styles.btnLogout} onClick={handleRefresh}>{refreshing ? "…" : "Refresh"}</button>
-        <button style={styles.btnLogout} onClick={onLogout}>Sign Out</button>
+        <button style={styles.btnBlack} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
+        <button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button>
       </AppHeader>
       <div style={styles.tabBar}>
         <button style={tab === "overview" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("overview"); setSelected(null); }}>Overview</button>
@@ -628,93 +634,94 @@ function CompanyDashboard({ user, complaints, commentCounts, siteNotes, onRefres
       </div>
       <main style={styles.main}>
         {tab === "overview" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} />}
-        {tab === "complaints" && !selected && (<><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: "#276749" }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} /></>)}
-        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={false} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onResolve={() => {}} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} commentCounts={commentCounts} />)}
+        {tab === "complaints" && !selected && (<><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><div></div><button style={styles.btnBlack} onClick={() => downloadCSV(myComplaints, user.name.toLowerCase() + "-complaints")}>DOWNLOAD DATA</button></div><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} /></>)}
+        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={false} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onResolve={() => {}} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />)}
       </main>
     </div>
   );
 }
 
 /* ─── Styles ─── */
-const C = { bg: "#f7f7f7", white: "#ffffff", black: "#111111", dark: "#222222", text: "#111111", textMid: "#555555", textLight: "#999999", border: "#e0e0e0", red: "#c0392b", green: "#27ae60", brand: "#111111", brandLight: "#f0f0f0", accent: "#111111" };
+const C = { bg: "#f0f0f0", white: "#ffffff", black: "#111111", text: "#111111", textMid: "#555555", textLight: "#999999", border: "#d0d0d0", borderLight: "#e0e0e0", red: "#c0392b", green: "#27ae60" };
 const styles = {
-  loadWrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: C.white, fontFamily: "'Inter', system-ui, sans-serif" },
+  loadWrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: C.bg, fontFamily: "'Inter', system-ui, sans-serif" },
   loadLogo: { fontSize: 56, fontWeight: 800, color: C.black, letterSpacing: -3 },
-  loginBg: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.white, fontFamily: "'Inter', system-ui, sans-serif", padding: 20 },
+  loginBg: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontFamily: "'Inter', system-ui, sans-serif", padding: 20 },
   loginCard: { background: C.white, borderRadius: 2, padding: "48px 40px", width: "100%", maxWidth: 420, border: `1px solid ${C.border}` },
   loginBrand: { display: "flex", alignItems: "center", gap: 10, marginBottom: 32 },
   brandMark: { fontSize: 32, fontWeight: 800, color: C.black, letterSpacing: -2 },
   brandText: { fontSize: 14, fontWeight: 400, color: C.textMid, letterSpacing: 1, textTransform: "uppercase" },
   loginTitle: { fontSize: 28, fontWeight: 300, color: C.black, margin: "0 0 4px", letterSpacing: -0.5 },
-  loginSub: { fontSize: 14, color: C.textLight, margin: "0 0 28px", fontWeight: 400 },
-  input: { display: "block", width: "100%", padding: "14px 16px", fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 0, marginBottom: 14, outline: "none", boxSizing: "border-box", color: C.text, background: C.white, fontFamily: "'Inter', system-ui, sans-serif", transition: "border 0.2s" },
-  btnPrimary: { display: "block", width: "100%", padding: "14px 0", fontSize: 14, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase", transition: "background 0.2s" },
+  loginSub: { fontSize: 14, color: C.textLight, margin: "0 0 28px" },
+  input: { display: "block", width: "100%", padding: "14px 16px", fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 0, marginBottom: 14, outline: "none", boxSizing: "border-box", color: C.text, background: C.white, fontFamily: "'Inter', system-ui, sans-serif" },
+  btnPrimary: { display: "block", width: "100%", padding: "14px 0", fontSize: 14, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase" },
   err: { color: C.red, fontSize: 13, margin: "0 0 10px", textAlign: "center", fontWeight: 500 },
   shell: { minHeight: "100vh", background: C.bg, fontFamily: "'Inter', system-ui, sans-serif" },
-  logoStrip: { background: C.white, padding: "16px 28px", display: "flex", alignItems: "center", justifyContent: "center", gap: 36, borderBottom: `1px solid ${C.border}`, flexWrap: "wrap" },
-  header: { background: C.black, padding: "14px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10 },
-  headerLeft: { display: "flex", alignItems: "center", gap: 10 },
-  headerBrand: { fontSize: 14, fontWeight: 500, color: C.white, display: "flex", alignItems: "center", gap: 8, letterSpacing: 0.5 },
-  headerMark: { fontSize: 20, fontWeight: 800, color: C.white, letterSpacing: -1 },
-  headerUser: { fontSize: 11, color: "#888", marginTop: 3, letterSpacing: 1, textTransform: "uppercase" },
-  btnLogout: { fontSize: 11, fontWeight: 500, color: "#aaa", background: "transparent", border: "1px solid #444", borderRadius: 0, padding: "6px 16px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase", transition: "border-color 0.2s" },
-  downloadBtn: { fontSize: 11, fontWeight: 600, color: C.black, background: C.white, border: "none", borderRadius: 0, padding: "6px 16px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
-  main: { maxWidth: 960, margin: "0 auto", padding: "32px 24px" },
-  formSection: { background: C.white, borderRadius: 0, padding: 32, marginBottom: 28, border: `1px solid ${C.border}` },
+  topBar: { background: C.bg, padding: "18px 28px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 },
+  topLeft: { display: "flex", alignItems: "center", gap: 12 },
+  topCenter: { display: "flex", alignItems: "center", gap: 28, flexWrap: "wrap", flex: 1, justifyContent: "center" },
+  topRight: { display: "flex", gap: 8, alignItems: "center" },
+  topTitle: { fontSize: 16, fontWeight: 600, color: C.black, letterSpacing: 0.5 },
+  topUser: { fontSize: 11, color: C.textLight, marginTop: 2, letterSpacing: 0.5, textTransform: "uppercase" },
+  btnBlack: { fontSize: 11, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, padding: "8px 18px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
+  btnOutline: { fontSize: 11, fontWeight: 500, color: C.black, background: "transparent", border: `1px solid ${C.black}`, borderRadius: 0, padding: "7px 18px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
+  main: { maxWidth: 980, margin: "0 auto", padding: "24px 24px" },
+  formSection: { background: C.white, borderRadius: 0, padding: 32, marginBottom: 28, border: `1px solid ${C.borderLight}` },
   listSection: { marginBottom: 28 },
   sectionTitle: { fontSize: 18, fontWeight: 600, color: C.black, margin: "0 0 20px", letterSpacing: -0.3 },
-  card: { background: C.white, borderRadius: 0, padding: "20px 24px", marginBottom: 12, border: `1px solid ${C.border}`, transition: "border-color 0.2s" },
+  card: { background: C.white, borderRadius: 0, padding: "20px 24px", marginBottom: 12, border: `1px solid ${C.borderLight}` },
   cardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8, flexWrap: "wrap" },
-  cardTitle: { fontSize: 15, fontWeight: 600, color: C.black, letterSpacing: -0.2 },
-  cardDate: { fontSize: 12, color: C.textLight, whiteSpace: "nowrap", marginTop: 2, fontWeight: 400 },
+  cardTitle: { fontSize: 15, fontWeight: 600, color: C.black },
+  cardDate: { fontSize: 12, color: C.textLight, whiteSpace: "nowrap", marginTop: 2 },
   cardDesc: { fontSize: 14, color: C.textMid, margin: 0, lineHeight: 1.7 },
   empty: { fontSize: 14, color: C.textLight, fontStyle: "italic" },
   successMsg: { color: C.green, fontSize: 14, fontWeight: 600, marginTop: 12, textAlign: "center" },
   statsBar: { display: "flex", gap: 16, marginBottom: 28, flexWrap: "wrap" },
-  statBox: { flex: 1, minWidth: 90, background: C.white, borderRadius: 0, padding: "20px 16px", border: `1px solid ${C.border}`, textAlign: "center" },
+  statBox: { flex: 1, minWidth: 90, background: C.white, borderRadius: 0, padding: "20px 16px", border: `1px solid ${C.borderLight}`, textAlign: "center" },
   statNum: { fontSize: 32, fontWeight: 300, color: C.black, letterSpacing: -1 },
   statLabel: { fontSize: 10, color: C.textLight, marginTop: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.5 },
   hospitalGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 },
-  hospitalBtn: { display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "14px 16px", background: C.white, border: `1px solid ${C.border}`, borderRadius: 0, cursor: "pointer", textAlign: "left", transition: "border-color 0.2s" },
-  hospitalIndex: { fontSize: 11, fontWeight: 600, color: C.textLight, minWidth: 22, textAlign: "center" },
+  hospitalBtn: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", padding: "14px 16px", background: C.white, border: `1px solid ${C.borderLight}`, borderRadius: 0, cursor: "pointer", textAlign: "left" },
   hospitalName: { flex: 1, fontSize: 14, fontWeight: 500, color: C.black },
-  hospitalBadge: { fontSize: 12, fontWeight: 600, color: C.black, background: C.bg, borderRadius: 0, padding: "2px 10px", minWidth: 22, textAlign: "center" },
-  openBadge: { fontSize: 11, fontWeight: 700, color: "#9c4221", background: "#feebc8", borderRadius: 0, padding: "2px 8px", minWidth: 18, textAlign: "center" },
+  hospitalBadge: { fontSize: 12, fontWeight: 600, color: C.textMid, background: C.bg, borderRadius: 0, padding: "2px 10px" },
+  openBadge: { fontSize: 11, fontWeight: 700, color: C.red, background: "#fdeaea", borderRadius: 0, padding: "2px 8px" },
   backBtn: { fontSize: 13, fontWeight: 500, color: C.black, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", display: "block", letterSpacing: 0.5, textTransform: "uppercase" },
   resolveBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.green, border: "none", borderRadius: 0, padding: "8px 20px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
   deleteBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.red, border: "none", borderRadius: 0, padding: "8px 20px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
   groupSection: { marginBottom: 36 },
   groupHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8, paddingBottom: 12, borderBottom: `2px solid ${C.black}` },
   groupTitle: { fontSize: 16, fontWeight: 600, color: C.black, margin: 0, letterSpacing: 0.5, textTransform: "uppercase" },
-  groupBadge: { fontSize: 12, fontWeight: 500, color: C.textMid, background: C.bg, borderRadius: 0, padding: "4px 14px", border: `1px solid ${C.border}` },
-  tabBar: { display: "flex", gap: 0, maxWidth: 960, margin: "0 auto", padding: "0 24px", background: C.white, borderBottom: `1px solid ${C.border}`, flexWrap: "wrap" },
-  tabActive: { padding: "16px 24px", fontSize: 12, fontWeight: 600, color: C.black, background: "none", border: "none", borderBottom: `2px solid ${C.black}`, cursor: "pointer", marginBottom: -1, letterSpacing: 1, textTransform: "uppercase" },
-  tabInactive: { padding: "16px 24px", fontSize: 12, fontWeight: 400, color: C.textLight, background: "none", border: "none", borderBottom: "2px solid transparent", cursor: "pointer", marginBottom: -1, letterSpacing: 1, textTransform: "uppercase", transition: "color 0.2s" },
-  pwCard: { background: C.white, borderRadius: 0, padding: "14px 18px", marginBottom: 8, border: `1px solid ${C.border}` },
+  groupBadge: { fontSize: 12, fontWeight: 500, color: C.textMid, background: C.white, borderRadius: 0, padding: "4px 14px", border: `1px solid ${C.borderLight}` },
+  tabBar: { display: "flex", gap: 8, maxWidth: 980, margin: "0 auto", padding: "0 24px 20px", flexWrap: "wrap" },
+  tabActive: { padding: "10px 22px", fontSize: 12, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
+  tabInactive: { padding: "10px 22px", fontSize: 12, fontWeight: 500, color: C.black, background: "transparent", border: `1px solid ${C.black}`, borderRadius: 0, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
+  pwCard: { background: C.white, borderRadius: 0, padding: "14px 18px", marginBottom: 8, border: `1px solid ${C.borderLight}` },
   pwRow: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 },
   pwName: { fontSize: 15, fontWeight: 600, color: C.black, marginRight: 8 },
   pwRole: { fontSize: 10, fontWeight: 600, color: C.white, background: C.black, borderRadius: 0, padding: "3px 10px", letterSpacing: 1, textTransform: "uppercase" },
   pwRight: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" },
   pwCurrent: { fontSize: 13, color: C.textLight },
-  pwChangeBtn: { fontSize: 12, fontWeight: 500, color: C.black, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 0, padding: "6px 16px", cursor: "pointer", letterSpacing: 0.5 },
+  pwChangeBtn: { fontSize: 12, fontWeight: 500, color: C.black, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 0, padding: "6px 16px", cursor: "pointer" },
   pwEditRow: { display: "flex", gap: 6, alignItems: "center" },
   pwInput: { padding: "8px 12px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 0, width: 140, outline: "none", fontFamily: "'Inter', system-ui, sans-serif" },
   pwSaveBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, padding: "8px 16px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
   pwCancelBtn: { fontSize: 13, color: C.textLight, background: "none", border: "none", cursor: "pointer", padding: "6px" },
   commentToggle: { fontSize: 12, fontWeight: 600, color: C.black, background: "none", border: "none", cursor: "pointer", padding: 0, letterSpacing: 0.5, textTransform: "uppercase" },
-  commentBox: { marginTop: 10, padding: "16px 18px", background: C.bg, borderRadius: 0, border: `1px solid ${C.border}` },
-  commentItem: { padding: "10px 0", borderBottom: `1px solid ${C.border}` },
+  commentBox: { marginTop: 10, padding: "16px 18px", background: C.bg, borderRadius: 0, border: `1px solid ${C.borderLight}` },
+  commentItem: { padding: "10px 0", borderBottom: `1px solid ${C.borderLight}` },
   commentHeader: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   commentInputRow: { display: "flex", gap: 8, marginTop: 12 },
   commentInput: { flex: 1, padding: "10px 14px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 0, outline: "none", fontFamily: "'Inter', system-ui, sans-serif" },
   commentSendBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, padding: "10px 22px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
-  overviewTable: { background: C.white, borderRadius: 0, border: `1px solid ${C.border}`, overflow: "auto" },
-  overviewHeaderRow: { display: "flex", padding: "14px 18px", background: C.black, fontWeight: 600, fontSize: 11, color: "#ccc", borderBottom: `1px solid ${C.border}`, gap: 8, minWidth: 800, letterSpacing: 1.5, textTransform: "uppercase" },
-  overviewRow: { display: "flex", padding: "14px 18px", borderBottom: `1px solid ${C.border}`, gap: 8, alignItems: "flex-start", minWidth: 800, transition: "background 0.15s" },
-  ovCellSr: { width: 30, flexShrink: 0, fontSize: 12, color: C.textLight, fontWeight: 500 },
-  ovCellSite: { width: 120, flexShrink: 0, fontSize: 13 },
-  ovCellProvider: { width: 100, flexShrink: 0 },
-  ovCellStatus: { width: 120, flexShrink: 0 },
-  ovCellOpen: { flex: 1, minWidth: 150 },
-  ovCellNote: { flex: 1, minWidth: 150 },
+  overviewTable: { background: C.white, borderRadius: 0, border: `1px solid ${C.border}`, overflow: "auto", borderCollapse: "collapse" },
+  overviewHeaderRow: { display: "flex", padding: "0", background: C.black, fontWeight: 600, fontSize: 11, color: "#ccc", gap: 0, minWidth: 850, letterSpacing: 1.5, textTransform: "uppercase" },
+  overviewRow: { display: "flex", padding: "0", borderBottom: `1px solid ${C.borderLight}`, gap: 0, alignItems: "stretch", minWidth: 850 },
+  ovCell: { padding: "12px 14px", borderRight: `1px solid ${C.borderLight}`, fontSize: 13, display: "flex", flexDirection: "column", justifyContent: "center" },
+  ovCellHeader: { padding: "12px 14px", borderRight: "1px solid #333", fontSize: 11, display: "flex", alignItems: "center" },
+  ovCellSr: { width: 35, flexShrink: 0 },
+  ovCellSite: { width: 110, flexShrink: 0 },
+  ovCellProvider: { width: 90, flexShrink: 0 },
+  ovCellStatus: { width: 110, flexShrink: 0 },
+  ovCellOpen: { flex: 1, minWidth: 170 },
+  ovCellNote: { flex: 1, minWidth: 170, borderRight: "none" },
 };
