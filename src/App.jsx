@@ -38,6 +38,10 @@ async function resolveComplaint(id, resolvedDate) {
   const { error } = await supabase.from("complaints").update(update).eq("id", id);
   return !error;
 }
+async function unresolveComplaint(id) {
+  const { error } = await supabase.from("complaints").update({ status: "Open", resolved_at: null }).eq("id", id);
+  return !error;
+}
 async function deleteComplaint(id) {
   await supabase.from("comments").delete().eq("complaint_id", id);
   const { error } = await supabase.from("complaints").delete().eq("id", id);
@@ -106,21 +110,22 @@ async function updateSiteStatus(hospital, status) {
   const { error } = await supabase.from("site_notes").update({ site_status: status, updated_at: new Date().toISOString() }).eq("hospital", hospital);
   return !error;
 }
-async function sendRecoveryEmail(adminEmail) {
+async function sendShutdownEmail(hospital, notifEmails) {
   try {
-    const { data: users } = await supabase.from("users").select("*").eq("role", "admin");
-    if (!users?.length) return false;
     const { data: keyData } = await supabase.from("settings").select("value").eq("key", "resend_api_key").single();
     if (!keyData?.value) return false;
-    const pw = users[0].password;
+    const provider = getProvider(hospital);
+    const recipientGroups = new Set([provider, "Novair", "Amex"]);
+    const emails = [...new Set(notifEmails.filter(e => recipientGroups.has(e.group_name)).map(e => e.email))];
+    if (!emails.length) return false;
     await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + keyData.value },
       body: JSON.stringify({
         from: "PSA Oxygen Plant <alerts@psacomplaints.com>",
-        to: [adminEmail],
-        subject: "Admin Password Recovery",
-        html: "<div style='font-family:Arial;padding:20px;'><h2>Admin Password Recovery</h2><p>Your admin password is: <strong>" + pw + "</strong></p><p>Login at <a href='https://psacomplaints.com'>psacomplaints.com</a></p></div>",
+        to: emails,
+        subject: "🚨 PLANT SHUTDOWN: " + hospital,
+        html: "<div style='font-family:Arial;max-width:600px;margin:0 auto;padding:20px;'><div style='background:#e53e3e;color:white;padding:16px 24px;border-radius:8px 8px 0 0;'><h2 style='margin:0;font-size:18px;'>🚨 Plant Shut Down — " + hospital + "</h2></div><div style='border:1px solid #e2e8f0;border-top:none;padding:24px;border-radius:0 0 8px 8px;'><p style='margin:0 0 12px;font-size:16px;'><strong>" + hospital + "</strong> has been marked as <span style='color:#e53e3e;font-weight:bold;'>SHUT DOWN</span>.</p><p style='margin:0 0 8px;'><strong>Service Provider:</strong> " + provider + "</p><p style='margin:0 0 8px;'>The plant is currently not producing oxygen.</p><hr style='border:none;border-top:1px solid #e2e8f0;margin:20px 0;' /><p style='margin:0;font-size:13px;color:#718096;'>Visit <a href=\"https://psacomplaints.com\">psacomplaints.com</a> for details.</p></div></div>",
       }),
     });
     return true;
@@ -142,7 +147,6 @@ function downloadCSV(complaints, filename) {
   URL.revokeObjectURL(url);
 }
 
-/* ─── Complaint Type Dropdown ─── */
 function ComplaintTypeSelect({ value, onChange, style }) {
   return (
     <select style={{ ...style, cursor: "pointer" }} value={value} onChange={onChange}>
@@ -152,20 +156,50 @@ function ComplaintTypeSelect({ value, onChange, style }) {
   );
 }
 
-/* ─── Header Component ─── */
 function AppHeader({ user, children }) {
   const displayName = user.role === "hospital" ? user.name + " Hospital" : user.name;
   return (
     <header style={styles.header}>
-      <div style={styles.headerLeft}>
-        <div>
-          <div style={styles.headerBrand}><span style={styles.headerMark}>O₂</span> PSA Oxygen Plants - Pakistan</div>
-          <div style={styles.headerUser}>User: {displayName}</div>
-        </div>
-      </div>
+      <div style={styles.headerLeft}><div>
+        <div style={styles.headerBrand}><span style={styles.headerMark}>O₂</span> PSA Oxygen Plants - Pakistan</div>
+        <div style={styles.headerUser}>User: {displayName}</div>
+      </div></div>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>{children}</div>
     </header>
   );
+}
+
+/* ─── Status Logic ─── */
+// Status values: "Fully Functional", "Non Functional", "Shut Down"
+// Display status: if site has open complaints → "Issues" (still functional)
+// Functional count = Fully Functional + Issues (has open complaints but not shut down)
+// Non Functional count = Non Functional + Shut Down
+function getSiteBaseStatus(hospital, siteNotes) {
+  const note = siteNotes.find(s => s.hospital === hospital);
+  return note?.site_status || "Fully Functional";
+}
+
+function getSiteDisplayStatus(hospital, complaints, siteNotes) {
+  const base = getSiteBaseStatus(hospital, siteNotes);
+  if (base === "Non Functional") return "Non Functional";
+  if (base === "Shut Down") return "Shut Down";
+  const hasOpen = complaints.some(c => c.hospital === hospital && c.status !== "Resolved");
+  if (hasOpen) return "Issues";
+  return "Fully Functional";
+}
+
+function isFunctional(hospital, complaints, siteNotes) {
+  const s = getSiteDisplayStatus(hospital, complaints, siteNotes);
+  return s === "Fully Functional" || s === "Issues";
+}
+
+function SiteStatusBadge({ status }) {
+  let color, bg, icon;
+  if (status === "Issues") { color = "#9c4221"; bg = "#feebc8"; icon = "⚠"; }
+  else if (status === "Non Functional") { color = "#718096"; bg = "#e2e8f0"; icon = "○"; }
+  else if (status === "Shut Down") { color = "#e53e3e"; bg = "#fed7d7"; icon = "✕"; }
+  else { color = "#276749"; bg = "#c6f6d5"; icon = "✓"; }
+  return <span style={{ fontSize: 12, fontWeight: 600, color, background: bg, padding: "2px 8px", borderRadius: 6 }}>{icon} {status}</span>;
 }
 
 /* ─── App ─── */
@@ -185,38 +219,24 @@ export default function App() {
   useEffect(() => { reload().then(() => setReady(true)); }, [reload]);
   useEffect(() => {
     if (user?.role === "company" || user?.role === "admin") {
-      const iv = setInterval(reload, 30000);
-      return () => clearInterval(iv);
+      const iv = setInterval(reload, 30000); return () => clearInterval(iv);
     }
   }, [user, reload]);
 
-  if (!ready) return <LoadingScreen />;
+  if (!ready) return <div style={styles.loadWrap}><div style={styles.loadLogo}>O₂</div><p style={{ color: "#6b7280", marginTop: 12 }}>Loading portal…</p></div>;
   if (!user) return <LoginScreen users={users} onLogin={setUser} />;
   if (user.role === "hospital") return <HospitalDashboard user={user} complaints={complaints} onRefresh={reload} onLogout={() => setUser(null)} />;
   if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} siteNotes={siteNotes} onRefresh={reload} onLogout={() => setUser(null)} />;
   return <CompanyDashboard user={user} complaints={complaints} siteNotes={siteNotes} onRefresh={reload} onLogout={() => setUser(null)} />;
 }
 
-function LoadingScreen() {
-  return (<div style={styles.loadWrap}><div style={styles.loadLogo}>O₂</div><p style={{ color: "#6b7280", marginTop: 12 }}>Loading portal…</p></div>);
-}
-
-/* ─── Login ─── */
 function LoginScreen({ users, onLogin }) {
   const [id, setId] = useState(""); const [pw, setPw] = useState(""); const [err, setErr] = useState("");
-  const [showRecovery, setShowRecovery] = useState(false); const [recovering, setRecovering] = useState(false); const [recoveryMsg, setRecoveryMsg] = useState("");
   const submit = () => {
     const clean = s => s.trim().toLowerCase().replace(/\s+/g, "");
     const found = users.find(u => (clean(u.name) === clean(id) || clean(u.id) === clean(id)) && clean(u.password) === clean(pw));
     if (!found) { setErr("Invalid credentials"); return; }
     onLogin(found);
-  };
-  const handleRecovery = async () => {
-    setRecovering(true);
-    const ok = await sendRecoveryEmail("mujtabausman615@gmail.com");
-    setRecovering(false);
-    setRecoveryMsg(ok ? "Password sent to your email." : "Recovery failed. Try again.");
-    setTimeout(() => setRecoveryMsg(""), 4000);
   };
   return (
     <div style={styles.loginBg}><div style={styles.loginCard}>
@@ -236,61 +256,71 @@ function StatusBadge({ status }) {
   return <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 12, color: r ? "#276749" : "#9c4221", background: r ? "#c6f6d5" : "#feebc8" }}>{r ? "Resolved" : "Open"}</span>;
 }
 
-function getSiteDisplayStatus(hospital, complaints, siteNotes) {
-  const hasOpen = complaints.some(c => c.hospital === hospital && c.status !== "Resolved");
-  if (hasOpen) return "Issues";
-  const note = siteNotes.find(s => s.hospital === hospital);
-  return note?.site_status || "Fully Functional";
-}
-
-function SiteStatusBadge({ status }) {
-  let color, bg, icon;
-  if (status === "Issues") { color = "#9c4221"; bg = "#feebc8"; icon = "⚠"; }
-  else if (status === "Non Functional") { color = "#e53e3e"; bg = "#fed7d7"; icon = "✕"; }
-  else { color = "#276749"; bg = "#c6f6d5"; icon = "✓"; }
-  return <span style={{ fontSize: 12, fontWeight: 600, color, background: bg, padding: "2px 8px", borderRadius: 6 }}>{icon} {status}</span>;
-}
-
 /* ─── Overview Tab ─── */
-function OverviewTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
+function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, onRefresh }) {
   const [editingHospital, setEditingHospital] = useState(null);
   const [noteText, setNoteText] = useState(""); const [saving, setSaving] = useState(false);
   const [statusEditing, setStatusEditing] = useState(null);
+  const [sendingShutdown, setSendingShutdown] = useState(null);
 
   const getNote = h => siteNotes.find(s => s.hospital === h)?.equipment_note || "";
   const openComplaints = h => complaints.filter(c => c.hospital === h && c.status !== "Resolved");
   const allOpen = hospitals.reduce((sum, h) => sum + openComplaints(h).length, 0);
-  const funcCount = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Fully Functional").length;
-  const nonFuncCount = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Non Functional").length;
+  const funcCount = hospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
+  const nonFuncCount = hospitals.length - funcCount;
 
   const attentionSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Issues");
+  const shutdownSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Shut Down");
 
-  const statusOrder = { "Issues": 0, "Fully Functional": 1, "Non Functional": 2 };
+  const statusOrder = { "Issues": 0, "Shut Down": 1, "Fully Functional": 2, "Non Functional": 3 };
   const sortedHospitals = [...hospitals].sort((a, b) => {
     const sa = getSiteDisplayStatus(a, complaints, siteNotes);
     const sb = getSiteDisplayStatus(b, complaints, siteNotes);
-    return (statusOrder[sa] ?? 1) - (statusOrder[sb] ?? 1);
+    return (statusOrder[sa] ?? 2) - (statusOrder[sb] ?? 2);
   });
 
   const saveNote = async (h) => { setSaving(true); await updateSiteNote(h, noteText); setEditingHospital(null); setNoteText(""); setSaving(false); await onRefresh(); };
   const handleStatusChange = async (h, s) => { await updateSiteStatus(h, s); setStatusEditing(null); await onRefresh(); };
+  const handleSendShutdownEmail = async (h) => {
+    setSendingShutdown(h);
+    await sendShutdownEmail(h, notifEmails);
+    setSendingShutdown(null);
+    alert("Shutdown notification sent for " + h);
+  };
 
   return (
     <>
+      {shutdownSites.length > 0 && (
+        <div style={{ background: "#fed7d7", border: "1px solid #fc8181", borderRadius: 12, padding: "16px 20px", marginBottom: 12 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#e53e3e", marginBottom: 8 }}>🚨 Plant Shut Down — Not Producing Oxygen ({shutdownSites.length})</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {shutdownSites.map(h => (
+              <span key={h} style={{ fontSize: 13, fontWeight: 500, color: "#e53e3e", background: "#fff5f5", padding: "4px 12px", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                {h}
+                {isAdmin && <button style={{ fontSize: 11, color: "#e53e3e", background: "none", border: "1px solid #e53e3e", borderRadius: 4, padding: "1px 6px", cursor: "pointer", marginLeft: 2 }} onClick={() => handleSendShutdownEmail(h)} disabled={sendingShutdown === h}>{sendingShutdown === h ? "…" : "📧"}</button>}
+              </span>
+            ))}
+          </div>
+          {isAdmin && <p style={{ fontSize: 11, color: "#9b2c2c", marginTop: 6 }}>Click 📧 to send shutdown notification email to stakeholders</p>}
+        </div>
+      )}
+
       {attentionSites.length > 0 && (
-        <div style={{ background: "#fff5f5", border: "1px solid #fed7d7", borderRadius: 12, padding: "16px 20px", marginBottom: 20 }}>
+        <div style={{ background: "#fff5f5", border: "1px solid #fed7d7", borderRadius: 12, padding: "16px 20px", marginBottom: 12 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#9c4221", marginBottom: 8 }}>⚠ Attention Needed ({attentionSites.length})</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {attentionSites.map(h => <span key={h} style={{ fontSize: 13, fontWeight: 500, color: "#9c4221", background: "#feebc8", padding: "4px 12px", borderRadius: 8 }}>{h}</span>)}
           </div>
         </div>
       )}
+
       <div style={styles.statsBar}>
-        <div style={styles.statBox}><div style={styles.statNum}>{hospitals.length}</div><div style={styles.statLabel}>Sites</div></div>
+        <div style={styles.statBox}><div style={styles.statNum}>{hospitals.length}</div><div style={styles.statLabel}>Total Sites</div></div>
         <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#276749" }}>{funcCount}</div><div style={styles.statLabel}>Functional</div></div>
         <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#e53e3e" }}>{nonFuncCount}</div><div style={styles.statLabel}>Non Functional</div></div>
         <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{allOpen}</div><div style={styles.statLabel}>Open Complaints</div></div>
       </div>
+
       <div style={styles.overviewTable}>
         <div style={styles.overviewHeaderRow}>
           <div style={styles.ovCellSr}>#</div>
@@ -303,20 +333,20 @@ function OverviewTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
         {sortedHospitals.map((h, i) => {
           const open = openComplaints(h);
           const siteStatus = getSiteDisplayStatus(h, complaints, siteNotes);
-          const hasOpen = open.length > 0;
           const note = getNote(h);
-          const rowBg = siteStatus === "Issues" ? "#fff5f5" : siteStatus === "Non Functional" ? "#fff5f5" : "#f0fff4";
+          const rowBg = siteStatus === "Issues" ? "#fff5f5" : siteStatus === "Shut Down" ? "#fed7d7" : siteStatus === "Non Functional" ? "#f7fafc" : "#f0fff4";
           return (
             <div key={h} style={{ ...styles.overviewRow, background: rowBg }}>
               <div style={styles.ovCellSr}>{i + 1}</div>
               <div style={styles.ovCellSite}><strong>{h}</strong></div>
               <div style={styles.ovCellProvider}><span style={{ fontSize: 12, color: "#0e7c6b", background: "#e6f5f2", padding: "2px 8px", borderRadius: 6 }}>{getProvider(h)}</span></div>
               <div style={styles.ovCellStatus}>
-                {isAdmin && !hasOpen ? (
+                {isAdmin ? (
                   statusEditing === h ? (
-                    <select style={{ fontSize: 11, padding: "2px 4px", borderRadius: 4, border: "1px solid #e2e8f0" }} value={siteStatus} onChange={e => handleStatusChange(h, e.target.value)}>
+                    <select style={{ fontSize: 11, padding: "2px 4px", borderRadius: 4, border: "1px solid #e2e8f0" }} value={getSiteBaseStatus(h, siteNotes)} onChange={e => handleStatusChange(h, e.target.value)}>
                       <option value="Fully Functional">Fully Functional</option>
                       <option value="Non Functional">Non Functional</option>
+                      <option value="Shut Down">Shut Down</option>
                     </select>
                   ) : (
                     <div style={{ cursor: "pointer" }} onClick={() => setStatusEditing(h)}><SiteStatusBadge status={siteStatus} /></div>
@@ -356,26 +386,21 @@ function OverviewTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
 
 /* ─── Comment Section ─── */
 function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
-  const [comments, setComments] = useState([]);
-  const [text, setText] = useState(""); const [posting, setPosting] = useState(false);
+  const [comments, setComments] = useState([]); const [text, setText] = useState(""); const [posting, setPosting] = useState(false);
   const [loaded, setLoaded] = useState(false); const [expanded, setExpanded] = useState(false);
   const [asHospital, setAsHospital] = useState("");
   const [editingComment, setEditingComment] = useState(null); const [editText, setEditText] = useState("");
-
   const loadComments = useCallback(async () => { const data = await fetchComments(complaintId); setComments(data); setLoaded(true); }, [complaintId]);
   useEffect(() => { if (expanded) loadComments(); }, [expanded, loadComments]);
-
   const post = async () => {
     if (!text.trim() || posting) return; setPosting(true);
     let author, role;
     if (isAdmin && asHospital) { author = asHospital + " Hospital"; role = "hospital"; }
     else { author = currentUser.role === "hospital" ? currentUser.name + " Hospital" : currentUser.name; role = currentUser.role; }
-    await insertComment(complaintId, author, role, text.trim());
-    setText(""); setPosting(false); await loadComments();
+    await insertComment(complaintId, author, role, text.trim()); setText(""); setPosting(false); await loadComments();
   };
   const handleDelete = async (id) => { await deleteComment(id); await loadComments(); };
   const handleEdit = async (id) => { if (!editText.trim()) return; await updateCommentContent(id, editText.trim()); setEditingComment(null); setEditText(""); await loadComments(); };
-
   return (
     <div style={{ marginTop: 10 }}>
       <button style={styles.commentToggle} onClick={() => setExpanded(!expanded)}>
@@ -400,21 +425,12 @@ function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
                   <button style={{ ...styles.pwSaveBtn, fontSize: 11 }} onClick={() => handleEdit(c.id)}>Save</button>
                   <button style={{ ...styles.pwCancelBtn, fontSize: 11 }} onClick={() => setEditingComment(null)}>✕</button>
                 </div>
-              ) : (
-                <p style={{ fontSize: 13, color: "#4a5568", margin: "4px 0 0", lineHeight: 1.4 }}>{c.content}</p>
-              )}
+              ) : (<p style={{ fontSize: 13, color: "#4a5568", margin: "4px 0 0", lineHeight: 1.4 }}>{c.content}</p>)}
             </div>
           ))}
           {(canComment || isAdmin) && (
             <>
-              {isAdmin && (
-                <div style={{ marginBottom: 6 }}>
-                  <select style={{ ...styles.pwInput, width: "auto", fontSize: 12, padding: "4px 8px" }} value={asHospital} onChange={e => setAsHospital(e.target.value)}>
-                    <option value="">Comment as Admin</option>
-                    {ALL_HOSPITALS.map(h => <option key={h} value={h}>Comment as {h} Hospital</option>)}
-                  </select>
-                </div>
-              )}
+              {isAdmin && (<div style={{ marginBottom: 6 }}><select style={{ ...styles.pwInput, width: "auto", fontSize: 12, padding: "4px 8px" }} value={asHospital} onChange={e => setAsHospital(e.target.value)}><option value="">Comment as Admin</option>{ALL_HOSPITALS.map(h => <option key={h} value={h}>Comment as {h} Hospital</option>)}</select></div>)}
               <div style={styles.commentInputRow}>
                 <input style={styles.commentInput} placeholder="Write a comment…" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && post()} />
                 <button style={styles.commentSendBtn} onClick={post} disabled={!text.trim() || posting}>{posting ? "…" : "Post"}</button>
@@ -427,87 +443,49 @@ function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
   );
 }
 
-/* ─── Grouped Hospital List ─── */
 function GroupedHospitalList({ groups, complaints, onSelect }) {
   const countFor = h => complaints.filter(c => c.hospital === h).length;
   const openCountFor = h => complaints.filter(c => c.hospital === h && c.status !== "Resolved").length;
-  const groupCountFor = hospitals => complaints.filter(c => hospitals.includes(c.hospital)).length;
-  const groupOpenFor = hospitals => complaints.filter(c => hospitals.includes(c.hospital) && c.status !== "Resolved").length;
-  return (
-    <>{Object.entries(groups).map(([provider, hospitals]) => (
-      <div key={provider} style={styles.groupSection}>
-        <div style={styles.groupHeader}>
-          <h3 style={styles.groupTitle}>{provider}</h3>
-          <div style={{ display: "flex", gap: 8 }}>
-            <span style={styles.groupBadge}>{groupCountFor(hospitals)} total</span>
-            <span style={{ ...styles.groupBadge, color: "#9c4221", background: "#feebc8" }}>{groupOpenFor(hospitals)} open</span>
-          </div>
-        </div>
-        <div style={styles.hospitalGrid}>
-          {hospitals.map((h, i) => {
-            const open = openCountFor(h);
-            return (<button key={h} style={styles.hospitalBtn} onClick={() => onSelect(h)}>
-              <span style={styles.hospitalIndex}>{i + 1}</span><span style={styles.hospitalName}>{h}</span>
-              <span style={styles.hospitalBadge}>{countFor(h)}</span>
-              {open > 0 && <span style={styles.openBadge}>{open}</span>}
-            </button>);
-          })}
-        </div>
-      </div>
-    ))}</>
-  );
+  const groupCountFor = hs => complaints.filter(c => hs.includes(c.hospital)).length;
+  const groupOpenFor = hs => complaints.filter(c => hs.includes(c.hospital) && c.status !== "Resolved").length;
+  return (<>{Object.entries(groups).map(([p, hs]) => (
+    <div key={p} style={styles.groupSection}>
+      <div style={styles.groupHeader}><h3 style={styles.groupTitle}>{p}</h3><div style={{ display: "flex", gap: 8 }}><span style={styles.groupBadge}>{groupCountFor(hs)} total</span><span style={{ ...styles.groupBadge, color: "#9c4221", background: "#feebc8" }}>{groupOpenFor(hs)} open</span></div></div>
+      <div style={styles.hospitalGrid}>{hs.map((h, i) => { const open = openCountFor(h); return (<button key={h} style={styles.hospitalBtn} onClick={() => onSelect(h)}><span style={styles.hospitalIndex}>{i + 1}</span><span style={styles.hospitalName}>{h}</span><span style={styles.hospitalBadge}>{countFor(h)}</span>{open > 0 && <span style={styles.openBadge}>{open}</span>}</button>); })}</div>
+    </div>
+  ))}</>);
 }
 
-/* ─── Complaint Card ─── */
-function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, onResolve, onDelete, onRefresh }) {
-  const [resolving, setResolving] = useState(false);
-  const [resolveDate, setResolveDate] = useState("");
-  const [editing, setEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(complaint.title);
-  const [editDesc, setEditDesc] = useState(complaint.description);
-  const [editSaving, setEditSaving] = useState(false);
+function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, onResolve, onUnresolve, onDelete, onRefresh }) {
+  const [resolving, setResolving] = useState(false); const [resolveDate, setResolveDate] = useState("");
+  const [editing, setEditing] = useState(false); const [editTitle, setEditTitle] = useState(complaint.title);
+  const [editDesc, setEditDesc] = useState(complaint.description); const [editSaving, setEditSaving] = useState(false);
   const c = complaint;
-
   const handleResolve = async () => { setResolving(true); await onResolve(c.id, resolveDate || null); setResolving(false); };
+  const handleUnresolve = async () => { await onUnresolve(c.id); await onRefresh(); };
   const handleDelete = async () => { if (window.confirm("Delete this complaint permanently?")) { await onDelete(c.id); await onRefresh(); } };
-  const handleEditSave = async () => {
-    if (!editTitle.trim() || !editDesc.trim()) return;
-    setEditSaving(true);
-    await updateComplaintFields(c.id, { title: editTitle.trim(), description: editDesc.trim() });
-    setEditSaving(false); setEditing(false); await onRefresh();
-  };
-
+  const handleEditSave = async () => { if (!editTitle.trim() || !editDesc.trim()) return; setEditSaving(true); await updateComplaintFields(c.id, { title: editTitle.trim(), description: editDesc.trim() }); setEditSaving(false); setEditing(false); await onRefresh(); };
   return (
     <div style={styles.card}>
       {editing ? (
         <>
           <ComplaintTypeSelect value={editTitle} onChange={e => setEditTitle(e.target.value)} style={{ ...styles.input, marginBottom: 8 }} />
           <textarea style={{ ...styles.input, minHeight: 80, resize: "vertical", fontFamily: "inherit" }} value={editDesc} onChange={e => setEditDesc(e.target.value)} />
-          <div style={{ display: "flex", gap: 8 }}>
-            <button style={styles.pwSaveBtn} onClick={handleEditSave}>{editSaving ? "…" : "Save"}</button>
-            <button style={styles.pwCancelBtn} onClick={() => { setEditing(false); setEditTitle(c.title); setEditDesc(c.description); }}>Cancel</button>
-          </div>
+          <div style={{ display: "flex", gap: 8 }}><button style={styles.pwSaveBtn} onClick={handleEditSave}>{editSaving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditing(false); setEditTitle(c.title); setEditDesc(c.description); }}>Cancel</button></div>
         </>
       ) : (
         <>
           <div style={styles.cardTop}>
             <strong style={styles.cardTitle}>{c.title}</strong>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <StatusBadge status={c.status} />
-              <span style={styles.cardDate}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}><StatusBadge status={c.status} /><span style={styles.cardDate}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span></div>
           </div>
           <p style={styles.cardDesc}>{c.description}</p>
-          {c.status === "Resolved" && c.resolved_at && (
-            <p style={{ fontSize: 12, color: "#276749", marginTop: 4 }}>Resolved: {new Date(c.resolved_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</p>
-          )}
+          {c.status === "Resolved" && c.resolved_at && (<p style={{ fontSize: 12, color: "#276749", marginTop: 4 }}>Resolved: {new Date(c.resolved_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</p>)}
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
             {canResolve && c.status !== "Resolved" && (
-              <>
-                {isAdmin && <input type="date" style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #e2e8f0", borderRadius: 6 }} value={resolveDate} onChange={e => setResolveDate(e.target.value)} />}
-                <button style={styles.resolveBtn} onClick={handleResolve} disabled={resolving}>{resolving ? "Resolving…" : "Mark as Resolved"}</button>
-              </>
+              <>{isAdmin && <input type="date" style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #e2e8f0", borderRadius: 6 }} value={resolveDate} onChange={e => setResolveDate(e.target.value)} />}<button style={styles.resolveBtn} onClick={handleResolve} disabled={resolving}>{resolving ? "Resolving…" : "Mark as Resolved"}</button></>
             )}
+            {isAdmin && c.status === "Resolved" && (<button style={{ fontSize: 13, fontWeight: 600, color: "#9c4221", background: "#feebc8", border: "none", borderRadius: 6, padding: "6px 14px", cursor: "pointer" }} onClick={handleUnresolve}>Unresolve</button>)}
             {isAdmin && <button style={{ fontSize: 13, fontWeight: 500, color: "#0e7c6b", background: "#e6f5f2", border: "none", borderRadius: 6, padding: "6px 14px", cursor: "pointer" }} onClick={() => setEditing(true)}>Edit</button>}
             {isAdmin && <button style={styles.deleteBtn} onClick={handleDelete}>Delete</button>}
           </div>
@@ -518,23 +496,14 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
   );
 }
 
-/* ─── Complaint List View ─── */
-function ComplaintListView({ hospital, complaints, currentUser, canResolve, canComment, isAdmin, onBack, onResolve, onDelete, onRefresh }) {
-  const hospitalComplaints = complaints.filter(c => c.hospital === hospital);
-  return (
-    <>
-      <button style={styles.backBtn} onClick={onBack}>← Back</button>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-        <h2 style={{ ...styles.sectionTitle, margin: 0 }}>{hospital}</h2>
-        <span style={{ fontSize: 13, color: "#718096" }}>({hospitalComplaints.length})</span>
-        <span style={{ fontSize: 12, color: "#0e7c6b", background: "#e6f5f2", padding: "2px 8px", borderRadius: 8 }}>{getProvider(hospital)}</span>
-      </div>
-      {hospitalComplaints.length === 0 && <p style={styles.empty}>No complaints from this hospital.</p>}
-      {hospitalComplaints.map(c => (
-        <ComplaintCard key={c.id} complaint={c} currentUser={currentUser} canResolve={canResolve} canComment={canComment} isAdmin={isAdmin} onResolve={onResolve} onDelete={onDelete} onRefresh={onRefresh} />
-      ))}
-    </>
-  );
+function ComplaintListView({ hospital, complaints, currentUser, canResolve, canComment, isAdmin, onBack, onResolve, onUnresolve, onDelete, onRefresh }) {
+  const hc = complaints.filter(c => c.hospital === hospital);
+  return (<>
+    <button style={styles.backBtn} onClick={onBack}>← Back</button>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>{hospital}</h2><span style={{ fontSize: 13, color: "#718096" }}>({hc.length})</span><span style={{ fontSize: 12, color: "#0e7c6b", background: "#e6f5f2", padding: "2px 8px", borderRadius: 8 }}>{getProvider(hospital)}</span></div>
+    {hc.length === 0 && <p style={styles.empty}>No complaints from this hospital.</p>}
+    {hc.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={currentUser} canResolve={canResolve} canComment={canComment} isAdmin={isAdmin} onResolve={onResolve} onUnresolve={onUnresolve} onDelete={onDelete} onRefresh={onRefresh} />))}
+  </>);
 }
 
 /* ─── Hospital Dashboard ─── */
@@ -543,12 +512,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const [success, setSuccess] = useState(false); const [submitting, setSubmitting] = useState(false);
   const mine = complaints.filter(c => c.hospital === user.name);
   const openCount = mine.filter(c => c.status !== "Resolved").length;
-  const submitComplaint = async () => {
-    if (!title.trim() || !desc.trim() || submitting) return; setSubmitting(true);
-    const result = await insertComplaint(user.name, title.trim(), desc.trim());
-    setSubmitting(false);
-    if (result) { setTitle(""); setDesc(""); setSuccess(true); setTimeout(() => setSuccess(false), 2500); await onRefresh(); }
-  };
+  const submitComplaint = async () => { if (!title.trim() || !desc.trim() || submitting) return; setSubmitting(true); const r = await insertComplaint(user.name, title.trim(), desc.trim()); setSubmitting(false); if (r) { setTitle(""); setDesc(""); setSuccess(true); setTimeout(() => setSuccess(false), 2500); await onRefresh(); } };
   const handleResolve = async (id) => { await resolveComplaint(id); await onRefresh(); };
   return (
     <div style={styles.shell}>
@@ -562,12 +526,9 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
           {success && <p style={styles.successMsg}>Complaint registered successfully.</p>}
         </section>
         <section style={styles.listSection}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h2 style={{ ...styles.sectionTitle, margin: 0 }}>Your Complaints ({mine.length})</h2>
-            {openCount > 0 && <span style={{ fontSize: 13, fontWeight: 600, color: "#9c4221", background: "#feebc8", padding: "3px 10px", borderRadius: 12 }}>{openCount} open</span>}
-          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>Your Complaints ({mine.length})</h2>{openCount > 0 && <span style={{ fontSize: 13, fontWeight: 600, color: "#9c4221", background: "#feebc8", padding: "3px 10px", borderRadius: 12 }}>{openCount} open</span>}</div>
           {mine.length === 0 && <p style={styles.empty}>No complaints registered yet.</p>}
-          {mine.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={user} canResolve={true} canComment={true} isAdmin={false} onResolve={handleResolve} onDelete={() => {}} onRefresh={onRefresh} />))}
+          {mine.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={user} canResolve={true} canComment={true} isAdmin={false} onResolve={handleResolve} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />))}
         </section>
       </main>
     </div>
@@ -576,39 +537,23 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
 
 /* ─── Admin Dashboard ─── */
 function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRefresh, onLogout }) {
-  const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const [editingUser, setEditingUser] = useState(null); const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
-  const [adminHospital, setAdminHospital] = useState(ALL_HOSPITALS[0]);
-  const [adminTitle, setAdminTitle] = useState(""); const [adminDesc, setAdminDesc] = useState(""); const [adminDate, setAdminDate] = useState("");
+  const [adminHospital, setAdminHospital] = useState(ALL_HOSPITALS[0]); const [adminTitle, setAdminTitle] = useState(""); const [adminDesc, setAdminDesc] = useState(""); const [adminDate, setAdminDate] = useState("");
   const [adminSubmitting, setAdminSubmitting] = useState(false); const [adminSuccess, setAdminSuccess] = useState(false);
-  // New user form
   const [newUserId, setNewUserId] = useState(""); const [newUserName, setNewUserName] = useState(""); const [newUserRole, setNewUserRole] = useState("company"); const [newUserPw, setNewUserPw] = useState(""); const [addingUser, setAddingUser] = useState(false);
 
-  const totalComplaints = complaints.length;
-  const totalOpen = complaints.filter(c => c.status !== "Resolved").length;
+  const totalComplaints = complaints.length; const totalOpen = complaints.filter(c => c.status !== "Resolved").length;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
   const handleResolve = async (id, date) => { await resolveComplaint(id, date); await onRefresh(); };
+  const handleUnresolve = async (id) => { await unresolveComplaint(id); await onRefresh(); };
   const handleDelete = async (id) => { await deleteComplaint(id); await onRefresh(); };
-  const handlePasswordChange = async (userId) => {
-    if (!newPw.trim() || saving) return; setSaving(true);
-    const ok = await updatePassword(userId, newPw.trim()); setSaving(false);
-    if (ok) { setPwSuccess(userId); setNewPw(""); setEditingUser(null); await onRefresh(); setTimeout(() => setPwSuccess(""), 2500); }
-  };
+  const handlePasswordChange = async (userId) => { if (!newPw.trim() || saving) return; setSaving(true); const ok = await updatePassword(userId, newPw.trim()); setSaving(false); if (ok) { setPwSuccess(userId); setNewPw(""); setEditingUser(null); await onRefresh(); setTimeout(() => setPwSuccess(""), 2500); } };
   const handleAddEmail = async () => { if (!newEmail.trim() || emailSaving) return; setEmailSaving(true); await addEmail(emailGroup, newEmail.trim()); setNewEmail(""); setEmailSaving(false); await onRefresh(); };
   const handleDeleteEmail = async (id) => { await deleteEmailRecord(id); await onRefresh(); };
-  const submitAdminComplaint = async () => {
-    if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return; setAdminSubmitting(true);
-    const result = await insertComplaint(adminHospital, adminTitle.trim(), adminDesc.trim(), adminDate || null);
-    setAdminSubmitting(false);
-    if (result) { setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); }
-  };
-  const handleAddUser = async () => {
-    if (!newUserId.trim() || !newUserName.trim() || !newUserPw.trim() || addingUser) return; setAddingUser(true);
-    await createUser(newUserId.trim().toLowerCase().replace(/\s+/g, ""), newUserName.trim(), newUserRole, newUserPw.trim());
-    setNewUserId(""); setNewUserName(""); setNewUserPw(""); setAddingUser(false); await onRefresh();
-  };
+  const submitAdminComplaint = async () => { if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return; setAdminSubmitting(true); const r = await insertComplaint(adminHospital, adminTitle.trim(), adminDesc.trim(), adminDate || null); setAdminSubmitting(false); if (r) { setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); } };
+  const handleAddUser = async () => { if (!newUserId.trim() || !newUserName.trim() || !newUserPw.trim() || addingUser) return; setAddingUser(true); await createUser(newUserId.trim().toLowerCase().replace(/\s+/g, ""), newUserName.trim(), newUserRole, newUserPw.trim()); setNewUserId(""); setNewUserName(""); setNewUserPw(""); setAddingUser(false); await onRefresh(); };
   const handleDeleteUser = async (id) => { if (window.confirm("Delete this user?")) { await deleteUser(id); await onRefresh(); } };
 
   const hospitalUsers = users.filter(u => u.role === "hospital");
@@ -623,152 +568,25 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         <button style={styles.btnLogout} onClick={onLogout}>Sign Out</button>
       </AppHeader>
       <div style={styles.tabBar}>
-        {["overview","complaints","submit","passwords","emails"].map(t => (
-          <button key={t} style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>
-            {t === "overview" ? "Overview" : t === "complaints" ? "Complaints" : t === "submit" ? "Submit" : t === "passwords" ? "Passwords" : "Emails"}
-          </button>
-        ))}
+        {["overview","complaints","submit","passwords","emails"].map(t => (<button key={t} style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>{t === "overview" ? "Overview" : t === "complaints" ? "Complaints" : t === "submit" ? "Submit" : t === "passwords" ? "Passwords" : "Emails"}</button>))}
       </div>
       <main style={styles.main}>
-        {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} isAdmin={true} onRefresh={onRefresh} />}
-
-        {tab === "complaints" && !selected && (
-          <>
-            <div style={styles.statsBar}>
-              <div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div>
-              <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div>
-              <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#276749" }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div>
-            </div>
-            <GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} />
-          </>
-        )}
-        {tab === "complaints" && selected && (
-          <ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} onBack={() => setSelected(null)} onResolve={handleResolve} onDelete={handleDelete} onRefresh={onRefresh} />
-        )}
-
-        {tab === "submit" && (
-          <section style={styles.formSection}>
-            <h2 style={styles.sectionTitle}>Submit Complaint on Behalf of Hospital</h2>
-            <select style={{ ...styles.input, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>
-              {ALL_HOSPITALS.map(h => <option key={h} value={h}>{h} — {getProvider(h)}</option>)}
-            </select>
-            <ComplaintTypeSelect value={adminTitle} onChange={e => setAdminTitle(e.target.value)} style={styles.input} />
-            <textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} />
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 13, color: "#4a5568", marginBottom: 4, display: "block" }}>Date (leave empty for today)</label>
-              <input style={styles.input} type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} />
-            </div>
-            <button style={{ ...styles.btnPrimary, opacity: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? 0.5 : 1 }} onClick={submitAdminComplaint}>{adminSubmitting ? "Submitting…" : "Submit Complaint"}</button>
-            {adminSuccess && <p style={styles.successMsg}>Complaint submitted for {adminHospital}.</p>}
-          </section>
-        )}
-
-        {tab === "passwords" && (
-          <>
-            {/* Add New User */}
-            <div style={styles.formSection}>
-              <h2 style={styles.sectionTitle}>Add New User</h2>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
-                <div style={{ flex: 1, minWidth: 120 }}>
-                  <label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>ID</label>
-                  <input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="userid" value={newUserId} onChange={e => setNewUserId(e.target.value)} />
-                </div>
-                <div style={{ flex: 1, minWidth: 120 }}>
-                  <label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Display Name</label>
-                  <input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Name" value={newUserName} onChange={e => setNewUserName(e.target.value)} />
-                </div>
-                <div style={{ minWidth: 100 }}>
-                  <label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Role</label>
-                  <select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserRole} onChange={e => setNewUserRole(e.target.value)}>
-                    <option value="company">Company</option>
-                    <option value="hospital">Hospital</option>
-                  </select>
-                </div>
-                <div style={{ flex: 1, minWidth: 120 }}>
-                  <label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Password</label>
-                  <input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Password" value={newUserPw} onChange={e => setNewUserPw(e.target.value)} />
-                </div>
-                <button style={styles.pwSaveBtn} onClick={handleAddUser}>{addingUser ? "…" : "Add User"}</button>
-              </div>
-            </div>
-
-            <h2 style={styles.sectionTitle}>Company & Admin Accounts</h2>
-            {companyUsers.map(u => (
-              <div key={u.id} style={styles.pwCard}>
-                <div style={styles.pwRow}>
-                  <div><strong style={styles.pwName}>{u.name}</strong><span style={styles.pwRole}>{u.role === "admin" ? "Admin" : "Company"}</span></div>
-                  <div style={styles.pwRight}>
-                    <span style={styles.pwCurrent}>Current: <code>{u.password}</code></span>
-                    {editingUser === u.id ? (
-                      <div style={styles.pwEditRow}>
-                        <input style={styles.pwInput} placeholder="New password" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} />
-                        <button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button>
-                        <button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button>
-                      </div>
-                    ) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}
-                    {u.role !== "admin" && <button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button>}
-                  </div>
-                </div>
-                {pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}
-              </div>
-            ))}
-            {Object.entries(GROUPS).map(([provider, hospitals]) => (
-              <div key={provider}>
-                <h2 style={{ ...styles.sectionTitle, marginTop: 28 }}>{provider} — Hospital Accounts</h2>
-                {hospitalUsers.filter(u => hospitals.some(h => h.toLowerCase().replace(/\s+/g, "") === u.id.toLowerCase().replace(/\s+/g, ""))).map(u => (
-                  <div key={u.id} style={styles.pwCard}>
-                    <div style={styles.pwRow}>
-                      <div><strong style={styles.pwName}>{u.name}</strong></div>
-                      <div style={styles.pwRight}>
-                        <span style={styles.pwCurrent}>Current: <code>{u.password}</code></span>
-                        {editingUser === u.id ? (
-                          <div style={styles.pwEditRow}>
-                            <input style={styles.pwInput} placeholder="New password" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} />
-                            <button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button>
-                            <button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button>
-                          </div>
-                        ) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}
-                        <button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button>
-                      </div>
-                    </div>
-                    {pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </>
-        )}
-
-        {tab === "emails" && (
-          <>
-            <h2 style={styles.sectionTitle}>Email Notifications</h2>
-            <p style={{ fontSize: 14, color: "#4a5568", marginBottom: 20, lineHeight: 1.5 }}>Emails are sent when a complaint is submitted AND when it is resolved. Recipients: relevant service provider + Novair + Amex.</p>
-            <div style={styles.formSection}>
-              <h3 style={{ fontSize: 15, fontWeight: 600, color: "#1a2332", margin: "0 0 12px" }}>Add Email</h3>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <select style={{ ...styles.pwInput, width: 150, padding: "8px 10px" }} value={emailGroup} onChange={e => setEmailGroup(e.target.value)}>
-                  {emailGroupOptions.map(g => <option key={g} value={g}>{g}</option>)}
-                </select>
-                <input style={{ ...styles.pwInput, flex: 1, minWidth: 200, padding: "8px 10px" }} type="email" placeholder="email@example.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddEmail()} />
-                <button style={styles.pwSaveBtn} onClick={handleAddEmail}>{emailSaving ? "…" : "Add"}</button>
-              </div>
-            </div>
-            {emailGroupOptions.map(g => {
-              const ge = notifEmails.filter(e => e.group_name === g);
-              if (!ge.length) return null;
-              return (<div key={g} style={{ marginTop: 20 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 600, color: "#0e7c6b", margin: "0 0 10px" }}>{g}</h3>
-                {ge.map(e => (
-                  <div key={e.id} style={{ ...styles.pwCard, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 14, color: "#1a2332" }}>{e.email}</span>
-                    <button style={{ ...styles.pwCancelBtn, color: "#e53e3e", fontSize: 14 }} onClick={() => handleDeleteEmail(e.id)}>Remove</button>
-                  </div>
-                ))}
-              </div>);
-            })}
-            {notifEmails.length === 0 && <p style={styles.empty}>No notification emails configured yet.</p>}
-          </>
-        )}
+        {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} />}
+        {tab === "complaints" && !selected && (<><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: "#276749" }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} /></>)}
+        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} onBack={() => setSelected(null)} onResolve={handleResolve} onUnresolve={handleUnresolve} onDelete={handleDelete} onRefresh={onRefresh} />)}
+        {tab === "submit" && (<section style={styles.formSection}><h2 style={styles.sectionTitle}>Submit Complaint on Behalf of Hospital</h2><select style={{ ...styles.input, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h} — {getProvider(h)}</option>)}</select><ComplaintTypeSelect value={adminTitle} onChange={e => setAdminTitle(e.target.value)} style={styles.input} /><textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} /><div style={{ marginBottom: 12 }}><label style={{ fontSize: 13, color: "#4a5568", marginBottom: 4, display: "block" }}>Date (leave empty for today)</label><input style={styles.input} type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} /></div><button style={{ ...styles.btnPrimary, opacity: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? 0.5 : 1 }} onClick={submitAdminComplaint}>{adminSubmitting ? "Submitting…" : "Submit Complaint"}</button>{adminSuccess && <p style={styles.successMsg}>Complaint submitted for {adminHospital}.</p>}</section>)}
+        {tab === "passwords" && (<>
+          <div style={styles.formSection}><h2 style={styles.sectionTitle}>Add New User</h2><div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>ID</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="userid" value={newUserId} onChange={e => setNewUserId(e.target.value)} /></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Display Name</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Name" value={newUserName} onChange={e => setNewUserName(e.target.value)} /></div><div style={{ minWidth: 100 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Role</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserRole} onChange={e => setNewUserRole(e.target.value)}><option value="company">Company (view-only)</option><option value="hospital">Hospital</option></select></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Password</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Password" value={newUserPw} onChange={e => setNewUserPw(e.target.value)} /></div><button style={styles.pwSaveBtn} onClick={handleAddUser}>{addingUser ? "…" : "Add User"}</button></div></div>
+          <h2 style={styles.sectionTitle}>Company & Admin Accounts</h2>
+          {companyUsers.map(u => (<div key={u.id} style={styles.pwCard}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong><span style={styles.pwRole}>{u.role === "admin" ? "Admin" : "Company"}</span></div><div style={styles.pwRight}><span style={styles.pwCurrent}>Current: <code>{u.password}</code></span>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} placeholder="New password" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}{u.role !== "admin" && <button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button>}</div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}
+          {Object.entries(GROUPS).map(([provider, hospitals]) => (<div key={provider}><h2 style={{ ...styles.sectionTitle, marginTop: 28 }}>{provider} — Hospital Accounts</h2>{hospitalUsers.filter(u => hospitals.some(h => h.toLowerCase().replace(/\s+/g, "") === u.id.toLowerCase().replace(/\s+/g, ""))).map(u => (<div key={u.id} style={styles.pwCard}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong></div><div style={styles.pwRight}><span style={styles.pwCurrent}>Current: <code>{u.password}</code></span>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} placeholder="New password" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}<button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button></div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}</div>))}
+        </>)}
+        {tab === "emails" && (<>
+          <h2 style={styles.sectionTitle}>Email Notifications</h2><p style={{ fontSize: 14, color: "#4a5568", marginBottom: 20, lineHeight: 1.5 }}>Emails are sent when a complaint is submitted and when resolved. Shutdown emails are sent manually from Overview tab.</p>
+          <div style={styles.formSection}><h3 style={{ fontSize: 15, fontWeight: 600, color: "#1a2332", margin: "0 0 12px" }}>Add Email</h3><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><select style={{ ...styles.pwInput, width: 150, padding: "8px 10px" }} value={emailGroup} onChange={e => setEmailGroup(e.target.value)}>{emailGroupOptions.map(g => <option key={g} value={g}>{g}</option>)}</select><input style={{ ...styles.pwInput, flex: 1, minWidth: 200, padding: "8px 10px" }} type="email" placeholder="email@example.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddEmail()} /><button style={styles.pwSaveBtn} onClick={handleAddEmail}>{emailSaving ? "…" : "Add"}</button></div></div>
+          {emailGroupOptions.map(g => { const ge = notifEmails.filter(e => e.group_name === g); if (!ge.length) return null; return (<div key={g} style={{ marginTop: 20 }}><h3 style={{ fontSize: 15, fontWeight: 600, color: "#0e7c6b", margin: "0 0 10px" }}>{g}</h3>{ge.map(e => (<div key={e.id} style={{ ...styles.pwCard, display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 14, color: "#1a2332" }}>{e.email}</span><button style={{ ...styles.pwCancelBtn, color: "#e53e3e", fontSize: 14 }} onClick={() => handleDeleteEmail(e.id)}>Remove</button></div>))}</div>); })}
+          {notifEmails.length === 0 && <p style={styles.empty}>No notification emails configured yet.</p>}
+        </>)}
       </main>
     </div>
   );
@@ -776,15 +594,12 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 
 /* ─── Company Dashboard ─── */
 function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) {
-  const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const seesAll = ["Novair", "Amex", "UNDP", "CMU"].includes(user.name);
-  const myGroups = {};
-  if (seesAll) { Object.assign(myGroups, GROUPS); } else if (GROUPS[user.name]) { myGroups[user.name] = GROUPS[user.name]; } else { Object.assign(myGroups, GROUPS); }
+  const myGroups = {}; if (seesAll) { Object.assign(myGroups, GROUPS); } else if (GROUPS[user.name]) { myGroups[user.name] = GROUPS[user.name]; } else { Object.assign(myGroups, GROUPS); }
   const myHospitals = Object.values(myGroups).flat();
   const myComplaints = complaints.filter(c => myHospitals.includes(c.hospital));
-  const totalComplaints = myComplaints.length;
-  const totalOpen = myComplaints.filter(c => c.status !== "Resolved").length;
+  const totalComplaints = myComplaints.length; const totalOpen = myComplaints.filter(c => c.status !== "Resolved").length;
   const canCommentOnHospital = (hospital) => { if (["Novair", "Amex"].includes(user.name)) return true; return getProvider(hospital) === user.name; };
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
   return (
@@ -799,20 +614,9 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
         <button style={tab === "complaints" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("complaints"); setSelected(null); }}>Complaints</button>
       </div>
       <main style={styles.main}>
-        {tab === "overview" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} isAdmin={false} onRefresh={onRefresh} />}
-        {tab === "complaints" && !selected && (
-          <>
-            <div style={styles.statsBar}>
-              <div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div>
-              <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div>
-              <div style={styles.statBox}><div style={{ ...styles.statNum, color: "#276749" }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div>
-            </div>
-            <GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} />
-          </>
-        )}
-        {tab === "complaints" && selected && (
-          <ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={false} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onResolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />
-        )}
+        {tab === "overview" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} />}
+        {tab === "complaints" && !selected && (<><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: "#9c4221" }}>{totalOpen}</div><div style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: "#276749" }}>{totalComplaints - totalOpen}</div><div style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} /></>)}
+        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={false} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onResolve={() => {}} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />)}
       </main>
     </div>
   );
