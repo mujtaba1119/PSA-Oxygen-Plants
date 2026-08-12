@@ -1,5 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
+import { loadEnv } from "./_lib/loadEnv.js";
+
+loadEnv();
 
 function json(res, status, body) {
   res.statusCode = status;
