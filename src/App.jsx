@@ -171,7 +171,7 @@ function downloadCSV(complaints, filename) {
   const headers = ["Date", "Hospital", "Service Provider", "Title", "Description", "Status"];
   const escape = s => '"' + String(s || "").replace(/"/g, '""') + '"';
   const rows = complaints.map(c => [
-    new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+    new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" }),
     c.hospital, getProvider(c.hospital), c.title, c.description, c.status || "Open"
   ].map(escape).join(","));
   const csv = [headers.join(","), ...rows].join("\n");
@@ -668,7 +668,7 @@ function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
               <div style={styles.commentHeader}>
                 <strong style={{ fontSize: 13, color: "#1a2332" }}>{c.author}</strong>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 11, color: "#718096" }}>{new Date(c.created_at).toLocaleDateString("en-PK", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                  <span style={{ fontSize: 11, color: "#718096" }}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</span>
                   {isAdmin && <button style={{ fontSize: 11, color: "#0e7c6b", background: "none", border: "none", cursor: "pointer" }} onClick={() => { setEditingComment(c.id); setEditText(c.content); }}>Edit</button>}
                   {isAdmin && <button style={{ fontSize: 11, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDelete(c.id)}>Delete</button>}
                 </div>
@@ -728,7 +728,7 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
         <>
           <div style={styles.cardTop}>
             <strong style={styles.cardTitle}>{c.title}</strong>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}><StatusBadge status={c.status} /><span style={styles.cardDate}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}><StatusBadge status={c.status} /><span style={styles.cardDate}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</span></div>
           </div>
           <p style={styles.cardDesc}>{c.description}</p>
           {c.status === "Resolved" && c.resolved_at && (<p style={{ fontSize: 12, color: "#276749", marginTop: 4 }}>Resolved: {new Date(c.resolved_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</p>)}
