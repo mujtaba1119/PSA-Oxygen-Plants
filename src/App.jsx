@@ -57,7 +57,23 @@ async function insertComplaint(hospital, title, description, customDate) {
   if (customDate) row.created_at = new Date(customDate).toISOString();
   const { data, error } = await supabase.from("complaints").insert([row]).select();
   if (error) { console.error(error); return null; }
-  return data[0];
+  const complaint = data[0];
+  notifyComplaintEmail(hospital, title, description).catch((e) => console.error("Email notify failed", e));
+  return complaint;
+}
+
+async function notifyComplaintEmail(hospital, title, description) {
+  const provider = getProvider(hospital);
+  const { data: rows, error } = await supabase.from("notification_emails").select("email, group_name");
+  if (error || !rows?.length) return;
+  const groups = new Set([provider, "Amex", "UNDP"]);
+  const to = [...new Set(rows.filter((r) => groups.has(r.group_name)).map((r) => r.email).filter(Boolean))];
+  if (!to.length) return;
+  await fetch("/api/send-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ to, hospital, title, description, provider }),
+  });
 }
 async function updateComplaintFields(id, fields) {
   const { error } = await supabase.from("complaints").update(fields).eq("id", id);
@@ -79,18 +95,20 @@ async function deleteComplaint(id) {
   return !error;
 }
 async function fetchUsers() {
-  const { data, error } = await supabase.from("users").select("*");
+  const { data, error } = await supabase.from("users").select("id, name, role");
   if (error) { console.error(error); return []; }
-  return data;
+  return data || [];
 }
 async function updatePassword(userId, newPassword) {
+  if (!newPassword || newPassword.trim().length < 8) return false;
   const hashed = await hashPassword(newPassword);
   const { error } = await supabase.from("users").update({ password: hashed }).eq("id", userId);
   return !error;
 }
 async function createUser(id, name, role, password) {
+  if (!password || password.trim().length < 8) return null;
   const hashed = await hashPassword(password);
-  const { data, error } = await supabase.from("users").insert([{ id, name, role, password: hashed }]).select();
+  const { data, error } = await supabase.from("users").insert([{ id, name, role, password: hashed }]).select("id, name, role");
   if (error) { console.error(error); return null; }
   return data[0];
 }
@@ -243,41 +261,93 @@ class ErrorBoundary extends React.Component {
 export default function App() {
   return <ErrorBoundary><AppInner /></ErrorBoundary>;
 }
+const SESSION_KEY = "psa_session_user";
+
+function loadSessionUser() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const u = JSON.parse(raw);
+    if (u?.id && u?.name && u?.role) return u;
+  } catch {}
+  return null;
+}
+
+function saveSessionUser(u) {
+  if (!u) sessionStorage.removeItem(SESSION_KEY);
+  else sessionStorage.setItem(SESSION_KEY, JSON.stringify({ id: u.id, name: u.name, role: u.role }));
+}
+
+function LoadingScreen() {
+  return (
+    <div style={styles.loadWrap}><div style={{ textAlign: "center" }}>
+      <div style={{ width: 100, height: 100, borderRadius: "50%", border: "2px solid #111", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", animation: "breathe 3s ease-in-out infinite" }}>
+        <span style={{ fontSize: 32, fontWeight: 800, color: "#111", letterSpacing: -2 }}>O₂</span>
+      </div>
+      <div style={{ fontSize: 10, fontWeight: 600, color: "#999", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 20 }}>PSA Oxygen Plants</div>
+      <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
+        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#111", animation: "pulse 1.2s ease-in-out infinite", animationDelay: "0s" }}></span>
+        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#111", animation: "pulse 1.2s ease-in-out infinite", animationDelay: "0.2s" }}></span>
+        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#111", animation: "pulse 1.2s ease-in-out infinite", animationDelay: "0.4s" }}></span>
+      </div>
+    </div></div>
+  );
+}
+
 function AppInner() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => loadSessionUser());
   const [users, setUsers] = useState([]);
   const [complaints, setComplaints] = useState([]);
   const [notifEmails, setNotifEmails] = useState([]);
   const [siteNotes, setSiteNotes] = useState([]);
   const [ready, setReady] = useState(false);
+  const [dataReady, setDataReady] = useState(false);
 
   const reload = useCallback(async () => {
     const [c, u, e, s] = await Promise.all([fetchComplaints(), fetchUsers(), fetchEmails(), fetchSiteNotes()]);
     setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s);
   }, []);
 
-  useEffect(() => { reload().then(() => setReady(true)); }, [reload]);
+  useEffect(() => { setReady(true); }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setDataReady(false);
+      return;
+    }
+    let cancelled = false;
+    setDataReady(false);
+    reload().then(() => { if (!cancelled) setDataReady(true); });
+    return () => { cancelled = true; };
+  }, [user, reload]);
+
   useEffect(() => {
     if (user?.role === "company" || user?.role === "admin") {
-      const iv = setInterval(reload, 30000); return () => clearInterval(iv);
+      const iv = setInterval(reload, 30000);
+      return () => clearInterval(iv);
     }
   }, [user, reload]);
 
-  if (!ready) return <div style={styles.loadWrap}><div style={{ textAlign: "center" }}>
-    <div style={{ width: 100, height: 100, borderRadius: "50%", border: "2px solid #111", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", animation: "breathe 3s ease-in-out infinite" }}>
-      <span style={{ fontSize: 32, fontWeight: 800, color: "#111", letterSpacing: -2 }}>O₂</span>
-    </div>
-    <div style={{ fontSize: 10, fontWeight: 600, color: "#999", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 20 }}>PSA Oxygen Plants</div>
-    <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
-      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#111", animation: "pulse 1.2s ease-in-out infinite", animationDelay: "0s" }}></span>
-      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#111", animation: "pulse 1.2s ease-in-out infinite", animationDelay: "0.2s" }}></span>
-      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#111", animation: "pulse 1.2s ease-in-out infinite", animationDelay: "0.4s" }}></span>
-    </div>
-  </div></div>;
-  if (!user) return <LoginScreen users={users} onLogin={setUser} />;
-  if (user.role === "hospital") return <HospitalDashboard user={user} complaints={complaints} onRefresh={reload} onLogout={() => setUser(null)} />;
-  if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} siteNotes={siteNotes} onRefresh={reload} onLogout={() => setUser(null)} />;
-  return <CompanyDashboard user={user} complaints={complaints} siteNotes={siteNotes} onRefresh={reload} onLogout={() => setUser(null)} />;
+  const handleLogin = (u) => {
+    saveSessionUser(u);
+    setUser(u);
+  };
+  const handleLogout = () => {
+    saveSessionUser(null);
+    setUser(null);
+    setComplaints([]);
+    setUsers([]);
+    setNotifEmails([]);
+    setSiteNotes([]);
+    setDataReady(false);
+  };
+
+  if (!ready) return <LoadingScreen />;
+  if (!user) return <LoginScreen onLogin={handleLogin} />;
+  if (!dataReady) return <LoadingScreen />;
+  if (user.role === "hospital") return <HospitalDashboard user={user} complaints={complaints} onRefresh={reload} onLogout={handleLogout} />;
+  if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} siteNotes={siteNotes} onRefresh={reload} onLogout={handleLogout} />;
+  return <CompanyDashboard user={user} complaints={complaints} siteNotes={siteNotes} onRefresh={reload} onLogout={handleLogout} />;
 }
 
 /* ─── Security: Password Hashing ─── */
@@ -287,31 +357,98 @@ async function hashPassword(pw) {
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-function LoginScreen({ users, onLogin }) {
+function isSha256Hex(value) {
+  return typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
+}
+
+async function loginWithClient(username, password) {
+  const clean = (s) => String(s || "").trim().toLowerCase().replace(/\s+/g, "");
+  const needle = clean(username);
+  const pwHash = await hashPassword(password);
+
+  const { data: byId, error: idErr } = await supabase
+    .from("users")
+    .select("id, name, role, password")
+    .eq("id", needle)
+    .maybeSingle();
+  if (idErr) throw idErr;
+
+  let user = byId;
+  if (!user) {
+    const { data: rows, error } = await supabase.from("users").select("id, name, role, password");
+    if (error) throw error;
+    user = (rows || []).find((u) => clean(u.name) === needle) || null;
+  }
+  if (!user) return null;
+
+  if (isSha256Hex(user.password)) {
+    if (user.password !== pwHash) return null;
+  } else if (clean(user.password) === clean(password)) {
+    // Legacy plaintext: upgrade hash when possible (ignore failure if column locked later)
+    await supabase.from("users").update({ password: pwHash }).eq("id", user.id);
+  } else {
+    return null;
+  }
+
+  return { id: user.id, name: user.name, role: user.role };
+}
+
+async function loginUser(username, password) {
+  try {
+    const res = await fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.user) return data.user;
+    }
+    // Fall through to client login when API isn't configured (local vite / missing service role)
+    if (res.status !== 401) {
+      return loginWithClient(username, password);
+    }
+    return null;
+  } catch {
+    return loginWithClient(username, password);
+  }
+}
+
+function LoginScreen({ onLogin }) {
   const [id, setId] = useState(""); const [pw, setPw] = useState(""); const [err, setErr] = useState("");
   const [attempts, setAttempts] = useState(0); const [locked, setLocked] = useState(false); const [submitting, setSubmitting] = useState(false);
   const submit = async () => {
     if (locked || submitting) return;
     setSubmitting(true);
-    const clean = s => s.trim().toLowerCase().replace(/\s+/g, "");
-    const pwHash = await hashPassword(pw);
-    const found = users.find(u => (clean(u.name) === clean(id) || clean(u.id) === clean(id)) && (u.password === pwHash || clean(u.password) === clean(pw)));
-    if (!found) {
-      const newAttempts = attempts + 1;
-      setAttempts(newAttempts);
-      if (newAttempts >= 5) { setLocked(true); setErr("Too many attempts. Try again in 60 seconds."); setTimeout(() => { setLocked(false); setAttempts(0); setErr(""); }, 60000); }
-      else { setErr(`Invalid credentials (${5 - newAttempts} attempts remaining)`); }
-      setSubmitting(false); return;
+    try {
+      const found = await loginUser(id, pw);
+      if (!found) {
+        const newAttempts = attempts + 1;
+        setAttempts(newAttempts);
+        if (newAttempts >= 5) {
+          setLocked(true);
+          setErr("Too many attempts. Try again in 60 seconds.");
+          setTimeout(() => { setLocked(false); setAttempts(0); setErr(""); }, 60000);
+        } else {
+          setErr(`Invalid credentials (${5 - newAttempts} attempts remaining)`);
+        }
+        return;
+      }
+      onLogin(found);
+    } catch (e) {
+      console.error(e);
+      setErr("Login failed");
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false); onLogin(found);
   };
   return (
     <div style={styles.loginBg}><div className="login-card-responsive" style={styles.loginCard}>
       <div style={styles.loginBrand}><span style={styles.brandMark}>O₂</span><span style={styles.brandText}>PSA Oxygen Plant</span></div>
       <h2 style={styles.loginTitle}>Complaint Portal</h2>
       <p style={styles.loginSub}>Sign in with your credentials</p>
-      <input style={styles.input} placeholder="Username" value={id} onChange={e => { setId(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} />
-      <input style={styles.input} type="password" placeholder="Password" value={pw} onChange={e => { setPw(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} />
+      <input style={styles.input} placeholder="Username" value={id} onChange={e => { setId(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} autoComplete="username" />
+      <input style={styles.input} type="password" placeholder="Password" value={pw} onChange={e => { setPw(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} autoComplete="current-password" />
       {err && <p style={styles.err}>{err}</p>}
       <button style={{ ...styles.btnPrimary, opacity: (locked || submitting) ? 0.5 : 1 }} onClick={submit} disabled={locked || submitting}>{submitting ? "Signing in…" : locked ? "Locked" : "Sign In"}</button>
     </div></div>
@@ -507,15 +644,13 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
 function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
   const [comments, setComments] = useState([]); const [text, setText] = useState(""); const [posting, setPosting] = useState(false);
   const [loaded, setLoaded] = useState(false); const [expanded, setExpanded] = useState(false);
-  const [asHospital, setAsHospital] = useState("");
   const [editingComment, setEditingComment] = useState(null); const [editText, setEditText] = useState("");
   const loadComments = useCallback(async () => { const data = await fetchComments(complaintId); setComments(data); setLoaded(true); }, [complaintId]);
   useEffect(() => { if (expanded) loadComments(); }, [expanded, loadComments]);
   const post = async () => {
     if (!text.trim() || posting) return; setPosting(true);
-    let author, role;
-    if (isAdmin && asHospital) { author = asHospital + " Hospital"; role = "hospital"; }
-    else { author = currentUser.role === "hospital" ? currentUser.name + " Hospital" : currentUser.name; role = currentUser.role; }
+    const author = currentUser.role === "hospital" ? currentUser.name + " Hospital" : currentUser.name;
+    const role = currentUser.role;
     await insertComment(complaintId, author, role, text.trim()); setText(""); setPosting(false); await loadComments();
   };
   const handleDelete = async (id) => { await deleteComment(id); await loadComments(); };
@@ -548,13 +683,10 @@ function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
             </div>
           ))}
           {(canComment || isAdmin) && (
-            <>
-              {isAdmin && (<div style={{ marginBottom: 6 }}><select style={{ ...styles.pwInput, width: "auto", fontSize: 12, padding: "4px 8px" }} value={asHospital} onChange={e => setAsHospital(e.target.value)}><option value="">Comment as Admin</option>{ALL_HOSPITALS.map(h => <option key={h} value={h}>Comment as {h} Hospital</option>)}</select></div>)}
-              <div style={styles.commentInputRow}>
-                <input style={styles.commentInput} placeholder="Write a comment…" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && post()} />
-                <button style={styles.commentSendBtn} onClick={post} disabled={!text.trim() || posting}>{posting ? "…" : "Post"}</button>
-              </div>
-            </>
+            <div style={styles.commentInputRow}>
+              <input style={styles.commentInput} placeholder="Write a comment…" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && post()} />
+              <button style={styles.commentSendBtn} onClick={post} disabled={!text.trim() || posting}>{posting ? "…" : "Post"}</button>
+            </div>
           )}
         </div>
       )}
@@ -668,11 +800,27 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const handleResolve = async (id, date) => { await resolveComplaint(id, date); await onRefresh(); };
   const handleUnresolve = async (id) => { await unresolveComplaint(id); await onRefresh(); };
   const handleDelete = async (id) => { await deleteComplaint(id); await onRefresh(); };
-  const handlePasswordChange = async (userId) => { if (!newPw.trim() || saving) return; setSaving(true); const ok = await updatePassword(userId, newPw.trim()); setSaving(false); if (ok) { setPwSuccess(userId); setNewPw(""); setEditingUser(null); await onRefresh(); setTimeout(() => setPwSuccess(""), 2500); } };
+  const handlePasswordChange = async (userId) => {
+    if (!newPw.trim() || saving) return;
+    if (newPw.trim().length < 8) { alert("Password must be at least 8 characters"); return; }
+    setSaving(true);
+    const ok = await updatePassword(userId, newPw.trim());
+    setSaving(false);
+    if (ok) { setPwSuccess(userId); setNewPw(""); setEditingUser(null); await onRefresh(); setTimeout(() => setPwSuccess(""), 2500); }
+    else alert("Password update failed");
+  };
   const handleAddEmail = async () => { if (!newEmail.trim() || emailSaving) return; setEmailSaving(true); await addEmail(emailGroup, newEmail.trim()); setNewEmail(""); setEmailSaving(false); await onRefresh(); };
   const handleDeleteEmail = async (id) => { await deleteEmailRecord(id); await onRefresh(); };
   const submitAdminComplaint = async () => { if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return; setAdminSubmitting(true); const r = await insertComplaint(adminHospital, adminTitle.trim(), adminDesc.trim(), adminDate || null); setAdminSubmitting(false); if (r) { setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); } };
-  const handleAddUser = async () => { if (!newUserId.trim() || !newUserName.trim() || !newUserPw.trim() || addingUser) return; setAddingUser(true); await createUser(newUserId.trim().toLowerCase().replace(/\s+/g, ""), newUserName.trim(), newUserRole, newUserPw.trim()); setNewUserId(""); setNewUserName(""); setNewUserPw(""); setAddingUser(false); await onRefresh(); };
+  const handleAddUser = async () => {
+    if (!newUserId.trim() || !newUserName.trim() || !newUserPw.trim() || addingUser) return;
+    if (newUserPw.trim().length < 8) { alert("Password must be at least 8 characters"); return; }
+    setAddingUser(true);
+    const created = await createUser(newUserId.trim().toLowerCase().replace(/\s+/g, ""), newUserName.trim(), newUserRole, newUserPw.trim());
+    setAddingUser(false);
+    if (!created) { alert("Could not create user"); return; }
+    setNewUserId(""); setNewUserName(""); setNewUserPw(""); await onRefresh();
+  };
   const handleDeleteUser = async (id) => { if (window.confirm("Delete this user?")) { await deleteUser(id); await onRefresh(); } };
 
   const hospitalUsers = users.filter(u => u.role === "hospital");
@@ -695,13 +843,13 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} onBack={() => setSelected(null)} onResolve={handleResolve} onUnresolve={handleUnresolve} onDelete={handleDelete} onRefresh={onRefresh} />)}
         {tab === "submit" && (<section style={styles.formSection}><h2 style={styles.sectionTitle}>Submit Complaint on Behalf of Hospital</h2><select style={{ ...styles.input, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h} — {getProvider(h)}</option>)}</select><ComplaintTypeSelect value={adminTitle} onChange={e => setAdminTitle(e.target.value)} style={styles.input} /><textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} /><div style={{ marginBottom: 12 }}><label style={{ fontSize: 13, color: "#4a5568", marginBottom: 4, display: "block" }}>Date (leave empty for today)</label><input style={styles.input} type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} /></div><button style={{ ...styles.btnPrimary, opacity: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? 0.5 : 1 }} onClick={submitAdminComplaint}>{adminSubmitting ? "Submitting…" : "Submit Complaint"}</button>{adminSuccess && <p style={styles.successMsg}>Complaint submitted for {adminHospital}.</p>}</section>)}
         {tab === "passwords" && (<>
-          <div style={styles.formSection}><h2 style={styles.sectionTitle}>Add New User</h2><div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>ID</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="userid" value={newUserId} onChange={e => setNewUserId(e.target.value)} /></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Display Name</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Name" value={newUserName} onChange={e => setNewUserName(e.target.value)} /></div><div style={{ minWidth: 100 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Role</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserRole} onChange={e => setNewUserRole(e.target.value)}><option value="company">Company (view-only)</option><option value="hospital">Hospital</option></select></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Password</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Password" value={newUserPw} onChange={e => setNewUserPw(e.target.value)} /></div><button style={styles.pwSaveBtn} onClick={handleAddUser}>{addingUser ? "…" : "Add User"}</button></div></div>
+          <div style={styles.formSection}><h2 style={styles.sectionTitle}>Add New User</h2><p style={{ fontSize: 13, color: "#718096", marginBottom: 12 }}>Passwords must be at least 8 characters. Password values are never shown in the admin list.</p><div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>ID</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="userid" value={newUserId} onChange={e => setNewUserId(e.target.value)} /></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Display Name</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Name" value={newUserName} onChange={e => setNewUserName(e.target.value)} /></div><div style={{ minWidth: 100 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Role</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserRole} onChange={e => setNewUserRole(e.target.value)}><option value="company">Company (view-only)</option><option value="hospital">Hospital</option></select></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Password</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} type="password" placeholder="Min 8 characters" value={newUserPw} onChange={e => setNewUserPw(e.target.value)} /></div><button style={styles.pwSaveBtn} onClick={handleAddUser}>{addingUser ? "…" : "Add User"}</button></div></div>
           <h2 style={styles.sectionTitle}>Company & Admin Accounts</h2>
-          {companyUsers.map(u => (<div key={u.id} style={styles.pwCard}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong><span style={styles.pwRole}>{u.role === "admin" ? "Admin" : "Company"}</span></div><div style={styles.pwRight}><span style={styles.pwCurrent}>Current: <code>••••••••</code></span>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} placeholder="New password" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}{u.role !== "admin" && <button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button>}</div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}
-          {Object.entries(GROUPS).map(([provider, hospitals]) => (<div key={provider}><h2 style={{ ...styles.sectionTitle, marginTop: 28 }}>{provider} — Hospital Accounts</h2>{hospitalUsers.filter(u => hospitals.some(h => h.toLowerCase().replace(/\s+/g, "") === u.id.toLowerCase().replace(/\s+/g, ""))).map(u => (<div key={u.id} style={styles.pwCard}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong></div><div style={styles.pwRight}><span style={styles.pwCurrent}>Current: <code>••••••••</code></span>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} placeholder="New password" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}<button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button></div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}</div>))}
+          {companyUsers.map(u => (<div key={u.id} style={styles.pwCard}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong><span style={styles.pwRole}>{u.role === "admin" ? "Admin" : "Company"}</span></div><div style={styles.pwRight}><span style={styles.pwCurrent}>Password: <code>••••••••</code></span>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} type="password" placeholder="New password (min 8)" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}{u.role !== "admin" && <button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button>}</div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}
+          {Object.entries(GROUPS).map(([provider, hospitals]) => (<div key={provider}><h2 style={{ ...styles.sectionTitle, marginTop: 28 }}>{provider} — Hospital Accounts</h2>{hospitalUsers.filter(u => hospitals.some(h => h.toLowerCase().replace(/\s+/g, "") === u.id.toLowerCase().replace(/\s+/g, ""))).map(u => (<div key={u.id} style={styles.pwCard}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong></div><div style={styles.pwRight}><span style={styles.pwCurrent}>Password: <code>••••••••</code></span>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} type="password" placeholder="New password (min 8)" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}<button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button></div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}</div>))}
         </>)}
         {tab === "emails" && (<>
-          <h2 style={styles.sectionTitle}>Email Notifications</h2><p style={{ fontSize: 14, color: "#4a5568", marginBottom: 20, lineHeight: 1.5 }}>Emails are sent when a complaint is submitted and when resolved. Shutdown emails are sent manually from Overview tab.</p>
+          <h2 style={styles.sectionTitle}>Email Notifications</h2><p style={{ fontSize: 14, color: "#4a5568", marginBottom: 20, lineHeight: 1.5 }}>When a complaint is submitted, emails go to that hospital&apos;s service-provider group plus Amex and UNDP (via Resend / <code>RESEND_API_KEY</code>). Shutdown emails are sent manually from the Overview tab.</p>
           <div style={styles.formSection}><h3 style={{ fontSize: 15, fontWeight: 600, color: "#1a2332", margin: "0 0 12px" }}>Add Email</h3><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><select style={{ ...styles.pwInput, width: 150, padding: "8px 10px" }} value={emailGroup} onChange={e => setEmailGroup(e.target.value)}>{emailGroupOptions.map(g => <option key={g} value={g}>{g}</option>)}</select><input style={{ ...styles.pwInput, flex: 1, minWidth: 200, padding: "8px 10px" }} type="email" placeholder="email@example.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddEmail()} /><button style={styles.pwSaveBtn} onClick={handleAddEmail}>{emailSaving ? "…" : "Add"}</button></div></div>
           {emailGroupOptions.map(g => { const ge = notifEmails.filter(e => e.group_name === g); if (!ge.length) return null; return (<div key={g} style={{ marginTop: 20 }}><h3 style={{ fontSize: 15, fontWeight: 600, color: "#0e7c6b", margin: "0 0 10px" }}>{g}</h3>{ge.map(e => (<div key={e.id} style={{ ...styles.pwCard, display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 14, color: "#1a2332" }}>{e.email}</span><button style={{ ...styles.pwCancelBtn, color: "#e53e3e", fontSize: 14 }} onClick={() => handleDeleteEmail(e.id)}>Remove</button></div>))}</div>); })}
           {notifEmails.length === 0 && <p style={styles.empty}>No notification emails configured yet.</p>}
