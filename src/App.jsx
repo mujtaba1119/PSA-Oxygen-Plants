@@ -129,8 +129,9 @@ async function createUser(id, name, role, password, company, email) {
   const row = { id, name, role, password: hashed };
   if (company) row.company = company;
   if (email) row.email = email;
+  console.log("Creating user:", { id, name, role, company, email });
   const { data, error } = await supabase.from("users").insert([row]).select("id, name, role, company, email");
-  if (error) { console.error(error); return null; }
+  if (error) { console.error("Create user error:", error.message, error.details, error.hint); alert("Error: " + error.message); return null; }
   return data[0];
 }
 async function deleteUser(id) {
