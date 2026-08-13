@@ -79,14 +79,31 @@ async function updateComplaintFields(id, fields) {
   const { error } = await supabase.from("complaints").update(fields).eq("id", id);
   return !error;
 }
-async function resolveComplaint(id, resolvedDate) {
-  const update = { status: "Resolved" };
-  if (resolvedDate) update.resolved_at = new Date(resolvedDate).toISOString();
+async function requestResolution(id, requestedBy) {
+  const update = { status: "Pending Resolution", resolution_requested_at: new Date().toISOString(), resolution_requested_by: requestedBy };
+  const { error } = await supabase.from("complaints").update(update).eq("id", id);
+  return !error;
+}
+async function resolveComplaint(id, resolvedDate, resolvedBy) {
+  const { data } = await supabase.from("complaints").select("resolution_requested_at").eq("id", id).single();
+  const update = { status: "Resolved", resolved_by: resolvedBy || "Admin" };
+  update.resolved_at = (data?.resolution_requested_at) ? data.resolution_requested_at : (resolvedDate ? new Date(resolvedDate).toISOString() : new Date().toISOString());
+  const { error } = await supabase.from("complaints").update(update).eq("id", id);
+  return !error;
+}
+async function approveResolution(id, approvedBy) {
+  const { data } = await supabase.from("complaints").select("resolution_requested_at").eq("id", id).single();
+  const update = { status: "Resolved", resolved_by: approvedBy, resolved_at: data?.resolution_requested_at || new Date().toISOString() };
+  const { error } = await supabase.from("complaints").update(update).eq("id", id);
+  return !error;
+}
+async function rejectResolution(id) {
+  const update = { status: "Open", resolution_requested_at: null, resolution_requested_by: null };
   const { error } = await supabase.from("complaints").update(update).eq("id", id);
   return !error;
 }
 async function unresolveComplaint(id) {
-  const { error } = await supabase.from("complaints").update({ status: "Open", resolved_at: null }).eq("id", id);
+  const { error } = await supabase.from("complaints").update({ status: "Open", resolved_at: null, resolved_by: null, resolution_requested_at: null, resolution_requested_by: null }).eq("id", id);
   return !error;
 }
 async function deleteComplaint(id) {
@@ -457,7 +474,8 @@ function LoginScreen({ onLogin }) {
 
 function StatusBadge({ status }) {
   const r = status === "Resolved";
-  return <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 12, color: r ? "#276749" : "#9c4221", background: r ? "#c6f6d5" : "#feebc8" }}>{r ? "Resolved" : "Open"}</span>;
+  const p = status === "Pending Resolution";
+  return <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 12, color: r ? "#276749" : p ? "#7c5e10" : "#9c4221", background: r ? "#c6f6d5" : p ? "#fef3c7" : "#feebc8" }}>{status}</span>;
 }
 
 /* ─── Overview Tab ─── */
@@ -707,15 +725,29 @@ function GroupedHospitalList({ groups, complaints, onSelect }) {
   ))}</>);
 }
 
-function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, onResolve, onUnresolve, onDelete, onRefresh }) {
+function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, isAmex, isProvider, onResolve, onRequestResolve, onApprove, onReject, onUnresolve, onDelete, onRefresh }) {
   const [resolving, setResolving] = useState(false); const [resolveDate, setResolveDate] = useState("");
   const [editing, setEditing] = useState(false); const [editTitle, setEditTitle] = useState(complaint.title);
   const [editDesc, setEditDesc] = useState(complaint.description); const [editSaving, setEditSaving] = useState(false);
+  const [rejecting, setRejecting] = useState(false); const [rejectReason, setRejectReason] = useState("");
   const c = complaint;
-  const handleResolve = async () => { setResolving(true); await onResolve(c.id, resolveDate || null); setResolving(false); };
+  const handleResolve = async () => {
+    setResolving(true);
+    if (isAdmin || isAmex) { await onResolve(c.id, resolveDate || null); }
+    else { await onRequestResolve(c.id); }
+    setResolving(false);
+  };
+  const handleApprove = async () => { setResolving(true); await onApprove(c.id); setResolving(false); };
+  const handleReject = async () => {
+    if (!rejectReason.trim()) return;
+    setResolving(true);
+    await onReject(c.id, rejectReason.trim());
+    setRejecting(false); setRejectReason(""); setResolving(false);
+  };
   const handleUnresolve = async () => { await onUnresolve(c.id); await onRefresh(); };
   const handleDelete = async () => { if (window.confirm("Delete this complaint permanently?")) { await onDelete(c.id); await onRefresh(); } };
   const handleEditSave = async () => { if (!editTitle.trim() || !editDesc.trim()) return; setEditSaving(true); await updateComplaintFields(c.id, { title: editTitle.trim(), description: editDesc.trim() }); setEditSaving(false); setEditing(false); await onRefresh(); };
+  const dateFmt = { year: "numeric", month: "short", day: "numeric" };
   return (
     <div style={styles.card}>
       {editing ? (
@@ -728,16 +760,33 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
         <>
           <div style={styles.cardTop}>
             <strong style={styles.cardTitle}>{c.title}</strong>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}><StatusBadge status={c.status} /><span style={styles.cardDate}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</span></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}><StatusBadge status={c.status} /><span style={styles.cardDate}>Submitted: {new Date(c.created_at).toLocaleDateString("en-PK", dateFmt)}</span></div>
           </div>
           <p style={styles.cardDesc}>{c.description}</p>
-          {c.status === "Resolved" && c.resolved_at && (<p style={{ fontSize: 12, color: "#276749", marginTop: 4 }}>Resolved: {new Date(c.resolved_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</p>)}
+          {c.status === "Pending Resolution" && c.resolution_requested_by && (<p style={{ fontSize: 12, color: "#7c5e10", marginTop: 4 }}>Resolution requested by: {c.resolution_requested_by} — {new Date(c.resolution_requested_at).toLocaleDateString("en-PK", dateFmt)}</p>)}
+          {c.status === "Resolved" && c.resolved_at && (<p style={{ fontSize: 12, color: "#276749", marginTop: 4 }}>Resolved: {new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt)}{c.resolved_by ? ` (Approved by: ${c.resolved_by})` : ""}</p>)}
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
-            {canResolve && c.status !== "Resolved" && (
-              <>{isAdmin && <input type="date" style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #e2e8f0", borderRadius: 6 }} value={resolveDate} onChange={e => setResolveDate(e.target.value)} />}<button style={styles.resolveBtn} onClick={handleResolve} disabled={resolving}>{resolving ? "Resolving…" : "Mark as Resolved"}</button></>
+            {/* Open complaints: Hospital/Provider can request, Amex/Admin can resolve directly */}
+            {c.status === "Open" && canResolve && (
+              <>{isAdmin && <input type="date" style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #e2e8f0", borderRadius: 6 }} value={resolveDate} onChange={e => setResolveDate(e.target.value)} />}<button style={styles.resolveBtn} onClick={handleResolve} disabled={resolving}>{resolving ? "…" : (isAdmin || isAmex) ? "RESOLVE" : "MARK AS RESOLVED"}</button></>
             )}
-            {isAdmin && c.status === "Resolved" && (<button style={{ fontSize: 13, fontWeight: 600, color: "#9c4221", background: "#feebc8", border: "none", borderRadius: 6, padding: "6px 14px", cursor: "pointer" }} onClick={handleUnresolve}>Unresolve</button>)}
-            {isAdmin && <button style={{ fontSize: 13, fontWeight: 500, color: "#0e7c6b", background: "#e6f5f2", border: "none", borderRadius: 6, padding: "6px 14px", cursor: "pointer" }} onClick={() => setEditing(true)}>Edit</button>}
+            {/* Pending: Amex/Admin can approve or reject */}
+            {c.status === "Pending Resolution" && (isAdmin || isAmex) && (
+              <>
+                <button style={{ ...styles.resolveBtn, background: "#27ae60" }} onClick={handleApprove} disabled={resolving}>{resolving ? "…" : "APPROVE"}</button>
+                {!rejecting ? (
+                  <button style={{ ...styles.deleteBtn, background: "#c0392b" }} onClick={() => setRejecting(true)}>REJECT</button>
+                ) : (
+                  <div style={{ display: "flex", gap: 6, alignItems: "center", flex: 1 }}>
+                    <input style={{ ...styles.pwInput, flex: 1, fontSize: 12 }} placeholder="Reason for rejection..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} onKeyDown={e => e.key === "Enter" && handleReject()} />
+                    <button style={{ ...styles.pwSaveBtn, fontSize: 11 }} onClick={handleReject}>Send</button>
+                    <button style={styles.pwCancelBtn} onClick={() => { setRejecting(false); setRejectReason(""); }}>✕</button>
+                  </div>
+                )}
+              </>
+            )}
+            {isAdmin && c.status === "Resolved" && (<button style={{ fontSize: 12, fontWeight: 600, color: "#9c4221", background: "#feebc8", border: "none", borderRadius: 0, padding: "6px 14px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" }} onClick={handleUnresolve}>Unresolve</button>)}
+            {isAdmin && <button style={{ fontSize: 12, fontWeight: 500, color: C.black, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 0, padding: "6px 14px", cursor: "pointer" }} onClick={() => setEditing(true)}>Edit</button>}
             {isAdmin && <button style={styles.deleteBtn} onClick={handleDelete}>Delete</button>}
           </div>
         </>
@@ -747,13 +796,13 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
   );
 }
 
-function ComplaintListView({ hospital, complaints, currentUser, canResolve, canComment, isAdmin, onBack, onResolve, onUnresolve, onDelete, onRefresh }) {
+function ComplaintListView({ hospital, complaints, currentUser, canResolve, canComment, isAdmin, isAmex, isProvider, onBack, onResolve, onRequestResolve, onApprove, onReject, onUnresolve, onDelete, onRefresh }) {
   const hc = complaints.filter(c => c.hospital === hospital);
   return (<>
-    <button style={styles.backBtn} onClick={onBack}>← Back</button>
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>{hospital}</h2><span style={{ fontSize: 13, color: "#718096" }}>({hc.length})</span><span style={{ fontSize: 12, color: "#0e7c6b", background: "#e6f5f2", padding: "2px 8px", borderRadius: 8 }}>{getProvider(hospital)}</span></div>
+    <button style={styles.backBtn} onClick={onBack}>← BACK</button>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>{hospital}</h2><span style={{ fontSize: 13, color: "#999" }}>({hc.length})</span><span style={{ fontSize: 12, color: "#555", background: "#f0f0f0", padding: "2px 8px" }}>{getProvider(hospital)}</span></div>
     {hc.length === 0 && <p style={styles.empty}>No complaints from this hospital.</p>}
-    {hc.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={currentUser} canResolve={canResolve} canComment={canComment} isAdmin={isAdmin} onResolve={onResolve} onUnresolve={onUnresolve} onDelete={onDelete} onRefresh={onRefresh} />))}
+    {hc.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={currentUser} canResolve={canResolve} canComment={canComment} isAdmin={isAdmin} isAmex={isAmex} isProvider={isProvider} onResolve={onResolve} onRequestResolve={onRequestResolve} onApprove={onApprove} onReject={onReject} onUnresolve={onUnresolve} onDelete={onDelete} onRefresh={onRefresh} />))}
   </>);
 }
 
@@ -764,7 +813,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const mine = complaints.filter(c => c.hospital === user.name);
   const openCount = mine.filter(c => c.status !== "Resolved").length;
   const submitComplaint = async () => { if (!title.trim() || !desc.trim() || submitting) return; setSubmitting(true); const r = await insertComplaint(user.name, title.trim(), desc.trim()); setSubmitting(false); if (r) { setTitle(""); setDesc(""); setSuccess(true); setTimeout(() => setSuccess(false), 2500); await onRefresh(); } };
-  const handleResolve = async (id) => { await resolveComplaint(id); await onRefresh(); };
+  const handleResolve = async (id) => { await requestResolution(id, user.name + " Hospital"); await onRefresh(); };
   return (
     <div style={styles.shell}>
       <AppHeader user={user}><button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button></AppHeader>
@@ -779,7 +828,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
         <section style={styles.listSection}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>Your Complaints ({mine.length})</h2>{openCount > 0 && <span style={{ fontSize: 13, fontWeight: 600, color: "#9c4221", background: "#feebc8", padding: "3px 10px", borderRadius: 12 }}>{openCount} open</span>}</div>
           {mine.length === 0 && <p style={styles.empty}>No complaints registered yet.</p>}
-          {mine.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={user} canResolve={true} canComment={true} isAdmin={false} onResolve={handleResolve} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />))}
+          {mine.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={user} canResolve={true} canComment={true} isAdmin={false} isAmex={false} isProvider={false} onResolve={() => {}} onRequestResolve={handleResolve} onApprove={() => {}} onReject={() => {}} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />))}
         </section>
       </main>
     </div>
@@ -797,7 +846,10 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 
   const totalComplaints = complaints.length; const totalOpen = complaints.filter(c => c.status !== "Resolved").length;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
-  const handleResolve = async (id, date) => { await resolveComplaint(id, date); await onRefresh(); };
+  const handleResolve = async (id, date) => { await resolveComplaint(id, date, "Admin"); await onRefresh(); };
+  const handleRequestResolve = async (id) => { await requestResolution(id, "Admin"); await onRefresh(); };
+  const handleApprove = async (id) => { await approveResolution(id, "Admin"); await onRefresh(); };
+  const handleReject = async (id, reason) => { await rejectResolution(id); await addComment(id, `Resolution rejected by Admin: ${reason}`, "Admin", "admin"); await onRefresh(); };
   const handleUnresolve = async (id) => { await unresolveComplaint(id); await onRefresh(); };
   const handleDelete = async (id) => { await deleteComplaint(id); await onRefresh(); };
   const handlePasswordChange = async (userId) => {
@@ -840,7 +892,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         <div key={tab} className="scale-in">
         {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} />}
         {tab === "complaints" && !selected && (<><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><div></div><button style={styles.btnBlack} onClick={() => downloadCSV(complaints, "all-complaints")}>DOWNLOAD DATA</button></div><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div className="stat-label-resp" style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{totalOpen}</div><div className="stat-label-resp" style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{totalComplaints - totalOpen}</div><div className="stat-label-resp" style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} /></>)}
-        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} onBack={() => setSelected(null)} onResolve={handleResolve} onUnresolve={handleUnresolve} onDelete={handleDelete} onRefresh={onRefresh} />)}
+        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} isAmex={false} isProvider={false} onBack={() => setSelected(null)} onResolve={handleResolve} onRequestResolve={handleRequestResolve} onApprove={handleApprove} onReject={handleReject} onUnresolve={handleUnresolve} onDelete={handleDelete} onRefresh={onRefresh} />)}
         {tab === "submit" && (<section style={styles.formSection}><h2 style={styles.sectionTitle}>Submit Complaint on Behalf of Hospital</h2><select style={{ ...styles.input, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h} — {getProvider(h)}</option>)}</select><ComplaintTypeSelect value={adminTitle} onChange={e => setAdminTitle(e.target.value)} style={styles.input} /><textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} /><div style={{ marginBottom: 12 }}><label style={{ fontSize: 13, color: "#4a5568", marginBottom: 4, display: "block" }}>Date (leave empty for today)</label><input style={styles.input} type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} /></div><button style={{ ...styles.btnPrimary, opacity: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? 0.5 : 1 }} onClick={submitAdminComplaint}>{adminSubmitting ? "Submitting…" : "Submit Complaint"}</button>{adminSuccess && <p style={styles.successMsg}>Complaint submitted for {adminHospital}.</p>}</section>)}
         {tab === "passwords" && (<>
           <div style={styles.formSection}><h2 style={styles.sectionTitle}>Add New User</h2><p style={{ fontSize: 13, color: "#718096", marginBottom: 12 }}>Passwords must be at least 8 characters. Password values are never shown in the admin list.</p><div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>ID</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="userid" value={newUserId} onChange={e => setNewUserId(e.target.value)} /></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Display Name</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Name" value={newUserName} onChange={e => setNewUserName(e.target.value)} /></div><div style={{ minWidth: 100 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Role</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserRole} onChange={e => setNewUserRole(e.target.value)}><option value="company">Company (view-only)</option><option value="hospital">Hospital</option></select></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Password</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} type="password" placeholder="Min 8 characters" value={newUserPw} onChange={e => setNewUserPw(e.target.value)} /></div><button style={styles.pwSaveBtn} onClick={handleAddUser}>{addingUser ? "…" : "Add User"}</button></div></div>
@@ -864,12 +916,19 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) {
   const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const seesAll = ["Novair", "Amex", "UNDP", "CMU"].includes(user.name);
+  const isAmex = user.name === "Amex";
+  const isProvider = ["Novair", "Intexim", "Z-Corps"].includes(user.name);
   const myGroups = {}; if (seesAll) { Object.assign(myGroups, GROUPS); } else if (GROUPS[user.name]) { myGroups[user.name] = GROUPS[user.name]; } else { Object.assign(myGroups, GROUPS); }
   const myHospitals = Object.values(myGroups).flat();
   const myComplaints = complaints.filter(c => myHospitals.includes(c.hospital));
   const totalComplaints = myComplaints.length; const totalOpen = myComplaints.filter(c => c.status !== "Resolved").length;
   const canCommentOnHospital = (hospital) => { if (["Novair", "Amex"].includes(user.name)) return true; return getProvider(hospital) === user.name; };
+  const canResolveHospital = isAmex || isProvider;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
+  const handleResolve = async (id) => { await resolveComplaint(id, null, user.name); await onRefresh(); };
+  const handleRequestResolve = async (id) => { await requestResolution(id, user.name); await onRefresh(); };
+  const handleApprove = async (id) => { await approveResolution(id, user.name); await onRefresh(); };
+  const handleReject = async (id, reason) => { await rejectResolution(id); await addComment(id, `Resolution rejected by ${user.name}: ${reason}`, user.name, "company"); await onRefresh(); };
   return (
     <div style={styles.shell}>
       <AppHeader user={user}>
@@ -884,7 +943,7 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
         <div key={tab} className="scale-in">
         {tab === "overview" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} />}
         {tab === "complaints" && !selected && (<><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><div></div><button style={styles.btnBlack} onClick={() => downloadCSV(myComplaints, user.name.toLowerCase() + "-complaints")}>DOWNLOAD DATA</button></div><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div className="stat-label-resp" style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{totalOpen}</div><div className="stat-label-resp" style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{totalComplaints - totalOpen}</div><div className="stat-label-resp" style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} /></>)}
-        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={false} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onResolve={() => {}} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />)}
+        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={canResolveHospital} canComment={canCommentOnHospital(selected)} isAdmin={false} isAmex={isAmex} isProvider={isProvider} onBack={() => setSelected(null)} onResolve={handleResolve} onRequestResolve={handleRequestResolve} onApprove={handleApprove} onReject={handleReject} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />)}
         </div>
       </main>
     </div>
