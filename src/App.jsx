@@ -955,9 +955,10 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, notif
 
           {/* Company Users grouped by company */}
           {companyGroups.map(company => {
-            const groupUsers = filteredCompanyUsers.filter(u => (u.company || u.name) === company || (company === "Amex" && u.name === "Amex") || (company === "Novair" && u.name === "Novair") || (company === "Intexim" && u.name === "Intexim") || (company === "Z-Corps" && u.name === "Z-Corps") || (company === "UNDP" && u.name === "UNDP") || (company === "CMU" && u.name === "CMU") || (company === "Global Fund" && u.name === "Global Fund"));
-            const indivUsers = filteredCompanyUsers.filter(u => u.company === company && u.id !== company.toLowerCase().replace(/[\s-]+/g, ""));
-            const masterUser = companyUsers.find(u => u.name === company);
+            const masterIds = { "Amex": "amex", "Novair": "novair", "Intexim": "intexim", "Z-Corps": "zcorps", "UNDP": "undp", "CMU": "cmu", "Global Fund": "globalfund" };
+            const masterId = masterIds[company];
+            const masterUser = companyUsers.find(u => u.id === masterId || u.name === company);
+            const indivUsers = filteredCompanyUsers.filter(u => u.company === company && u.id !== masterId);
             if (!masterUser && indivUsers.length === 0) return null;
             return (
               <div key={company} style={{ marginBottom: 24 }}>
@@ -972,8 +973,21 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, notif
                       <div><strong style={styles.pwName}>{masterUser.name}</strong><span style={styles.pwRole}>{masterUser.role === "admin" ? "Admin" : "Master"}</span>{masterUser.email && <span style={{ fontSize: 11, color: C.textLight, marginLeft: 8 }}>{masterUser.email}</span>}</div>
                       <div style={styles.pwRight}>
                         {editingUser === masterUser.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} type="password" placeholder="New password (min 8)" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(masterUser.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(masterUser.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(masterUser.id); setNewPw(""); }}>Password</button>)}
+                        <button style={{ fontSize: 11, color: C.textMid, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={() => setEditingPrefs(editingPrefs === masterUser.id ? null : masterUser.id)}>Notifications</button>
                       </div>
                     </div>
+                    {editingPrefs === masterUser.id && (
+                      <div style={{ marginTop: 8, padding: "10px 14px", background: C.bg, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: C.textLight, letterSpacing: 1, textTransform: "uppercase" }}>Notify:</span>
+                        <PrefToggle userId={masterUser.id} field="notify_new" label="New" />
+                        <PrefToggle userId={masterUser.id} field="notify_resolved" label="Resolved" />
+                        <PrefToggle userId={masterUser.id} field="notify_shutdown" label="Shutdown" />
+                        <PrefToggle userId={masterUser.id} field="notify_comments" label="Comments" />
+                        <span style={{ fontSize: 10, fontWeight: 600, color: C.textLight, letterSpacing: 1, textTransform: "uppercase", marginLeft: 8 }}>Via:</span>
+                        <PrefToggle userId={masterUser.id} field="email_enabled" label="Email" />
+                        <PrefToggle userId={masterUser.id} field="push_enabled" label="Push" />
+                      </div>
+                    )}
                     {pwSuccess === masterUser.id && <p style={styles.successMsg}>Password updated.</p>}
                   </div>
                 )}
@@ -1056,10 +1070,10 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
   const myHospitals = Object.values(myGroups).flat();
   const myComplaints = complaints.filter(c => myHospitals.includes(c.hospital));
   const totalComplaints = myComplaints.length; const totalOpen = myComplaints.filter(c => c.status !== "Resolved").length;
-  const canCommentOnHospital = (hospital) => { if (["Novair", "Amex"].includes(companyName)) return true; return getProvider(hospital) === companyName; };
+  const canCommentOnHospital = (hospital) => { if (["Novair", "Amex"].includes(companyName)) return true; if (isProvider && getProvider(hospital) === companyName) return true; return false; };
   const canResolveHospital = isAmex || isProvider;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
-  const handleResolve = async (id) => { await resolveComplaint(id, null, user.name); await onRefresh(); };
+  const handleResolve = async (id) => { if (isAmex) { await resolveComplaint(id, null, user.name); } else { await requestResolution(id, user.name); } await onRefresh(); };
   const handleRequestResolve = async (id) => { await requestResolution(id, user.name); await onRefresh(); };
   const handleApprove = async (id) => { await approveResolution(id, user.name); await onRefresh(); };
   const handleReject = async (id, reason) => { await rejectResolution(id); await insertComment(id, user.name, "company", `Resolution rejected: ${reason}`); await onRefresh(); };
