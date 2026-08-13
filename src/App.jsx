@@ -113,9 +113,17 @@ async function deleteComplaint(id) {
   return !error;
 }
 async function fetchUsers() {
-  const { data, error } = await supabase.from("users").select("id, name, role, company, email");
-  if (error) { console.error(error); return []; }
-  return data || [];
+  try {
+    const res = await fetch("/api/manage-user", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "fetch" }) });
+    const data = await res.json();
+    if (!res.ok) { console.error(data.error); return []; }
+    return data.users || [];
+  } catch {
+    // Fallback to direct Supabase read if API unavailable
+    const { data, error } = await supabase.from("users").select("id, name, role, company, email");
+    if (error) { console.error(error); return []; }
+    return data || [];
+  }
 }
 async function updatePassword(userId, newPassword) {
   try {
