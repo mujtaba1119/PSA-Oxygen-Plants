@@ -74,7 +74,7 @@ export default async function handler(req, res) {
 
     let { data: user, error } = await admin
       .from("users")
-      .select("id, name, role, password")
+      .select("id, name, role, password, company")
       .eq("id", needle)
       .maybeSingle();
 
@@ -86,7 +86,7 @@ export default async function handler(req, res) {
     if (!user) {
       const { data: rows, error: listErr } = await admin
         .from("users")
-        .select("id, name, role, password");
+        .select("id, name, role, password, company");
       if (listErr) {
         console.error(listErr);
         return json(res, 500, { error: "Login failed" });
@@ -110,7 +110,7 @@ export default async function handler(req, res) {
     if (!ok) return json(res, 401, { error: "Invalid credentials" });
 
     return json(res, 200, {
-      user: { id: user.id, name: user.name, role: user.role },
+      user: { id: user.id, name: user.name, role: user.role, company: user.company || null },
     });
   } catch (err) {
     console.error(err);
