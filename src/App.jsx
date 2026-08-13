@@ -760,11 +760,14 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
         <>
           <div style={styles.cardTop}>
             <strong style={styles.cardTitle}>{c.title}</strong>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}><StatusBadge status={c.status} /><span style={styles.cardDate}>Submitted: {new Date(c.created_at).toLocaleDateString("en-PK", dateFmt)}</span></div>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+              <StatusBadge status={c.status} />
+              <span style={{ fontSize: 12, color: C.textLight }}>Submitted: {new Date(c.created_at).toLocaleDateString("en-PK", dateFmt)}</span>
+              {c.status === "Resolved" && c.resolved_at && <span style={{ fontSize: 12, color: "#276749" }}>Resolved: {new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt)}</span>}
+              {c.status === "Pending Resolution" && c.resolution_requested_at && <span style={{ fontSize: 12, color: "#7c5e10" }}>Requested: {new Date(c.resolution_requested_at).toLocaleDateString("en-PK", dateFmt)}</span>}
+            </div>
           </div>
           <p style={styles.cardDesc}>{c.description}</p>
-          {c.status === "Pending Resolution" && c.resolution_requested_by && (<p style={{ fontSize: 12, color: "#7c5e10", marginTop: 4 }}>Resolution requested by: {c.resolution_requested_by} — {new Date(c.resolution_requested_at).toLocaleDateString("en-PK", dateFmt)}</p>)}
-          {c.status === "Resolved" && c.resolved_at && (<p style={{ fontSize: 12, color: "#276749", marginTop: 4 }}>Resolved: {new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt)}{c.resolved_by ? ` (Approved by: ${c.resolved_by})` : ""}</p>)}
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
             {/* Open complaints: Hospital/Provider can request, Amex/Admin can resolve directly */}
             {c.status === "Open" && canResolve && (
@@ -849,7 +852,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const handleResolve = async (id, date) => { await resolveComplaint(id, date, "Admin"); await onRefresh(); };
   const handleRequestResolve = async (id) => { await requestResolution(id, "Admin"); await onRefresh(); };
   const handleApprove = async (id) => { await approveResolution(id, "Admin"); await onRefresh(); };
-  const handleReject = async (id, reason) => { await rejectResolution(id); await addComment(id, `Resolution rejected by Admin: ${reason}`, "Admin", "admin"); await onRefresh(); };
+  const handleReject = async (id, reason) => { await rejectResolution(id); await insertComment(id, "Admin", "admin", `Resolution rejected: ${reason}`); await onRefresh(); };
   const handleUnresolve = async (id) => { await unresolveComplaint(id); await onRefresh(); };
   const handleDelete = async (id) => { await deleteComplaint(id); await onRefresh(); };
   const handlePasswordChange = async (userId) => {
@@ -928,7 +931,7 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
   const handleResolve = async (id) => { await resolveComplaint(id, null, user.name); await onRefresh(); };
   const handleRequestResolve = async (id) => { await requestResolution(id, user.name); await onRefresh(); };
   const handleApprove = async (id) => { await approveResolution(id, user.name); await onRefresh(); };
-  const handleReject = async (id, reason) => { await rejectResolution(id); await addComment(id, `Resolution rejected by ${user.name}: ${reason}`, user.name, "company"); await onRefresh(); };
+  const handleReject = async (id, reason) => { await rejectResolution(id); await insertComment(id, user.name, "company", `Resolution rejected: ${reason}`); await onRefresh(); };
   return (
     <div style={styles.shell}>
       <AppHeader user={user}>
