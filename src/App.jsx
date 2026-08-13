@@ -52,9 +52,10 @@ async function fetchComplaints() {
   if (error) { console.error(error); return []; }
   return data;
 }
-async function insertComplaint(hospital, title, description, customDate) {
+async function insertComplaint(hospital, title, description, customDate, submittedBy) {
   const row = { hospital, title, description, status: "Open" };
   if (customDate) row.created_at = new Date(customDate).toISOString();
+  if (submittedBy) row.submitted_by = submittedBy;
   const { data, error } = await supabase.from("complaints").insert([row]).select();
   if (error) { console.error(error); return null; }
   const complaint = data[0];
@@ -185,11 +186,12 @@ async function sendShutdownEmail(hospital) {
 
 /* ─── CSV Download ─── */
 function downloadCSV(complaints, filename) {
-  const headers = ["Date", "Hospital", "Service Provider", "Title", "Description", "Status"];
+  const headers = ["Date", "Hospital", "Service Provider", "Title", "Description", "Status", "Submitted By", "Resolved Date"];
   const escape = s => '"' + String(s || "").replace(/"/g, '""') + '"';
   const rows = complaints.map(c => [
     new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" }),
-    c.hospital, getProvider(c.hospital), c.title, c.description, c.status || "Open"
+    c.hospital, getProvider(c.hospital), c.title, c.description, c.status || "Open",
+    c.submitted_by || "", c.resolved_at ? new Date(c.resolved_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" }) : ""
   ].map(escape).join(","));
   const csv = [headers.join(","), ...rows].join("\n");
   const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -768,6 +770,7 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
             </div>
           </div>
           <p style={styles.cardDesc}>{c.description}</p>
+          {c.submitted_by && <p style={{ fontSize: 12, color: C.textLight, marginTop: 4 }}>Submitted by: {c.submitted_by}</p>}
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
             {/* Open complaints: Hospital/Provider can request, Amex/Admin can resolve directly */}
             {c.status === "Open" && canResolve && (
@@ -811,21 +814,23 @@ function ComplaintListView({ hospital, complaints, currentUser, canResolve, canC
 
 /* ─── Hospital Dashboard ─── */
 function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
+  const [operatorName, setOperatorName] = useState("");
   const [title, setTitle] = useState(""); const [desc, setDesc] = useState("");
   const [success, setSuccess] = useState(false); const [submitting, setSubmitting] = useState(false);
   const mine = complaints.filter(c => c.hospital === user.name);
   const openCount = mine.filter(c => c.status !== "Resolved").length;
-  const submitComplaint = async () => { if (!title.trim() || !desc.trim() || submitting) return; setSubmitting(true); const r = await insertComplaint(user.name, title.trim(), desc.trim()); setSubmitting(false); if (r) { setTitle(""); setDesc(""); setSuccess(true); setTimeout(() => setSuccess(false), 2500); await onRefresh(); } };
-  const handleResolve = async (id) => { await requestResolution(id, user.name + " Hospital"); await onRefresh(); };
+  const submitComplaint = async () => { if (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) return; setSubmitting(true); const r = await insertComplaint(user.name, title.trim(), desc.trim(), null, operatorName.trim()); setSubmitting(false); if (r) { setTitle(""); setDesc(""); setSuccess(true); setTimeout(() => setSuccess(false), 2500); await onRefresh(); } };
+  const handleResolve = async (id) => { await requestResolution(id, operatorName.trim() || user.name + " Hospital"); await onRefresh(); };
   return (
     <div style={styles.shell}>
       <AppHeader user={user}><button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button></AppHeader>
       <main className="main-responsive" style={styles.main}>
         <section style={styles.formSection}>
           <h2 style={styles.sectionTitle}>Register a Complaint</h2>
+          <input style={styles.input} placeholder="Your name (operator name)" value={operatorName} onChange={e => setOperatorName(e.target.value)} />
           <ComplaintTypeSelect value={title} onChange={e => setTitle(e.target.value)} style={styles.input} />
           <textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue in detail…" value={desc} onChange={e => setDesc(e.target.value)} />
-          <button style={{ ...styles.btnPrimary, opacity: (!title.trim() || !desc.trim() || submitting) ? 0.5 : 1 }} onClick={submitComplaint}>{submitting ? "Submitting…" : "Submit Complaint"}</button>
+          <button style={{ ...styles.btnPrimary, opacity: (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) ? 0.5 : 1 }} onClick={submitComplaint}>{submitting ? "Submitting…" : "Submit Complaint"}</button>
           {success && <p style={styles.successMsg}>Complaint registered successfully.</p>}
         </section>
         <section style={styles.listSection}>
@@ -866,7 +871,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   };
   const handleAddEmail = async () => { if (!newEmail.trim() || emailSaving) return; setEmailSaving(true); await addEmail(emailGroup, newEmail.trim()); setNewEmail(""); setEmailSaving(false); await onRefresh(); };
   const handleDeleteEmail = async (id) => { await deleteEmailRecord(id); await onRefresh(); };
-  const submitAdminComplaint = async () => { if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return; setAdminSubmitting(true); const r = await insertComplaint(adminHospital, adminTitle.trim(), adminDesc.trim(), adminDate || null); setAdminSubmitting(false); if (r) { setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); } };
+  const submitAdminComplaint = async () => { if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return; setAdminSubmitting(true); const r = await insertComplaint(adminHospital, adminTitle.trim(), adminDesc.trim(), adminDate || null, "Admin"); setAdminSubmitting(false); if (r) { setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); } };
   const handleAddUser = async () => {
     if (!newUserId.trim() || !newUserName.trim() || !newUserPw.trim() || addingUser) return;
     if (newUserPw.trim().length < 8) { alert("Password must be at least 8 characters"); return; }
