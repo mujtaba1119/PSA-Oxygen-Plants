@@ -113,30 +113,38 @@ async function deleteComplaint(id) {
   return !error;
 }
 async function fetchUsers() {
-  const { data, error } = await supabase.from("users").select("id, name, role");
+  const { data, error } = await supabase.from("users").select("id, name, role, company, email");
   if (error) { console.error(error); return []; }
   return data || [];
 }
 async function updatePassword(userId, newPassword) {
-  if (!newPassword || newPassword.trim().length < 8) return false;
-  const hashed = await hashPassword(newPassword);
-  const { error } = await supabase.from("users").update({ password: hashed }).eq("id", userId);
-  return !error;
+  try {
+    const res = await fetch("/api/manage-user", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "update_password", id: userId, password: newPassword }) });
+    const data = await res.json();
+    if (!res.ok) { console.error(data.error); return false; }
+    return true;
+  } catch { return false; }
 }
 async function createUser(id, name, role, password, company, email) {
-  if (!password || password.trim().length < 8) return null;
-  const hashed = await hashPassword(password);
-  const row = { id, name, role, password: hashed };
-  if (company) row.company = company;
-  if (email) row.email = email;
-  console.log("Creating user:", { id, name, role, company, email });
-  const { data, error } = await supabase.from("users").insert([row]).select("id, name, role, company, email");
-  if (error) { console.error("Create user error:", error.message, error.details, error.hint); alert("Error: " + error.message); return null; }
-  return data[0];
+  try {
+    const res = await fetch("/api/manage-user", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "create", id, name, role, password, company: company || undefined, email: email || undefined }) });
+    const data = await res.json();
+    if (!res.ok) { alert("Error: " + data.error); return null; }
+    return data.user;
+  } catch { return null; }
 }
 async function deleteUser(id) {
-  const { error } = await supabase.from("users").delete().eq("id", id);
-  return !error;
+  try {
+    const res = await fetch("/api/manage-user", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", id }) });
+    const data = await res.json();
+    if (!res.ok) { alert("Error: " + data.error); return false; }
+    return true;
+  } catch { return false; }
+}
+async function upsertNotifPref(userId, prefs) {
+  try {
+    await fetch("/api/manage-user", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "update_prefs", user_id: userId, prefs }) });
+  } catch { console.error("Failed to update prefs"); }
 }
 async function fetchComments(complaintId) {
   const { data, error } = await supabase.from("comments").select("*").eq("complaint_id", complaintId).order("created_at", { ascending: true });
@@ -193,14 +201,6 @@ async function fetchNotifPrefs() {
   const { data, error } = await supabase.from("notification_preferences").select("*");
   if (error) { console.error(error); return []; }
   return data;
-}
-async function upsertNotifPref(userId, prefs) {
-  const { data: existing } = await supabase.from("notification_preferences").select("id").eq("user_id", userId).maybeSingle();
-  if (existing) {
-    await supabase.from("notification_preferences").update(prefs).eq("user_id", userId);
-  } else {
-    await supabase.from("notification_preferences").insert([{ user_id: userId, ...prefs }]);
-  }
 }
 
 /* ─── CSV Download ─── */
