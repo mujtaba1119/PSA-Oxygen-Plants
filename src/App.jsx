@@ -321,7 +321,7 @@ function loadSessionUser() {
 
 function saveSessionUser(u) {
   if (!u) sessionStorage.removeItem(SESSION_KEY);
-  else sessionStorage.setItem(SESSION_KEY, JSON.stringify({ id: u.id, name: u.name, role: u.role }));
+  else sessionStorage.setItem(SESSION_KEY, JSON.stringify({ id: u.id, name: u.name, role: u.role, company: u.company || null }));
 }
 
 function LoadingScreen() {
@@ -437,7 +437,7 @@ async function loginWithClient(username, password) {
     return null;
   }
 
-  return { id: user.id, name: user.name, role: user.role };
+  return { id: user.id, name: user.name, role: user.role, company: user.company || null };
 }
 
 async function loginUser(username, password) {
