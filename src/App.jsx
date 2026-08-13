@@ -123,10 +123,13 @@ async function updatePassword(userId, newPassword) {
   const { error } = await supabase.from("users").update({ password: hashed }).eq("id", userId);
   return !error;
 }
-async function createUser(id, name, role, password) {
+async function createUser(id, name, role, password, company, email) {
   if (!password || password.trim().length < 8) return null;
   const hashed = await hashPassword(password);
-  const { data, error } = await supabase.from("users").insert([{ id, name, role, password: hashed }]).select("id, name, role");
+  const row = { id, name, role, password: hashed };
+  if (company) row.company = company;
+  if (email) row.email = email;
+  const { data, error } = await supabase.from("users").insert([row]).select("id, name, role, company, email");
   if (error) { console.error(error); return null; }
   return data[0];
 }
@@ -182,6 +185,21 @@ async function updateSiteStatus(hospital, status) {
 async function sendShutdownEmail(hospital) {
   const { error } = await supabase.rpc("send_shutdown_email", { hospital_name: hospital });
   return !error;
+}
+
+/* ─── Notification Preferences ─── */
+async function fetchNotifPrefs() {
+  const { data, error } = await supabase.from("notification_preferences").select("*");
+  if (error) { console.error(error); return []; }
+  return data;
+}
+async function upsertNotifPref(userId, prefs) {
+  const { data: existing } = await supabase.from("notification_preferences").select("id").eq("user_id", userId).maybeSingle();
+  if (existing) {
+    await supabase.from("notification_preferences").update(prefs).eq("user_id", userId);
+  } else {
+    await supabase.from("notification_preferences").insert([{ user_id: userId, ...prefs }]);
+  }
 }
 
 /* ─── CSV Download ─── */
@@ -319,12 +337,13 @@ function AppInner() {
   const [complaints, setComplaints] = useState([]);
   const [notifEmails, setNotifEmails] = useState([]);
   const [siteNotes, setSiteNotes] = useState([]);
+  const [notifPrefs, setNotifPrefs] = useState([]);
   const [ready, setReady] = useState(false);
   const [dataReady, setDataReady] = useState(false);
 
   const reload = useCallback(async () => {
-    const [c, u, e, s] = await Promise.all([fetchComplaints(), fetchUsers(), fetchEmails(), fetchSiteNotes()]);
-    setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s);
+    const [c, u, e, s, np] = await Promise.all([fetchComplaints(), fetchUsers(), fetchEmails(), fetchSiteNotes(), fetchNotifPrefs()]);
+    setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s); setNotifPrefs(np);
   }, []);
 
   useEffect(() => { setReady(true); }, []);
@@ -365,7 +384,7 @@ function AppInner() {
   if (!user) return <LoginScreen onLogin={handleLogin} />;
   if (!dataReady) return <LoadingScreen />;
   if (user.role === "hospital") return <HospitalDashboard user={user} complaints={complaints} onRefresh={reload} onLogout={handleLogout} />;
-  if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} siteNotes={siteNotes} onRefresh={reload} onLogout={handleLogout} />;
+  if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} siteNotes={siteNotes} notifPrefs={notifPrefs} onRefresh={reload} onLogout={handleLogout} />;
   return <CompanyDashboard user={user} complaints={complaints} siteNotes={siteNotes} onRefresh={reload} onLogout={handleLogout} />;
 }
 
@@ -844,13 +863,15 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
 }
 
 /* ─── Admin Dashboard ─── */
-function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRefresh, onLogout }) {
+function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, notifPrefs, onRefresh, onLogout }) {
   const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const [editingUser, setEditingUser] = useState(null); const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
   const [adminHospital, setAdminHospital] = useState(ALL_HOSPITALS[0]); const [adminTitle, setAdminTitle] = useState(""); const [adminDesc, setAdminDesc] = useState(""); const [adminDate, setAdminDate] = useState("");
   const [adminSubmitting, setAdminSubmitting] = useState(false); const [adminSuccess, setAdminSuccess] = useState(false);
-  const [newUserId, setNewUserId] = useState(""); const [newUserName, setNewUserName] = useState(""); const [newUserRole, setNewUserRole] = useState("company"); const [newUserPw, setNewUserPw] = useState(""); const [addingUser, setAddingUser] = useState(false);
+  const [newUserId, setNewUserId] = useState(""); const [newUserName, setNewUserName] = useState(""); const [newUserRole, setNewUserRole] = useState("company"); const [newUserPw, setNewUserPw] = useState(""); const [newUserCompany, setNewUserCompany] = useState("Amex"); const [newUserEmail, setNewUserEmail] = useState(""); const [addingUser, setAddingUser] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [editingPrefs, setEditingPrefs] = useState(null);
 
   const totalComplaints = complaints.length; const totalOpen = complaints.filter(c => c.status !== "Resolved").length;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
@@ -876,16 +897,24 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
     if (!newUserId.trim() || !newUserName.trim() || !newUserPw.trim() || addingUser) return;
     if (newUserPw.trim().length < 8) { alert("Password must be at least 8 characters"); return; }
     setAddingUser(true);
-    const created = await createUser(newUserId.trim().toLowerCase().replace(/\s+/g, ""), newUserName.trim(), newUserRole, newUserPw.trim());
+    const company = newUserRole === "company" ? newUserCompany : null;
+    const created = await createUser(newUserId.trim().toLowerCase().replace(/\s+/g, ""), newUserName.trim(), newUserRole, newUserPw.trim(), company, newUserEmail.trim() || null);
     setAddingUser(false);
     if (!created) { alert("Could not create user"); return; }
-    setNewUserId(""); setNewUserName(""); setNewUserPw(""); await onRefresh();
+    setNewUserId(""); setNewUserName(""); setNewUserPw(""); setNewUserEmail(""); await onRefresh();
   };
   const handleDeleteUser = async (id) => { if (window.confirm("Delete this user?")) { await deleteUser(id); await onRefresh(); } };
+  const handleTogglePref = async (userId, field, value) => { await upsertNotifPref(userId, { [field]: value }); await onRefresh(); };
+  const getPrefs = (userId) => notifPrefs.find(p => p.user_id === userId) || { notify_new: true, notify_resolved: true, notify_shutdown: true, notify_comments: true, email_enabled: true, push_enabled: true, sites_filter: "all" };
 
   const hospitalUsers = users.filter(u => u.role === "hospital");
   const companyUsers = users.filter(u => u.role === "company" || u.role === "admin");
+  const companyGroups = ["Amex", "Novair", "Intexim", "Z-Corps", "UNDP", "CMU", "Global Fund"];
   const emailGroupOptions = ["Novair", "Intexim", "Z-Corps", "Amex", "UNDP"];
+
+  const filteredCompanyUsers = searchTerm ? companyUsers.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || (u.company || "").toLowerCase().includes(searchTerm.toLowerCase()) || (u.email || "").toLowerCase().includes(searchTerm.toLowerCase())) : companyUsers;
+
+  const PrefToggle = ({ userId, field, label }) => { const p = getPrefs(userId); const val = p[field]; return (<label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: val ? C.green : C.textLight, cursor: "pointer" }}><input type="checkbox" checked={val} onChange={e => handleTogglePref(userId, field, e.target.checked)} style={{ accentColor: C.black }} />{label}</label>); };
 
   return (
     <div style={styles.shell}>
@@ -894,7 +923,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         <button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button>
       </AppHeader>
       <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s" }}>
-        {["overview","complaints","submit","passwords","emails"].map(t => (<button key={t} style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>{t === "overview" ? "Overview" : t === "complaints" ? "Complaints" : t === "submit" ? "Submit" : t === "passwords" ? "Passwords" : "Emails"}</button>))}
+        {["overview","complaints","submit","users","emails"].map(t => (<button key={t} className="tab-btn" style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>{t === "overview" ? "Overview" : t === "complaints" ? "Complaints" : t === "submit" ? "Submit" : t === "users" ? "Users" : "Emails"}</button>))}
       </div>
       <main className="main-responsive" style={styles.main}>
         <div key={tab} className="scale-in">
@@ -902,11 +931,106 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         {tab === "complaints" && !selected && (<><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><div></div><button style={styles.btnBlack} onClick={() => downloadCSV(complaints, "all-complaints")}>DOWNLOAD DATA</button></div><div style={styles.statsBar}><div style={styles.statBox}><div style={styles.statNum}>{totalComplaints}</div><div className="stat-label-resp" style={styles.statLabel}>Total</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.red }}>{totalOpen}</div><div className="stat-label-resp" style={styles.statLabel}>Open</div></div><div style={styles.statBox}><div style={{ ...styles.statNum, color: C.green }}>{totalComplaints - totalOpen}</div><div className="stat-label-resp" style={styles.statLabel}>Resolved</div></div></div><GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} /></>)}
         {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} isAmex={false} isProvider={false} onBack={() => setSelected(null)} onResolve={handleResolve} onRequestResolve={handleRequestResolve} onApprove={handleApprove} onReject={handleReject} onUnresolve={handleUnresolve} onDelete={handleDelete} onRefresh={onRefresh} />)}
         {tab === "submit" && (<section style={styles.formSection}><h2 style={styles.sectionTitle}>Submit Complaint on Behalf of Hospital</h2><select style={{ ...styles.input, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h} — {getProvider(h)}</option>)}</select><ComplaintTypeSelect value={adminTitle} onChange={e => setAdminTitle(e.target.value)} style={styles.input} /><textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} /><div style={{ marginBottom: 12 }}><label style={{ fontSize: 13, color: "#4a5568", marginBottom: 4, display: "block" }}>Date (leave empty for today)</label><input style={styles.input} type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} /></div><button style={{ ...styles.btnPrimary, opacity: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? 0.5 : 1 }} onClick={submitAdminComplaint}>{adminSubmitting ? "Submitting…" : "Submit Complaint"}</button>{adminSuccess && <p style={styles.successMsg}>Complaint submitted for {adminHospital}.</p>}</section>)}
-        {tab === "passwords" && (<>
-          <div style={styles.formSection}><h2 style={styles.sectionTitle}>Add New User</h2><p style={{ fontSize: 13, color: "#718096", marginBottom: 12 }}>Passwords must be at least 8 characters. Password values are never shown in the admin list.</p><div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>ID</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="userid" value={newUserId} onChange={e => setNewUserId(e.target.value)} /></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Display Name</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Name" value={newUserName} onChange={e => setNewUserName(e.target.value)} /></div><div style={{ minWidth: 100 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Role</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserRole} onChange={e => setNewUserRole(e.target.value)}><option value="company">Company (view-only)</option><option value="hospital">Hospital</option></select></div><div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 12, color: "#718096", display: "block", marginBottom: 2 }}>Password</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} type="password" placeholder="Min 8 characters" value={newUserPw} onChange={e => setNewUserPw(e.target.value)} /></div><button style={styles.pwSaveBtn} onClick={handleAddUser}>{addingUser ? "…" : "Add User"}</button></div></div>
-          <h2 style={styles.sectionTitle}>Company & Admin Accounts</h2>
-          {companyUsers.map(u => (<div key={u.id} style={styles.pwCard}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong><span style={styles.pwRole}>{u.role === "admin" ? "Admin" : "Company"}</span></div><div style={styles.pwRight}><span style={styles.pwCurrent}>Password: <code>••••••••</code></span>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} type="password" placeholder="New password (min 8)" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}{u.role !== "admin" && <button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button>}</div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}
-          {Object.entries(GROUPS).map(([provider, hospitals]) => (<div key={provider}><h2 style={{ ...styles.sectionTitle, marginTop: 28 }}>{provider} — Hospital Accounts</h2>{hospitalUsers.filter(u => hospitals.some(h => h.toLowerCase().replace(/\s+/g, "") === u.id.toLowerCase().replace(/\s+/g, ""))).map(u => (<div key={u.id} style={styles.pwCard}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong></div><div style={styles.pwRight}><span style={styles.pwCurrent}>Password: <code>••••••••</code></span>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} type="password" placeholder="New password (min 8)" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Change</button>)}<button style={{ fontSize: 12, color: "#e53e3e", background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button></div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}</div>))}
+        {tab === "users" && (<>
+          {/* Add User Form */}
+          <div style={styles.formSection}>
+            <h2 style={styles.sectionTitle}>Add New User</h2>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+              <div style={{ flex: 1, minWidth: 100 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Login ID</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="userid" value={newUserId} onChange={e => setNewUserId(e.target.value)} /></div>
+              <div style={{ flex: 1, minWidth: 100 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Full Name</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Full Name" value={newUserName} onChange={e => setNewUserName(e.target.value)} /></div>
+              <div style={{ minWidth: 100 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Role</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserRole} onChange={e => setNewUserRole(e.target.value)}><option value="company">Company</option><option value="hospital">Hospital</option></select></div>
+              {newUserRole === "company" && <div style={{ minWidth: 100 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Company</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserCompany} onChange={e => setNewUserCompany(e.target.value)}>{companyGroups.map(g => <option key={g} value={g}>{g}</option>)}</select></div>}
+              <div style={{ flex: 1, minWidth: 140 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Email (optional)</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} type="email" placeholder="email@company.com" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} /></div>
+              <div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Password</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} type="password" placeholder="Min 8 chars" value={newUserPw} onChange={e => setNewUserPw(e.target.value)} /></div>
+              <button style={styles.pwSaveBtn} onClick={handleAddUser}>{addingUser ? "…" : "Add"}</button>
+            </div>
+          </div>
+
+          {/* Search */}
+          <div style={{ marginBottom: 16, display: "flex", gap: 12, alignItems: "center" }}>
+            <h2 style={{ ...styles.sectionTitle, margin: 0 }}>Company & Admin Accounts</h2>
+            <input style={{ ...styles.pwInput, width: 200, padding: "6px 10px", fontSize: 12 }} placeholder="Search users..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+          </div>
+
+          {/* Company Users grouped by company */}
+          {companyGroups.map(company => {
+            const groupUsers = filteredCompanyUsers.filter(u => (u.company || u.name) === company || (company === "Amex" && u.name === "Amex") || (company === "Novair" && u.name === "Novair") || (company === "Intexim" && u.name === "Intexim") || (company === "Z-Corps" && u.name === "Z-Corps") || (company === "UNDP" && u.name === "UNDP") || (company === "CMU" && u.name === "CMU") || (company === "Global Fund" && u.name === "Global Fund"));
+            const indivUsers = filteredCompanyUsers.filter(u => u.company === company && u.id !== company.toLowerCase().replace(/[\s-]+/g, ""));
+            const masterUser = companyUsers.find(u => u.name === company);
+            if (!masterUser && indivUsers.length === 0) return null;
+            return (
+              <div key={company} style={{ marginBottom: 24 }}>
+                <div style={{ ...styles.groupHeader, borderBottom: `2px solid ${C.black}`, marginBottom: 10, paddingBottom: 8 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, letterSpacing: 0.5, textTransform: "uppercase" }}>{company}</h3>
+                  <span style={{ fontSize: 11, color: C.textLight }}>{(masterUser ? 1 : 0) + indivUsers.length} account(s)</span>
+                </div>
+                {/* Master account */}
+                {masterUser && (
+                  <div style={{ ...styles.pwCard, marginBottom: 4 }}>
+                    <div style={styles.pwRow}>
+                      <div><strong style={styles.pwName}>{masterUser.name}</strong><span style={styles.pwRole}>{masterUser.role === "admin" ? "Admin" : "Master"}</span>{masterUser.email && <span style={{ fontSize: 11, color: C.textLight, marginLeft: 8 }}>{masterUser.email}</span>}</div>
+                      <div style={styles.pwRight}>
+                        {editingUser === masterUser.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} type="password" placeholder="New password (min 8)" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(masterUser.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(masterUser.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(masterUser.id); setNewPw(""); }}>Password</button>)}
+                      </div>
+                    </div>
+                    {pwSuccess === masterUser.id && <p style={styles.successMsg}>Password updated.</p>}
+                  </div>
+                )}
+                {/* Individual accounts */}
+                {indivUsers.map(u => {
+                  const prefs = getPrefs(u.id);
+                  return (
+                    <div key={u.id} style={{ ...styles.pwCard, marginBottom: 4 }}>
+                      <div style={styles.pwRow}>
+                        <div style={{ flex: 1 }}>
+                          <strong style={styles.pwName}>{u.name}</strong>
+                          <span style={{ ...styles.pwRole, background: C.textMid }}>{company}</span>
+                          {u.email && <span style={{ fontSize: 11, color: C.textLight, marginLeft: 8 }}>{u.email}</span>}
+                        </div>
+                        <div style={styles.pwRight}>
+                          {editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} type="password" placeholder="New password (min 8)" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Password</button>)}
+                          <button style={{ fontSize: 11, color: C.textMid, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={() => setEditingPrefs(editingPrefs === u.id ? null : u.id)}>Notifications</button>
+                          <button style={{ fontSize: 11, color: C.red, background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button>
+                        </div>
+                      </div>
+                      {editingPrefs === u.id && (
+                        <div style={{ marginTop: 8, padding: "10px 14px", background: C.bg, borderRadius: 0, display: "flex", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: C.textLight, letterSpacing: 1, textTransform: "uppercase" }}>Notify:</span>
+                          <PrefToggle userId={u.id} field="notify_new" label="New" />
+                          <PrefToggle userId={u.id} field="notify_resolved" label="Resolved" />
+                          <PrefToggle userId={u.id} field="notify_shutdown" label="Shutdown" />
+                          <PrefToggle userId={u.id} field="notify_comments" label="Comments" />
+                          <span style={{ fontSize: 10, fontWeight: 600, color: C.textLight, letterSpacing: 1, textTransform: "uppercase", marginLeft: 8 }}>Via:</span>
+                          <PrefToggle userId={u.id} field="email_enabled" label="Email" />
+                          <PrefToggle userId={u.id} field="push_enabled" label="Push" />
+                        </div>
+                      )}
+                      {pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+
+          {/* Admin account */}
+          {companyUsers.filter(u => u.role === "admin").map(u => (
+            <div key={u.id} style={{ ...styles.pwCard, marginBottom: 4 }}>
+              <div style={styles.pwRow}>
+                <div><strong style={styles.pwName}>{u.name}</strong><span style={styles.pwRole}>Admin</span></div>
+                <div style={styles.pwRight}>
+                  {editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} type="password" placeholder="New password (min 8)" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Password</button>)}
+                </div>
+              </div>
+              {pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}
+            </div>
+          ))}
+
+          {/* Hospital accounts by provider */}
+          {Object.entries(GROUPS).map(([provider, hospitals]) => (<div key={provider} style={{ marginTop: 24 }}>
+            <div style={{ ...styles.groupHeader, borderBottom: `2px solid ${C.black}`, marginBottom: 10, paddingBottom: 8 }}><h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, letterSpacing: 0.5, textTransform: "uppercase" }}>{provider} — Hospitals</h3></div>
+            {hospitalUsers.filter(u => hospitals.some(h => h.toLowerCase().replace(/\s+/g, "") === u.id.toLowerCase().replace(/\s+/g, ""))).map(u => (<div key={u.id} style={{ ...styles.pwCard, marginBottom: 4 }}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong></div><div style={styles.pwRight}>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} type="password" placeholder="New password (min 8)" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Password</button>)}<button style={{ fontSize: 11, color: C.red, background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button></div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}
+          </div>))}
         </>)}
         {tab === "emails" && (<>
           <h2 style={styles.sectionTitle}>Email Notifications</h2><p style={{ fontSize: 14, color: "#4a5568", marginBottom: 20, lineHeight: 1.5 }}>When a complaint is submitted, emails go to that hospital&apos;s service-provider group plus Amex and UNDP (via Resend / <code>RESEND_API_KEY</code>). Shutdown emails are sent manually from the Overview tab.</p>
@@ -923,14 +1047,15 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 /* ─── Company Dashboard ─── */
 function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) {
   const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
-  const seesAll = ["Novair", "Amex", "UNDP", "CMU"].includes(user.name);
-  const isAmex = user.name === "Amex";
-  const isProvider = ["Novair", "Intexim", "Z-Corps"].includes(user.name);
-  const myGroups = {}; if (seesAll) { Object.assign(myGroups, GROUPS); } else if (GROUPS[user.name]) { myGroups[user.name] = GROUPS[user.name]; } else { Object.assign(myGroups, GROUPS); }
+  const companyName = user.company || user.name;
+  const seesAll = ["Novair", "Amex", "UNDP", "CMU", "Global Fund"].includes(companyName);
+  const isAmex = companyName === "Amex";
+  const isProvider = ["Novair", "Intexim", "Z-Corps"].includes(companyName);
+  const myGroups = {}; if (seesAll) { Object.assign(myGroups, GROUPS); } else if (GROUPS[companyName]) { myGroups[companyName] = GROUPS[companyName]; } else { Object.assign(myGroups, GROUPS); }
   const myHospitals = Object.values(myGroups).flat();
   const myComplaints = complaints.filter(c => myHospitals.includes(c.hospital));
   const totalComplaints = myComplaints.length; const totalOpen = myComplaints.filter(c => c.status !== "Resolved").length;
-  const canCommentOnHospital = (hospital) => { if (["Novair", "Amex"].includes(user.name)) return true; return getProvider(hospital) === user.name; };
+  const canCommentOnHospital = (hospital) => { if (["Novair", "Amex"].includes(companyName)) return true; return getProvider(hospital) === companyName; };
   const canResolveHospital = isAmex || isProvider;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
   const handleResolve = async (id) => { await resolveComplaint(id, null, user.name); await onRefresh(); };
