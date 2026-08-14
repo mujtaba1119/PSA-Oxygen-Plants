@@ -87,7 +87,7 @@ async function requestResolution(id, requestedBy) {
 }
 async function resolveComplaint(id, resolvedDate, resolvedBy) {
   const { data } = await supabase.from("complaints").select("resolution_requested_at").eq("id", id).single();
-  const update = { status: "Resolved", resolved_by: resolvedBy || "Admin" };
+  const update = { status: "Resolved", resolved_by: resolvedBy || null };
   update.resolved_at = (data?.resolution_requested_at) ? data.resolution_requested_at : (resolvedDate ? new Date(resolvedDate).toISOString() : new Date().toISOString());
   const { error } = await supabase.from("complaints").update(update).eq("id", id);
   return !error;
@@ -697,7 +697,7 @@ function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
   useEffect(() => { if (expanded) loadComments(); }, [expanded, loadComments]);
   const post = async () => {
     if (!text.trim() || posting) return; setPosting(true);
-    const author = currentUser.role === "hospital" ? currentUser.name + " Hospital" : currentUser.name;
+    const author = currentUser.role === "admin" ? "Management" : currentUser.role === "hospital" ? currentUser.name + " Hospital" : currentUser.name;
     const role = currentUser.role;
     await insertComment(complaintId, author, role, text.trim()); setText(""); setPosting(false); await loadComments();
   };
@@ -884,10 +884,10 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, notif
 
   const totalComplaints = complaints.length; const totalOpen = complaints.filter(c => c.status !== "Resolved").length;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
-  const handleResolve = async (id, date) => { await resolveComplaint(id, date, "Admin"); await onRefresh(); };
-  const handleRequestResolve = async (id) => { await requestResolution(id, "Admin"); await onRefresh(); };
-  const handleApprove = async (id) => { await approveResolution(id, "Admin"); await onRefresh(); };
-  const handleReject = async (id, reason) => { await rejectResolution(id); await insertComment(id, "Admin", "admin", `Resolution rejected: ${reason}`); await onRefresh(); };
+  const handleResolve = async (id, date) => { await resolveComplaint(id, date, null); await onRefresh(); };
+  const handleRequestResolve = async (id) => { await requestResolution(id, "Management"); await onRefresh(); };
+  const handleApprove = async (id) => { await approveResolution(id, null); await onRefresh(); };
+  const handleReject = async (id, reason) => { await rejectResolution(id); await insertComment(id, "Management", "admin", `Resolution rejected: ${reason}`); await onRefresh(); };
   const handleUnresolve = async (id) => { await unresolveComplaint(id); await onRefresh(); };
   const handleDelete = async (id) => { await deleteComplaint(id); await onRefresh(); };
   const handlePasswordChange = async (userId) => {
@@ -901,7 +901,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, notif
   };
   const handleAddEmail = async () => { if (!newEmail.trim() || emailSaving) return; setEmailSaving(true); await addEmail(emailGroup, newEmail.trim()); setNewEmail(""); setEmailSaving(false); await onRefresh(); };
   const handleDeleteEmail = async (id) => { await deleteEmailRecord(id); await onRefresh(); };
-  const submitAdminComplaint = async () => { if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return; setAdminSubmitting(true); const r = await insertComplaint(adminHospital, adminTitle.trim(), adminDesc.trim(), adminDate || null, "Admin"); setAdminSubmitting(false); if (r) { setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); } };
+  const submitAdminComplaint = async () => { if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return; setAdminSubmitting(true); const r = await insertComplaint(adminHospital, adminTitle.trim(), adminDesc.trim(), adminDate || null, null); setAdminSubmitting(false); if (r) { setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); } };
   const handleAddUser = async () => {
     if (!newUserName.trim() || !newUserPw.trim() || addingUser) return;
     if (newUserPw.trim().length < 8) { alert("Password must be at least 8 characters"); return; }
