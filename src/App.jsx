@@ -866,7 +866,8 @@ function GroupedHospitalList({ groups, complaints, onSelect }) {
 function AttachmentViewer({ attachments }) {
   const [urls, setUrls] = useState({});
   const [expanded, setExpanded] = useState(false);
-  if (!attachments || attachments.length === 0) return null;
+  const atts = Array.isArray(attachments) ? attachments : [];
+  if (atts.length === 0) return null;
 
   const loadUrl = async (path) => {
     if (urls[path]) return;
@@ -878,18 +879,18 @@ function AttachmentViewer({ attachments }) {
   };
 
   const handleExpand = () => {
-    if (!expanded) attachments.forEach(a => loadUrl(a.path));
+    if (!expanded) atts.forEach(a => loadUrl(a.path));
     setExpanded(!expanded);
   };
 
   return (
     <div style={{ marginTop: 8 }}>
       <button onClick={handleExpand} style={{ fontSize: 12, fontWeight: 600, color: C.black, background: "none", border: "none", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" }}>
-        {expanded ? "▾ Hide Attachments" : `▸ Attachments (${attachments.length})`}
+        {expanded ? "▾ Hide Attachments" : `▸ Attachments (${atts.length})`}
       </button>
       {expanded && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-          {attachments.map((a, i) => (
+          {atts.map((a, i) => (
             <div key={i} style={{ border: `1px solid ${C.border}`, borderRadius: 4, overflow: "hidden" }}>
               {urls[a.path] ? (
                 a.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
