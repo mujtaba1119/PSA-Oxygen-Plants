@@ -1005,7 +1005,9 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
     for (const file of files) {
       try {
         const body = await file.arrayBuffer();
-        await fetch("/api/attachment", { method: "POST", headers: { "Content-Type": file.type, "X-File-Name": file.name, "X-Complaint-Id": complaintId }, body });
+        const res = await fetch("/api/attachment", { method: "POST", headers: { "Content-Type": file.type, "X-File-Name": file.name, "X-Complaint-Id": complaintId }, body });
+        const data = await res.json();
+        if (!res.ok) console.error("Upload error:", data.error);
       } catch (e) { console.error("Upload failed:", e); }
     }
   };
