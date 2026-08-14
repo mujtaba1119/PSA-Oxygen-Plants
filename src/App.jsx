@@ -204,11 +204,94 @@ async function sendShutdownEmail(hospital) {
   return !error;
 }
 
-/* ─── Notification Preferences ─── */
-async function fetchNotifPrefs() {
-  const { data, error } = await supabase.from("notification_preferences").select("*");
+/* ─── Notifications ─── */
+async function fetchNotifications(userId, companyName) {
+  const ids = [userId];
+  if (companyName) ids.push(companyName.toLowerCase().replace(/[\s-]+/g, ""));
+  const { data, error } = await supabase.from("notifications").select("*").in("user_id", ids).order("created_at", { ascending: false }).limit(50);
   if (error) { console.error(error); return []; }
-  return data;
+  return data || [];
+}
+async function markNotifRead(id) {
+  await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+}
+async function markAllNotifsRead(userId, companyName) {
+  const ids = [userId];
+  if (companyName) ids.push(companyName.toLowerCase().replace(/[\s-]+/g, ""));
+  await supabase.from("notifications").update({ is_read: true }).in("user_id", ids).eq("is_read", false);
+}
+async function createNotification(userId, type, title, message, complaintId, hospital) {
+  await supabase.from("notifications").insert([{ user_id: userId, type, title, message, complaint_id: complaintId || null, hospital: hospital || null }]);
+}
+async function notifyUsers(type, title, message, hospital, complaintId, excludeUser) {
+  const providers = { "Novair": ["novair"], "Intexim": ["intexim"], "Z-Corps": ["zcorps"] };
+  const allViewers = ["amex", "undp", "cmu"];
+  const provider = Object.entries(GROUPS).find(([, list]) => list.includes(hospital))?.[0];
+  const targets = [...allViewers];
+  if (provider && providers[provider]) targets.push(...providers[provider]);
+  // Also notify individual accounts
+  try {
+    const res = await fetch("/api/manage-user", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "fetch" }) });
+    const data = await res.json();
+    if (data.users) {
+      data.users.filter(u => u.role === "company" && u.company).forEach(u => {
+        const companyKey = u.company.toLowerCase().replace(/[\s-]+/g, "");
+        if (targets.includes(companyKey)) targets.push(u.id);
+      });
+    }
+  } catch {}
+  const uniqueTargets = [...new Set(targets)].filter(t => t !== excludeUser);
+  for (const t of uniqueTargets) {
+    await createNotification(t, type, title, message, complaintId, hospital);
+  }
+}
+
+/* ─── Notification Bell Component ─── */
+function NotificationBell({ user }) {
+  const [notifs, setNotifs] = useState([]);
+  const [open, setOpen] = useState(false);
+  const companyName = user.company || (user.role === "company" ? user.name : null);
+  const userId = user.id || user.name?.toLowerCase().replace(/[\s-]+/g, "");
+
+  const loadNotifs = useCallback(async () => {
+    const data = await fetchNotifications(userId, companyName);
+    setNotifs(data);
+  }, [userId, companyName]);
+
+  useEffect(() => { loadNotifs(); const iv = setInterval(loadNotifs, 15000); return () => clearInterval(iv); }, [loadNotifs]);
+
+  const unread = notifs.filter(n => !n.is_read).length;
+  const handleMarkAllRead = async () => { await markAllNotifsRead(userId, companyName); await loadNotifs(); };
+  const handleClick = async (n) => { if (!n.is_read) { await markNotifRead(n.id); await loadNotifs(); } };
+  const dateFmt = { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" };
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button onClick={() => setOpen(!open)} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 10px", fontSize: 18, position: "relative" }}>
+        🔔
+        {unread > 0 && <span style={{ position: "absolute", top: 2, right: 2, background: "#c0392b", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>{unread > 9 ? "9+" : unread}</span>}
+      </button>
+      {open && (
+        <div style={{ position: "absolute", right: 0, top: 40, width: 340, maxHeight: 420, overflowY: "auto", background: "#fff", border: "1px solid #ddd", borderRadius: 8, boxShadow: "0 8px 30px rgba(0,0,0,0.15)", zIndex: 100 }}>
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <strong style={{ fontSize: 14, color: "#111" }}>Notifications</strong>
+            {unread > 0 && <button onClick={handleMarkAllRead} style={{ fontSize: 11, color: "#666", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Mark all read</button>}
+          </div>
+          {notifs.length === 0 && <div style={{ padding: "24px 16px", textAlign: "center", color: "#999", fontSize: 13 }}>No notifications yet</div>}
+          {notifs.map(n => (
+            <div key={n.id} onClick={() => handleClick(n)} style={{ padding: "10px 16px", borderBottom: "1px solid #f5f5f5", background: n.is_read ? "#fff" : "#f0f7ff", cursor: "pointer" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <strong style={{ fontSize: 12, color: "#111" }}>{n.title}</strong>
+                {!n.is_read && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#c0392b", flexShrink: 0, marginTop: 4 }}></span>}
+              </div>
+              {n.message && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}>{n.message}</p>}
+              <span style={{ fontSize: 10, color: "#999" }}>{new Date(n.created_at).toLocaleDateString("en-PK", dateFmt)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 /* ─── CSV Download ─── */
@@ -346,13 +429,12 @@ function AppInner() {
   const [complaints, setComplaints] = useState([]);
   const [notifEmails, setNotifEmails] = useState([]);
   const [siteNotes, setSiteNotes] = useState([]);
-  const [notifPrefs, setNotifPrefs] = useState([]);
   const [ready, setReady] = useState(false);
   const [dataReady, setDataReady] = useState(false);
 
   const reload = useCallback(async () => {
-    const [c, u, e, s, np] = await Promise.all([fetchComplaints(), fetchUsers(), fetchEmails(), fetchSiteNotes(), fetchNotifPrefs()]);
-    setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s); setNotifPrefs(np);
+    const [c, u, e, s] = await Promise.all([fetchComplaints(), fetchUsers(), fetchEmails(), fetchSiteNotes()]);
+    setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s);
   }, []);
 
   useEffect(() => { setReady(true); }, []);
@@ -393,7 +475,7 @@ function AppInner() {
   if (!user) return <LoginScreen onLogin={handleLogin} />;
   if (!dataReady) return <LoadingScreen />;
   if (user.role === "hospital") return <HospitalDashboard user={user} complaints={complaints} onRefresh={reload} onLogout={handleLogout} />;
-  if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} siteNotes={siteNotes} notifPrefs={notifPrefs} onRefresh={reload} onLogout={handleLogout} />;
+  if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} siteNotes={siteNotes} onRefresh={reload} onLogout={handleLogout} />;
   return <CompanyDashboard user={user} complaints={complaints} siteNotes={siteNotes} onRefresh={reload} onLogout={handleLogout} />;
 }
 
@@ -689,7 +771,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
 }
 
 /* ─── Comment Section ─── */
-function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
+function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmin }) {
   const [comments, setComments] = useState([]); const [text, setText] = useState(""); const [posting, setPosting] = useState(false);
   const [loaded, setLoaded] = useState(false); const [expanded, setExpanded] = useState(false);
   const [editingComment, setEditingComment] = useState(null); const [editText, setEditText] = useState("");
@@ -705,6 +787,13 @@ function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
     const author = currentUser.role === "admin" ? "Management" : currentUser.role === "hospital" ? currentUser.name + " Hospital" : currentUser.name;
     const role = currentUser.role;
     await insertComment(complaintId, author, role, text.trim()); setText(""); setPosting(false); await loadComments();
+    // Notify: if hospital comments, notify companies. If company comments, notify hospital.
+    const userId = currentUser.id || currentUser.name?.toLowerCase().replace(/\s+/g, "");
+    if (currentUser.role === "hospital") {
+      notifyUsers("comment", "New Comment", `${author}: ${text.trim().slice(0, 60)}`, hospital || currentUser.name, complaintId, userId).catch(() => {});
+    } else if (hospital) {
+      createNotification(hospital.toLowerCase().replace(/\s+/g, ""), "comment", "New Comment", `${author}: ${text.trim().slice(0, 60)}`, complaintId, hospital).catch(() => {});
+    }
   };
   const handleDelete = async (id) => { await deleteComment(id); await loadComments(); };
   const handleEdit = async (id) => { if (!editText.trim()) return; await updateCommentContent(id, editText.trim()); setEditingComment(null); setEditText(""); await loadComments(); };
@@ -830,7 +919,7 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
           </div>
         </>
       )}
-      <CommentSection complaintId={c.id} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} />
+      <CommentSection complaintId={c.id} hospital={c.hospital} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} />
     </div>
   );
 }
@@ -852,11 +941,11 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const [success, setSuccess] = useState(false); const [submitting, setSubmitting] = useState(false);
   const mine = complaints.filter(c => c.hospital === user.name);
   const openCount = mine.filter(c => c.status !== "Resolved").length;
-  const submitComplaint = async () => { if (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) return; setSubmitting(true); const r = await insertComplaint(user.name, title.trim(), desc.trim(), null, operatorName.trim()); setSubmitting(false); if (r) { setTitle(""); setDesc(""); setSuccess(true); setTimeout(() => setSuccess(false), 2500); await onRefresh(); } };
-  const handleResolve = async (id) => { await requestResolution(id, operatorName.trim() || user.name + " Hospital"); await onRefresh(); };
+  const submitComplaint = async () => { if (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) return; setSubmitting(true); const r = await insertComplaint(user.name, title.trim(), desc.trim(), null, operatorName.trim()); setSubmitting(false); if (r) { setTitle(""); setDesc(""); setSuccess(true); setTimeout(() => setSuccess(false), 2500); notifyUsers("new_complaint", `New: ${title.trim()}`, `${user.name} — ${desc.trim().slice(0, 80)}`, user.name, r.id, user.id).catch(() => {}); await onRefresh(); } };
+  const handleResolve = async (id) => { await requestResolution(id, operatorName.trim() || user.name + " Hospital"); notifyUsers("resolution_request", "Resolution Requested", `${user.name} has requested resolution`, user.name, id, user.id).catch(() => {}); await onRefresh(); };
   return (
     <div style={styles.shell}>
-      <AppHeader user={user}><button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button></AppHeader>
+      <AppHeader user={user}><NotificationBell user={user} /><button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button></AppHeader>
       <main className="main-responsive" style={styles.main}>
         <section style={styles.formSection}>
           <h2 style={styles.sectionTitle}>Register a Complaint</h2>
@@ -877,7 +966,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
 }
 
 /* ─── Admin Dashboard ─── */
-function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, notifPrefs, onRefresh, onLogout }) {
+function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRefresh, onLogout }) {
   const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const [editingUser, setEditingUser] = useState(null); const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
@@ -889,10 +978,10 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, notif
 
   const totalComplaints = complaints.length; const totalOpen = complaints.filter(c => c.status !== "Resolved").length;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
-  const handleResolve = async (id, date) => { await resolveComplaint(id, date, null); await onRefresh(); };
+  const handleResolve = async (id, date) => { await resolveComplaint(id, date, null); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", "Complaint Resolved", `${c.title} has been resolved`, id, c.hospital).catch(() => {}); } await onRefresh(); };
   const handleRequestResolve = async (id) => { await requestResolution(id, "Management"); await onRefresh(); };
-  const handleApprove = async (id) => { await approveResolution(id, null); await onRefresh(); };
-  const handleReject = async (id, reason) => { await rejectResolution(id); await insertComment(id, "Management", "admin", `Resolution rejected: ${reason}`); await onRefresh(); };
+  const handleApprove = async (id) => { await approveResolution(id, null); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "approved", "Resolution Approved", `${c.title} has been approved`, id, c.hospital).catch(() => {}); notifyUsers("resolved", "Complaint Resolved", `${c.hospital} — ${c.title}`, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
+  const handleReject = async (id, reason) => { await rejectResolution(id); await insertComment(id, "Management", "admin", `Resolution rejected: ${reason}`); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", "Resolution Rejected", `${c.title}: ${reason}`, id, c.hospital).catch(() => {}); } await onRefresh(); };
   const handleUnresolve = async (id) => { await unresolveComplaint(id); await onRefresh(); };
   const handleDelete = async (id) => { await deleteComplaint(id); await onRefresh(); };
   const handlePasswordChange = async (userId) => {
@@ -930,7 +1019,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, notif
   return (
     <div style={styles.shell}>
       <AppHeader user={user}>
-        <button style={styles.btnText} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
+        <NotificationBell user={user} /><button style={styles.btnText} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
         <button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button>
       </AppHeader>
       <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s" }}>
@@ -1097,14 +1186,14 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
   const canCommentOnHospital = (hospital) => { if (["Novair", "Amex"].includes(companyName)) return true; if (isProvider && getProvider(hospital) === companyName) return true; return false; };
   const canResolveHospital = isAmex || isProvider;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
-  const handleResolve = async (id) => { if (isAmex) { await resolveComplaint(id, null, user.name); } else { await requestResolution(id, user.name); } await onRefresh(); };
-  const handleRequestResolve = async (id) => { await requestResolution(id, user.name); await onRefresh(); };
-  const handleApprove = async (id) => { await approveResolution(id, user.name); await onRefresh(); };
-  const handleReject = async (id, reason) => { await rejectResolution(id); await insertComment(id, user.name, "company", `Resolution rejected: ${reason}`); await onRefresh(); };
+  const handleResolve = async (id) => { if (isAmex) { await resolveComplaint(id, null, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", "Complaint Resolved", `${c.title} has been resolved`, id, c.hospital).catch(() => {}); } } else { await requestResolution(id, user.name); const c = complaints.find(x => x.id === id); if (c) notifyUsers("resolution_request", "Resolution Requested", `${c.hospital} — ${c.title}`, c.hospital, id, user.id).catch(() => {}); } await onRefresh(); };
+  const handleRequestResolve = async (id) => { await requestResolution(id, user.name); const c = complaints.find(x => x.id === id); if (c) notifyUsers("resolution_request", "Resolution Requested", `${c.hospital} — ${c.title}`, c.hospital, id, user.id).catch(() => {}); await onRefresh(); };
+  const handleApprove = async (id) => { await approveResolution(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "approved", "Resolution Approved", `${c.title} has been approved`, id, c.hospital).catch(() => {}); notifyUsers("resolved", "Complaint Resolved", `${c.hospital} — ${c.title}`, c.hospital, id, user.id).catch(() => {}); } await onRefresh(); };
+  const handleReject = async (id, reason) => { await rejectResolution(id); await insertComment(id, user.name, "company", `Resolution rejected: ${reason}`); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", "Resolution Rejected", `${c.title}: ${reason}`, id, c.hospital).catch(() => {}); } await onRefresh(); };
   return (
     <div style={styles.shell}>
       <AppHeader user={user}>
-        <button style={styles.btnText} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
+        <NotificationBell user={user} /><button style={styles.btnText} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
         <button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button>
       </AppHeader>
       <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s" }}>
