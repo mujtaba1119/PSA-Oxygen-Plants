@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       if (buffer.length > 10 * 1024 * 1024) return json(res, 400, { error: "File too large (max 10MB)" });
 
       const path = `${complaintId}/${Date.now()}-${fileName}`;
-      const { error: uploadError } = await admin.storage.from("attachments").upload(path, buffer, {
+      const { error: uploadError } = await admin.storage.from("Attachments").upload(path, buffer, {
         contentType: contentType || "application/octet-stream",
         upsert: false,
       });
@@ -63,7 +63,7 @@ export default async function handler(req, res) {
     const path = url.searchParams.get("path");
     if (!path) return json(res, 400, { error: "Missing path" });
 
-    const { data, error } = await admin.storage.from("attachments").createSignedUrl(path, 300);
+    const { data, error } = await admin.storage.from("Attachments").createSignedUrl(path, 300);
     if (error) return json(res, 400, { error: error.message });
     return json(res, 200, { url: data.signedUrl });
   }
