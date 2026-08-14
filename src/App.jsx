@@ -1001,9 +1001,27 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const [success, setSuccess] = useState(false); const [submitting, setSubmitting] = useState(false);
   const mine = complaints.filter(c => c.hospital === user.name);
   const openCount = mine.filter(c => c.status !== "Resolved").length;
-  const uploadFiles = async (complaintId) => {
-    for (const file of files) {
+
+  const compressImage = (file) => new Promise((resolve) => {
+    if (!file.type.startsWith("image/")) { resolve(file); return; }
+    const canvas = document.createElement("canvas");
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 1200; const maxH = 1200;
+      let w = img.width; let h = img.height;
+      if (w > maxW) { h = (h * maxW) / w; w = maxW; }
+      if (h > maxH) { w = (w * maxH) / h; h = maxH; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", 0.7);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
+  const doUpload = async (complaintId, fileList) => {
+    for (const rawFile of fileList) {
       try {
+        const file = await compressImage(rawFile);
         const base64Data = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result.split(",")[1]);
@@ -1016,11 +1034,28 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
           body: JSON.stringify({ complaintId, fileName: file.name, contentType: file.type, base64Data })
         });
         const data = await res.json();
-        if (!res.ok) { console.error("Upload error:", data.error); alert("Upload error: " + data.error); }
+        if (!res.ok) console.error("Upload error:", data.error);
       } catch (e) { console.error("Upload failed:", e); }
     }
   };
-  const submitComplaint = async () => { if (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) return; setSubmitting(true); const r = await insertComplaint(user.name, title.trim(), desc.trim(), null, operatorName.trim()); setSubmitting(false); if (r) { if (files.length > 0) await uploadFiles(r.id); setTitle(""); setDesc(""); setFiles([]); setSuccess(true); setTimeout(() => setSuccess(false), 2500); notifyUsers("new_complaint", `New: ${title.trim()}`, `${user.name} — ${desc.trim().slice(0, 80)}`, user.name, r.id, user.id).catch(() => {}); await onRefresh(); } };
+
+  const submitComplaint = async () => {
+    if (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) return;
+    setSubmitting(true);
+    const savedTitle = title.trim(); const savedDesc = desc.trim(); const savedFiles = [...files];
+    const r = await insertComplaint(user.name, savedTitle, savedDesc, null, operatorName.trim());
+    if (r) {
+      if (savedFiles.length > 0) await doUpload(r.id, savedFiles);
+      setTitle(""); setDesc(""); setFiles([]);
+      notifyUsers("new_complaint", `New: ${savedTitle}`, `${user.name} — ${savedDesc.slice(0, 80)}`, user.name, r.id, user.id).catch(() => {});
+      await onRefresh();
+      setSubmitting(false);
+      setSuccess(true); setTimeout(() => setSuccess(false), 2500);
+    } else {
+      setSubmitting(false);
+      alert("Failed to submit complaint. Please try again.");
+    }
+  };
   const handleResolve = async (id) => { await requestResolution(id, operatorName.trim() || user.name + " Hospital"); notifyUsers("resolution_request", "Resolution Requested", `${user.name} has requested resolution`, user.name, id, user.id).catch(() => {}); await onRefresh(); };
   return (
     <div style={styles.shell}>
@@ -1047,7 +1082,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
               </div>
             )}
           </div>
-          <button style={{ ...styles.btnPrimary, opacity: (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) ? 0.5 : 1 }} onClick={submitComplaint}>{submitting ? "Submitting…" : "Submit Complaint"}</button>
+          <button disabled={!operatorName.trim() || !title.trim() || !desc.trim() || submitting} style={{ ...styles.btnPrimary, background: submitting ? "#999" : (!operatorName.trim() || !title.trim() || !desc.trim()) ? "#999" : C.black, cursor: submitting ? "not-allowed" : "pointer", pointerEvents: submitting ? "none" : "auto" }} onClick={submitComplaint}>{submitting ? "SUBMITTING..." : "SUBMIT COMPLAINT"}</button>
           {success && <p style={styles.successMsg}>Complaint registered successfully.</p>}
         </section>
         <section style={styles.listSection}>
@@ -1260,6 +1295,11 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
           <div style={styles.formSection}><h3 style={{ fontSize: 15, fontWeight: 600, color: "#1a2332", margin: "0 0 12px" }}>Add Email</h3><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><select style={{ ...styles.pwInput, width: 150, padding: "8px 10px" }} value={emailGroup} onChange={e => setEmailGroup(e.target.value)}>{emailGroupOptions.map(g => <option key={g} value={g}>{g}</option>)}</select><input style={{ ...styles.pwInput, flex: 1, minWidth: 200, padding: "8px 10px" }} type="email" placeholder="email@example.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddEmail()} /><button style={styles.pwSaveBtn} onClick={handleAddEmail}>{emailSaving ? "…" : "Add"}</button></div></div>
           {emailGroupOptions.map(g => { const ge = notifEmails.filter(e => e.group_name === g); if (!ge.length) return null; return (<div key={g} style={{ marginTop: 20 }}><h3 style={{ fontSize: 15, fontWeight: 600, color: "#0e7c6b", margin: "0 0 10px" }}>{g}</h3>{ge.map(e => (<div key={e.id} style={{ ...styles.pwCard, display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 14, color: "#1a2332" }}>{e.email}</span><button style={{ ...styles.pwCancelBtn, color: "#e53e3e", fontSize: 14 }} onClick={() => handleDeleteEmail(e.id)}>Remove</button></div>))}</div>); })}
           {notifEmails.length === 0 && <p style={styles.empty}>No notification emails configured yet.</p>}
+          <div style={{ marginTop: 32, paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
+            <h3 style={{ fontSize: 15, fontWeight: 600, color: C.black, margin: "0 0 8px" }}>Reset Notifications</h3>
+            <p style={{ fontSize: 13, color: C.textLight, marginBottom: 12 }}>Delete all notification records for all users. Use before launch to clear test data.</p>
+            <button style={{ ...styles.deleteBtn, fontSize: 12 }} onClick={async () => { if (window.confirm("Delete ALL notifications for ALL users? This cannot be undone.")) { await supabase.from("notifications").delete().neq("id", "00000000-0000-0000-0000-000000000000"); alert("All notifications cleared."); } }}>RESET ALL NOTIFICATIONS</button>
+          </div>
         </>)}
         </div>
       </main>
