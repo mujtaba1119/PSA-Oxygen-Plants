@@ -1026,12 +1026,13 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
     const savedTitle = title.trim(); const savedDesc = desc.trim(); const savedFiles = [...files];
     const r = await insertComplaint(user.name, savedTitle, savedDesc, null, operatorName.trim());
     if (r) {
-      setTitle(""); setDesc(""); setFiles([]); setSuccess(true); setTimeout(() => setSuccess(false), 2500);
-      setSubmitting(false);
+      setTitle(""); setDesc(""); setFiles([]);
       // Background: upload files and notify (don't block UI)
       if (savedFiles.length > 0) uploadFiles(r.id).catch(() => {});
       notifyUsers("new_complaint", `New: ${savedTitle}`, `${user.name} — ${savedDesc.slice(0, 80)}`, user.name, r.id, user.id).catch(() => {});
       await onRefresh();
+      setSubmitting(false);
+      setSuccess(true); setTimeout(() => setSuccess(false), 2500);
     } else {
       setSubmitting(false);
       alert("Failed to submit complaint. Please try again.");
