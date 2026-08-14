@@ -1001,9 +1001,27 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const [success, setSuccess] = useState(false); const [submitting, setSubmitting] = useState(false);
   const mine = complaints.filter(c => c.hospital === user.name);
   const openCount = mine.filter(c => c.status !== "Resolved").length;
+
+  const compressImage = (file) => new Promise((resolve) => {
+    if (!file.type.startsWith("image/")) { resolve(file); return; }
+    const canvas = document.createElement("canvas");
+    const img = new Image();
+    img.onload = () => {
+      const maxW = 1200; const maxH = 1200;
+      let w = img.width; let h = img.height;
+      if (w > maxW) { h = (h * maxW) / w; w = maxW; }
+      if (h > maxH) { w = (w * maxH) / h; h = maxH; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", 0.7);
+    };
+    img.src = URL.createObjectURL(file);
+  });
+
   const doUpload = async (complaintId, fileList) => {
-    for (const file of fileList) {
+    for (const rawFile of fileList) {
       try {
+        const file = await compressImage(rawFile);
         const base64Data = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result.split(",")[1]);
@@ -1020,13 +1038,13 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
       } catch (e) { console.error("Upload failed:", e); }
     }
   };
+
   const submitComplaint = async () => {
     if (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) return;
     setSubmitting(true);
     const savedTitle = title.trim(); const savedDesc = desc.trim(); const savedFiles = [...files];
     const r = await insertComplaint(user.name, savedTitle, savedDesc, null, operatorName.trim());
     if (r) {
-      // Upload files BEFORE clearing (uses savedFiles)
       if (savedFiles.length > 0) await doUpload(r.id, savedFiles);
       setTitle(""); setDesc(""); setFiles([]);
       notifyUsers("new_complaint", `New: ${savedTitle}`, `${user.name} — ${savedDesc.slice(0, 80)}`, user.name, r.id, user.id).catch(() => {});
@@ -1064,7 +1082,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
               </div>
             )}
           </div>
-          <button disabled={!operatorName.trim() || !title.trim() || !desc.trim() || submitting} style={{ ...styles.btnPrimary, opacity: (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) ? 0.4 : 1, cursor: submitting ? "not-allowed" : "pointer" }} onClick={submitComplaint}>{submitting ? "Submitting…" : "Submit Complaint"}</button>
+          <button disabled={!operatorName.trim() || !title.trim() || !desc.trim() || submitting} style={{ ...styles.btnPrimary, background: submitting ? "#999" : (!operatorName.trim() || !title.trim() || !desc.trim()) ? "#999" : C.black, cursor: submitting ? "not-allowed" : "pointer", pointerEvents: submitting ? "none" : "auto" }} onClick={submitComplaint}>{submitting ? "SUBMITTING..." : "SUBMIT COMPLAINT"}</button>
           {success && <p style={styles.successMsg}>Complaint registered successfully.</p>}
         </section>
         <section style={styles.listSection}>
