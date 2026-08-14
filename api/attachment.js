@@ -1001,8 +1001,8 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const [success, setSuccess] = useState(false); const [submitting, setSubmitting] = useState(false);
   const mine = complaints.filter(c => c.hospital === user.name);
   const openCount = mine.filter(c => c.status !== "Resolved").length;
-  const uploadFiles = async (complaintId) => {
-    for (const file of files) {
+  const doUpload = async (complaintId, fileList) => {
+    for (const file of fileList) {
       try {
         const base64Data = await new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -1016,7 +1016,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
           body: JSON.stringify({ complaintId, fileName: file.name, contentType: file.type, base64Data })
         });
         const data = await res.json();
-        if (!res.ok) { console.error("Upload error:", data.error); alert("Upload error: " + data.error); }
+        if (!res.ok) console.error("Upload error:", data.error);
       } catch (e) { console.error("Upload failed:", e); }
     }
   };
@@ -1026,9 +1026,9 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
     const savedTitle = title.trim(); const savedDesc = desc.trim(); const savedFiles = [...files];
     const r = await insertComplaint(user.name, savedTitle, savedDesc, null, operatorName.trim());
     if (r) {
+      // Upload files BEFORE clearing (uses savedFiles)
+      if (savedFiles.length > 0) await doUpload(r.id, savedFiles);
       setTitle(""); setDesc(""); setFiles([]);
-      // Background: upload files and notify (don't block UI)
-      if (savedFiles.length > 0) uploadFiles(r.id).catch(() => {});
       notifyUsers("new_complaint", `New: ${savedTitle}`, `${user.name} — ${savedDesc.slice(0, 80)}`, user.name, r.id, user.id).catch(() => {});
       await onRefresh();
       setSubmitting(false);
