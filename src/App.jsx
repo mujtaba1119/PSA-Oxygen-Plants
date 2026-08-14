@@ -247,7 +247,7 @@ async function notifyUsers(type, title, message, hospital, complaintId, excludeU
 }
 
 /* ─── Notification Bell Component ─── */
-function NotificationBell({ user }) {
+function NotificationBell({ user, onNavigate }) {
   const [notifs, setNotifs] = useState([]);
   const [open, setOpen] = useState(false);
   const companyName = user.company || (user.role === "company" ? user.name : null);
@@ -261,35 +261,39 @@ function NotificationBell({ user }) {
   useEffect(() => { loadNotifs(); const iv = setInterval(loadNotifs, 15000); return () => clearInterval(iv); }, [loadNotifs]);
 
   const unread = notifs.filter(n => !n.is_read).length;
-  const handleMarkAllRead = async () => { await markAllNotifsRead(userId, companyName); await loadNotifs(); };
-  const handleClick = async (n) => { if (!n.is_read) { await markNotifRead(n.id); await loadNotifs(); } };
+  const handleOpen = async () => {
+    const willOpen = !open;
+    setOpen(willOpen);
+    if (willOpen && unread > 0) { await markAllNotifsRead(userId, companyName); await loadNotifs(); }
+  };
+  const handleClick = (n) => {
+    setOpen(false);
+    if (n.hospital && onNavigate) onNavigate(n.hospital);
+  };
   const dateFmt = { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" };
 
   return (
     <div style={{ position: "relative" }}>
-      <button onClick={() => setOpen(!open)} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 10px", fontSize: 18, position: "relative" }}>
+      <button onClick={handleOpen} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 10px", fontSize: 18, position: "relative" }}>
         🔔
         {unread > 0 && <span style={{ position: "absolute", top: 2, right: 2, background: "#c0392b", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>{unread > 9 ? "9+" : unread}</span>}
       </button>
-      {open && (
-        <div style={{ position: "absolute", right: 0, top: 40, width: 340, maxHeight: 420, overflowY: "auto", background: "#fff", border: "1px solid #ddd", borderRadius: 8, boxShadow: "0 8px 30px rgba(0,0,0,0.15)", zIndex: 100 }}>
+      {open && (<>
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} onClick={() => setOpen(false)} />
+        <div style={{ position: "absolute", right: 0, top: 40, width: 340, maxHeight: 420, overflowY: "auto", background: "#fff", border: "1px solid #ddd", borderRadius: 8, boxShadow: "0 8px 30px rgba(0,0,0,0.15)", zIndex: 1000 }}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <strong style={{ fontSize: 14, color: "#111" }}>Notifications</strong>
-            {unread > 0 && <button onClick={handleMarkAllRead} style={{ fontSize: 11, color: "#666", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Mark all read</button>}
           </div>
           {notifs.length === 0 && <div style={{ padding: "24px 16px", textAlign: "center", color: "#999", fontSize: 13 }}>No notifications yet</div>}
           {notifs.map(n => (
-            <div key={n.id} onClick={() => handleClick(n)} style={{ padding: "10px 16px", borderBottom: "1px solid #f5f5f5", background: n.is_read ? "#fff" : "#f0f7ff", cursor: "pointer" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <strong style={{ fontSize: 12, color: "#111" }}>{n.title}</strong>
-                {!n.is_read && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#c0392b", flexShrink: 0, marginTop: 4 }}></span>}
-              </div>
+            <div key={n.id} onClick={() => handleClick(n)} style={{ padding: "10px 16px", borderBottom: "1px solid #f5f5f5", background: "#fff", cursor: n.hospital ? "pointer" : "default" }}>
+              <strong style={{ fontSize: 12, color: "#111" }}>{n.title}</strong>
               {n.message && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}>{n.message}</p>}
               <span style={{ fontSize: 10, color: "#999" }}>{new Date(n.created_at).toLocaleDateString("en-PK", dateFmt)}</span>
             </div>
           ))}
         </div>
-      )}
+      </>)}
     </div>
   );
 }
@@ -1019,7 +1023,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   return (
     <div style={styles.shell}>
       <AppHeader user={user}>
-        <NotificationBell user={user} /><button style={styles.btnText} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
+        <NotificationBell user={user} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} /><button style={styles.btnText} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
         <button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button>
       </AppHeader>
       <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s" }}>
@@ -1193,7 +1197,7 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
   return (
     <div style={styles.shell}>
       <AppHeader user={user}>
-        <NotificationBell user={user} /><button style={styles.btnText} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
+        <NotificationBell user={user} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} /><button style={styles.btnText} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
         <button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button>
       </AppHeader>
       <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s" }}>
