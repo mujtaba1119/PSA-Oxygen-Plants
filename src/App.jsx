@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "./supabase";
 
 /* ─── Animated Number Counter ─── */
@@ -286,7 +287,7 @@ function NotificationBell({ user, onNavigate }) {
         🔔
         {unread > 0 && <span style={{ position: "absolute", top: 2, right: 2, background: "#c0392b", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>{unread > 9 ? "9+" : unread}</span>}
       </button>
-      {open && (<>
+      {open && createPortal(<>
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998, background: "rgba(0,0,0,0.1)" }} onClick={() => setOpen(false)} />
         <div style={{ position: "fixed", top: dropPos.top, right: dropPos.right, width: 340, maxHeight: 420, overflowY: "auto", background: "#fff", border: "1px solid #ddd", borderRadius: 8, boxShadow: "0 8px 30px rgba(0,0,0,0.2)", zIndex: 9999 }}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -301,7 +302,7 @@ function NotificationBell({ user, onNavigate }) {
             </div>
           ))}
         </div>
-      </>)}
+      </>, document.body)}
     </div>
   );
 }
