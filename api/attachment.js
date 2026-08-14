@@ -1020,7 +1020,23 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
       } catch (e) { console.error("Upload failed:", e); }
     }
   };
-  const submitComplaint = async () => { if (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) return; setSubmitting(true); const r = await insertComplaint(user.name, title.trim(), desc.trim(), null, operatorName.trim()); setSubmitting(false); if (r) { if (files.length > 0) await uploadFiles(r.id); setTitle(""); setDesc(""); setFiles([]); setSuccess(true); setTimeout(() => setSuccess(false), 2500); notifyUsers("new_complaint", `New: ${title.trim()}`, `${user.name} — ${desc.trim().slice(0, 80)}`, user.name, r.id, user.id).catch(() => {}); await onRefresh(); } };
+  const submitComplaint = async () => {
+    if (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) return;
+    setSubmitting(true);
+    const savedTitle = title.trim(); const savedDesc = desc.trim(); const savedFiles = [...files];
+    const r = await insertComplaint(user.name, savedTitle, savedDesc, null, operatorName.trim());
+    if (r) {
+      setTitle(""); setDesc(""); setFiles([]); setSuccess(true); setTimeout(() => setSuccess(false), 2500);
+      setSubmitting(false);
+      // Background: upload files and notify (don't block UI)
+      if (savedFiles.length > 0) uploadFiles(r.id).catch(() => {});
+      notifyUsers("new_complaint", `New: ${savedTitle}`, `${user.name} — ${savedDesc.slice(0, 80)}`, user.name, r.id, user.id).catch(() => {});
+      await onRefresh();
+    } else {
+      setSubmitting(false);
+      alert("Failed to submit complaint. Please try again.");
+    }
+  };
   const handleResolve = async (id) => { await requestResolution(id, operatorName.trim() || user.name + " Hospital"); notifyUsers("resolution_request", "Resolution Requested", `${user.name} has requested resolution`, user.name, id, user.id).catch(() => {}); await onRefresh(); };
   return (
     <div style={styles.shell}>
@@ -1047,7 +1063,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
               </div>
             )}
           </div>
-          <button style={{ ...styles.btnPrimary, opacity: (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) ? 0.5 : 1 }} onClick={submitComplaint}>{submitting ? "Submitting…" : "Submit Complaint"}</button>
+          <button disabled={!operatorName.trim() || !title.trim() || !desc.trim() || submitting} style={{ ...styles.btnPrimary, opacity: (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) ? 0.4 : 1, cursor: submitting ? "not-allowed" : "pointer" }} onClick={submitComplaint}>{submitting ? "Submitting…" : "Submit Complaint"}</button>
           {success && <p style={styles.successMsg}>Complaint registered successfully.</p>}
         </section>
         <section style={styles.listSection}>
