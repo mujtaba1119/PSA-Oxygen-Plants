@@ -261,26 +261,34 @@ function NotificationBell({ user, onNavigate }) {
   useEffect(() => { loadNotifs(); const iv = setInterval(loadNotifs, 15000); return () => clearInterval(iv); }, [loadNotifs]);
 
   const unread = notifs.filter(n => !n.is_read).length;
-  const handleOpen = async () => {
-    const willOpen = !open;
-    setOpen(willOpen);
-    if (willOpen && unread > 0) { await markAllNotifsRead(userId, companyName); await loadNotifs(); }
-  };
   const handleClick = (n) => {
     setOpen(false);
     if (n.hospital && onNavigate) onNavigate(n.hospital);
   };
   const dateFmt = { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" };
 
+  const bellRef = useRef(null);
+  const [dropPos, setDropPos] = useState({ top: 0, right: 0 });
+
+  const handleOpen = async () => {
+    const willOpen = !open;
+    if (willOpen && bellRef.current) {
+      const rect = bellRef.current.getBoundingClientRect();
+      setDropPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+    setOpen(willOpen);
+    if (willOpen && unread > 0) { await markAllNotifsRead(userId, companyName); await loadNotifs(); }
+  };
+
   return (
-    <div style={{ position: "relative" }}>
+    <div ref={bellRef} style={{ position: "relative" }}>
       <button onClick={handleOpen} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px 10px", fontSize: 18, position: "relative" }}>
         🔔
         {unread > 0 && <span style={{ position: "absolute", top: 2, right: 2, background: "#c0392b", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center" }}>{unread > 9 ? "9+" : unread}</span>}
       </button>
       {open && (<>
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} onClick={() => setOpen(false)} />
-        <div style={{ position: "absolute", right: 0, top: 40, width: 340, maxHeight: 420, overflowY: "auto", background: "#fff", border: "1px solid #ddd", borderRadius: 8, boxShadow: "0 8px 30px rgba(0,0,0,0.15)", zIndex: 1000 }}>
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998, background: "rgba(0,0,0,0.1)" }} onClick={() => setOpen(false)} />
+        <div style={{ position: "fixed", top: dropPos.top, right: dropPos.right, width: 340, maxHeight: 420, overflowY: "auto", background: "#fff", border: "1px solid #ddd", borderRadius: 8, boxShadow: "0 8px 30px rgba(0,0,0,0.2)", zIndex: 9999 }}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <strong style={{ fontSize: 14, color: "#111" }}>Notifications</strong>
           </div>
