@@ -862,6 +862,50 @@ function GroupedHospitalList({ groups, complaints, onSelect }) {
   ))}</>);
 }
 
+/* ─── Attachment Viewer ─── */
+function AttachmentViewer({ attachments }) {
+  const [urls, setUrls] = useState({});
+  const [expanded, setExpanded] = useState(false);
+  if (!attachments || attachments.length === 0) return null;
+
+  const loadUrl = async (path) => {
+    if (urls[path]) return;
+    try {
+      const res = await fetch(`/api/attachment?path=${encodeURIComponent(path)}`);
+      const data = await res.json();
+      if (data.url) setUrls(prev => ({ ...prev, [path]: data.url }));
+    } catch {}
+  };
+
+  const handleExpand = () => {
+    if (!expanded) attachments.forEach(a => loadUrl(a.path));
+    setExpanded(!expanded);
+  };
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <button onClick={handleExpand} style={{ fontSize: 12, fontWeight: 600, color: C.black, background: "none", border: "none", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" }}>
+        {expanded ? "▾ Hide Attachments" : `▸ Attachments (${attachments.length})`}
+      </button>
+      {expanded && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+          {attachments.map((a, i) => (
+            <div key={i} style={{ border: `1px solid ${C.border}`, borderRadius: 4, overflow: "hidden" }}>
+              {urls[a.path] ? (
+                a.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+                  ? <a href={urls[a.path]} target="_blank" rel="noopener"><img src={urls[a.path]} alt={a.name} style={{ width: 120, height: 90, objectFit: "cover", display: "block" }} /></a>
+                  : <a href={urls[a.path]} target="_blank" rel="noopener" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 120, height: 90, background: C.bg, fontSize: 11, color: C.textMid, textDecoration: "none" }}>📄 {a.name}</a>
+              ) : (
+                <div style={{ width: 120, height: 90, display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontSize: 11, color: C.textLight }}>Loading…</div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, isAmex, isProvider, onResolve, onRequestResolve, onApprove, onReject, onUnresolve, onDelete, onRefresh }) {
   const [resolving, setResolving] = useState(false); const [resolveDate, setResolveDate] = useState("");
   const [editing, setEditing] = useState(false); const [editTitle, setEditTitle] = useState(complaint.title);
@@ -906,6 +950,7 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
           </div>
           <p style={styles.cardDesc}>{c.description}</p>
           {c.submitted_by && <p style={{ fontSize: 12, color: C.textLight, marginTop: 4 }}>Submitted by: {c.submitted_by}</p>}
+          <AttachmentViewer attachments={c.attachments} />
           <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
             {/* Open complaints: Hospital/Provider can request, Amex/Admin can resolve directly */}
             {c.status === "Open" && canResolve && (
@@ -951,10 +996,19 @@ function ComplaintListView({ hospital, complaints, currentUser, canResolve, canC
 function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const [operatorName, setOperatorName] = useState("");
   const [title, setTitle] = useState(""); const [desc, setDesc] = useState("");
+  const [files, setFiles] = useState([]);
   const [success, setSuccess] = useState(false); const [submitting, setSubmitting] = useState(false);
   const mine = complaints.filter(c => c.hospital === user.name);
   const openCount = mine.filter(c => c.status !== "Resolved").length;
-  const submitComplaint = async () => { if (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) return; setSubmitting(true); const r = await insertComplaint(user.name, title.trim(), desc.trim(), null, operatorName.trim()); setSubmitting(false); if (r) { setTitle(""); setDesc(""); setSuccess(true); setTimeout(() => setSuccess(false), 2500); notifyUsers("new_complaint", `New: ${title.trim()}`, `${user.name} — ${desc.trim().slice(0, 80)}`, user.name, r.id, user.id).catch(() => {}); await onRefresh(); } };
+  const uploadFiles = async (complaintId) => {
+    for (const file of files) {
+      try {
+        const body = await file.arrayBuffer();
+        await fetch("/api/attachment", { method: "POST", headers: { "Content-Type": file.type, "X-File-Name": file.name, "X-Complaint-Id": complaintId }, body });
+      } catch (e) { console.error("Upload failed:", e); }
+    }
+  };
+  const submitComplaint = async () => { if (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) return; setSubmitting(true); const r = await insertComplaint(user.name, title.trim(), desc.trim(), null, operatorName.trim()); setSubmitting(false); if (r) { if (files.length > 0) await uploadFiles(r.id); setTitle(""); setDesc(""); setFiles([]); setSuccess(true); setTimeout(() => setSuccess(false), 2500); notifyUsers("new_complaint", `New: ${title.trim()}`, `${user.name} — ${desc.trim().slice(0, 80)}`, user.name, r.id, user.id).catch(() => {}); await onRefresh(); } };
   const handleResolve = async (id) => { await requestResolution(id, operatorName.trim() || user.name + " Hospital"); notifyUsers("resolution_request", "Resolution Requested", `${user.name} has requested resolution`, user.name, id, user.id).catch(() => {}); await onRefresh(); };
   return (
     <div style={styles.shell}>
@@ -965,6 +1019,22 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
           <input style={styles.input} placeholder="Your name (operator name)" value={operatorName} onChange={e => setOperatorName(e.target.value)} />
           <ComplaintTypeSelect value={title} onChange={e => setTitle(e.target.value)} style={styles.input} />
           <textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue in detail…" value={desc} onChange={e => setDesc(e.target.value)} />
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: C.textMid, cursor: "pointer", padding: "8px 16px", border: `1px solid ${C.border}`, borderRadius: 0 }}>
+              📎 Attach Photos
+              <input type="file" accept="image/*,application/pdf" multiple capture="environment" style={{ display: "none" }} onChange={e => setFiles(prev => [...prev, ...Array.from(e.target.files)])} />
+            </label>
+            {files.length > 0 && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                {files.map((f, i) => (
+                  <div key={i} style={{ position: "relative", border: `1px solid ${C.border}`, padding: 4, borderRadius: 4 }}>
+                    {f.type.startsWith("image/") ? <img src={URL.createObjectURL(f)} alt="" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 2 }} /> : <div style={{ width: 60, height: 60, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: C.textLight, background: C.bg }}>{f.name.slice(-8)}</div>}
+                    <button onClick={() => setFiles(files.filter((_, j) => j !== i))} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: C.red, color: "#fff", border: "none", fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <button style={{ ...styles.btnPrimary, opacity: (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) ? 0.5 : 1 }} onClick={submitComplaint}>{submitting ? "Submitting…" : "Submit Complaint"}</button>
           {success && <p style={styles.successMsg}>Complaint registered successfully.</p>}
         </section>
