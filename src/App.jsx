@@ -370,7 +370,7 @@ function AppInner() {
 
   useEffect(() => {
     if (user?.role === "company" || user?.role === "admin") {
-      const iv = setInterval(reload, 30000);
+      const iv = setInterval(() => { if (!document.hidden) reload(); }, 30000);
       return () => clearInterval(iv);
     }
   }, [user, reload]);
@@ -693,7 +693,12 @@ function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
   const [comments, setComments] = useState([]); const [text, setText] = useState(""); const [posting, setPosting] = useState(false);
   const [loaded, setLoaded] = useState(false); const [expanded, setExpanded] = useState(false);
   const [editingComment, setEditingComment] = useState(null); const [editText, setEditText] = useState("");
-  const loadComments = useCallback(async () => { const data = await fetchComments(complaintId); setComments(data); setLoaded(true); }, [complaintId]);
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    supabase.from("comments").select("id", { count: "exact", head: true }).eq("complaint_id", complaintId).then(({ count: c }) => { if (c !== null) setCount(c); });
+  }, [complaintId]);
+  const loadComments = useCallback(async () => { const data = await fetchComments(complaintId); setComments(data); setCount(data.length); setLoaded(true); }, [complaintId]);
   useEffect(() => { if (expanded) loadComments(); }, [expanded, loadComments]);
   const post = async () => {
     if (!text.trim() || posting) return; setPosting(true);
@@ -706,7 +711,7 @@ function CommentSection({ complaintId, currentUser, canComment, isAdmin }) {
   return (
     <div style={{ marginTop: 10 }}>
       <button style={styles.commentToggle} onClick={() => setExpanded(!expanded)}>
-        {expanded ? "▾ Hide Comments" : "▸ Comments" + (loaded && comments.length ? ` (${comments.length})` : "")}
+        {expanded ? "▾ Hide Comments" : "▸ Comments" + (count > 0 ? ` (${count})` : "")}
       </button>
       {expanded && (
         <div style={styles.commentBox}>
