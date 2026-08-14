@@ -226,7 +226,7 @@ async function createNotification(userId, type, title, message, complaintId, hos
 }
 async function notifyUsers(type, title, message, hospital, complaintId, excludeUser) {
   const providers = { "Novair": ["novair"], "Intexim": ["intexim"], "Z-Corps": ["zcorps"] };
-  const allViewers = ["amex", "undp", "cmu"];
+  const allViewers = ["amex", "undp", "cmu", "admin"];
   const provider = Object.entries(GROUPS).find(([, list]) => list.includes(hospital))?.[0];
   const targets = [...allViewers];
   if (provider && providers[provider]) targets.push(...providers[provider]);
