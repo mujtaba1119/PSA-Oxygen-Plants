@@ -984,7 +984,7 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
 }
 
 function ComplaintListView({ hospital, complaints, currentUser, canResolve, canComment, isAdmin, isAmex, isProvider, onBack, onResolve, onRequestResolve, onApprove, onReject, onUnresolve, onDelete, onRefresh }) {
-  const hc = complaints.filter(c => c.hospital === hospital);
+  const hc = complaints.filter(c => c.hospital === hospital).sort((a, b) => {   const aOpen = a.status !== "Resolved" ? 0 : 1;   const bOpen = b.status !== "Resolved" ? 0 : 1;   if (aOpen !== bOpen) return aOpen - bOpen;   return new Date(b.created_at) - new Date(a.created_at); });
   return (<>
     <button style={styles.backBtn} onClick={onBack}>← BACK</button>
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>{hospital}</h2><span style={{ fontSize: 13, color: "#999" }}>({hc.length})</span><span style={{ fontSize: 12, color: "#555", background: "#f0f0f0", padding: "2px 8px" }}>{getProvider(hospital)}</span></div>
