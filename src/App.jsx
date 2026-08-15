@@ -369,10 +369,11 @@ function getSiteBaseStatus(hospital, siteNotes) {
 
 function getSiteDisplayStatus(hospital, complaints, siteNotes) {
   const base = getSiteBaseStatus(hospital, siteNotes);
-  if (base === "Non Functional") return "Non Functional";
   if (base === "Shut Down") return "Shut Down";
-  const hasOpen = complaints.some(c => c.hospital === hospital && c.status !== "Resolved");
+  const target = (hospital || "").toLowerCase().trim();
+  const hasOpen = complaints.some(c => (c.hospital || "").toLowerCase().trim() === target && c.status !== "Resolved");
   if (hasOpen) return "Issues";
+  if (base === "Non Functional") return "Non Functional";
   return "Fully Functional";
 }
 
