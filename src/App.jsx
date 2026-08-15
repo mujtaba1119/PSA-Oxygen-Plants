@@ -259,10 +259,15 @@ function NotificationBell({ user, onNavigate }) {
     setNotifs(data);
   }, [userId, companyName]);
 
-  useEffect(() => { loadNotifs(); const iv = setInterval(loadNotifs, 15000); return () => clearInterval(iv); }, [loadNotifs]);
+  useEffect(() => { loadNotifs(); const iv = setInterval(loadNotifs, 5000); return () => clearInterval(iv); }, [loadNotifs]);
 
   const unread = notifs.filter(n => !n.is_read).length;
   const handleClick = (n) => {
+    // Mark this one read instantly (local + server)
+    if (!n.is_read) {
+      setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+      markNotifRead(n.id).catch(() => {});
+    }
     setOpen(false);
     if (n.hospital && onNavigate) onNavigate(n.hospital);
   };
@@ -278,7 +283,6 @@ function NotificationBell({ user, onNavigate }) {
       setDropPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
     }
     setOpen(willOpen);
-    if (willOpen && unread > 0) { await markAllNotifsRead(userId, companyName); await loadNotifs(); }
   };
 
   return (
@@ -295,7 +299,7 @@ function NotificationBell({ user, onNavigate }) {
           </div>
           {notifs.length === 0 && <div style={{ padding: "24px 16px", textAlign: "center", color: "#999", fontSize: 13 }}>No notifications yet</div>}
           {notifs.map(n => (
-            <div key={n.id} onClick={() => handleClick(n)} style={{ padding: "10px 16px", borderBottom: "1px solid #f5f5f5", background: "#fff", cursor: n.hospital ? "pointer" : "default" }}>
+            <div key={n.id} onClick={() => handleClick(n)} style={{ padding: "10px 16px", borderBottom: "1px solid #f5f5f5", background: n.is_read ? "#fff" : "#f0fdfa", cursor: n.hospital ? "pointer" : "default" }}>
               <strong style={{ fontSize: 12, color: "#111" }}>{n.title}</strong>
               {n.message && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}>{n.message}</p>}
               <span style={{ fontSize: 10, color: "#999" }}>{new Date(n.created_at).toLocaleDateString("en-PK", dateFmt)}</span>
