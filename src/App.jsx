@@ -999,7 +999,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const [title, setTitle] = useState(""); const [desc, setDesc] = useState("");
   const [files, setFiles] = useState([]);
   const [success, setSuccess] = useState(false); const [submitting, setSubmitting] = useState(false);
-  const mine = complaints.filter(c => c.hospital === user.name);
+  const mine = complaints.filter(c => c.hospital === user.name).sort((a, b) => {   const aOpen = a.status !== "Resolved" ? 0 : 1;   const bOpen = b.status !== "Resolved" ? 0 : 1;   if (aOpen !== bOpen) return aOpen - bOpen;   return new Date(b.created_at) - new Date(a.created_at); });
   const openCount = mine.filter(c => c.status !== "Resolved").length;
 
   const compressImage = (file) => new Promise((resolve) => {
