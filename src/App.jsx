@@ -806,12 +806,16 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
     const author = currentUser.role === "admin" ? "Management" : currentUser.role === "hospital" ? currentUser.name + " Hospital" : currentUser.name;
     const role = currentUser.role;
     await insertComment(complaintId, author, role, text.trim()); setText(""); setPosting(false); await loadComments();
-    // Notify: if hospital comments, notify companies. If company comments, notify hospital.
+    // Notify: if hospital comments, notify companies. If company comments, notify hospital + other companies.
     const userId = currentUser.id || currentUser.name?.toLowerCase().replace(/\s+/g, "");
+    const companyKey = (currentUser.company || currentUser.name || "").toLowerCase().replace(/[\s-]+/g, "");
     if (currentUser.role === "hospital") {
       notifyUsers("comment", `New Comment from ${author}`, text.trim().slice(0, 80), hospital || currentUser.name, complaintId, userId).catch(() => {});
     } else if (hospital) {
+      // Notify the hospital
       createNotification(hospital.toLowerCase().replace(/\s+/g, ""), "comment", `New Comment from ${author}`, text.trim().slice(0, 80), complaintId, hospital).catch(() => {});
+      // Notify other companies watching this site (exclude self)
+      notifyUsers("comment", `New Comment from ${author}`, text.trim().slice(0, 80), hospital, complaintId, companyKey).catch(() => {});
     }
   };
   const handleDelete = async (id) => { await deleteComment(id); await loadComments(); };
@@ -1114,10 +1118,10 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 
   const totalComplaints = complaints.length; const totalOpen = complaints.filter(c => c.status !== "Resolved").length;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
-  const handleResolve = async (id, date) => { await resolveComplaint(id, date, null); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); } await onRefresh(); };
+  const handleResolve = async (id, date) => { await resolveComplaint(id, date, null); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
   const handleRequestResolve = async (id) => { await requestResolution(id, "Management"); await onRefresh(); };
   const handleApprove = async (id) => { await approveResolution(id, null); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
-  const handleReject = async (id, reason) => { await rejectResolution(id); await insertComment(id, "Management", "admin", `Resolution rejected: ${reason}`); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, `${c.title} — ${reason}`, id, c.hospital).catch(() => {}); } await onRefresh(); };
+  const handleReject = async (id, reason) => { await rejectResolution(id); await insertComment(id, "Management", "admin", `Resolution rejected: ${reason}`); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, `${c.title} — ${reason}`, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, `${c.title} — ${reason}`, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
   const handleUnresolve = async (id) => { await unresolveComplaint(id); await onRefresh(); };
   const handleDelete = async (id) => { await deleteComplaint(id); await onRefresh(); };
   const handlePasswordChange = async (userId) => {
@@ -1327,10 +1331,10 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
   const canCommentOnHospital = (hospital) => { if (["Novair", "Amex"].includes(companyName)) return true; if (isProvider && getProvider(hospital) === companyName) return true; return false; };
   const canResolveHospital = isAmex || isProvider;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
-  const handleResolve = async (id) => { if (isAmex) { await resolveComplaint(id, null, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); } } else { await requestResolution(id, user.name); const c = complaints.find(x => x.id === id); if (c) notifyUsers("resolution_request", `Resolution Requested: ${c.hospital}`, c.title, c.hospital, id, user.id).catch(() => {}); } await onRefresh(); };
+  const handleResolve = async (id) => { if (isAmex) { await resolveComplaint(id, null, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved: ${c.hospital}`, c.title, c.hospital, id, "amex").catch(() => {}); } } else { await requestResolution(id, user.name); const c = complaints.find(x => x.id === id); if (c) notifyUsers("resolution_request", `Resolution Requested: ${c.hospital}`, c.title, c.hospital, id, user.id).catch(() => {}); } await onRefresh(); };
   const handleRequestResolve = async (id) => { await requestResolution(id, user.name); const c = complaints.find(x => x.id === id); if (c) notifyUsers("resolution_request", `Resolution Requested: ${c.hospital}`, c.title, c.hospital, id, user.id).catch(() => {}); await onRefresh(); };
-  const handleApprove = async (id) => { await approveResolution(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved: ${c.hospital}`, c.title, c.hospital, id, user.id).catch(() => {}); } await onRefresh(); };
-  const handleReject = async (id, reason) => { await rejectResolution(id); await insertComment(id, user.name, "company", `Resolution rejected: ${reason}`); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, `${c.title} — ${reason}`, id, c.hospital).catch(() => {}); } await onRefresh(); };
+  const handleApprove = async (id) => { await approveResolution(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved: ${c.hospital}`, c.title, c.hospital, id, (user.company || user.name || "").toLowerCase().replace(/[\s-]+/g, "")).catch(() => {}); } await onRefresh(); };
+  const handleReject = async (id, reason) => { await rejectResolution(id); await insertComment(id, user.name, "company", `Resolution rejected: ${reason}`); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, `${c.title} — ${reason}`, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, `${c.title} — ${reason}`, c.hospital, id, (user.company || user.name || "").toLowerCase().replace(/[\s-]+/g, "")).catch(() => {}); } await onRefresh(); };
   return (
     <div style={styles.shell}>
       <AppHeader user={user}>
