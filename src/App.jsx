@@ -792,13 +792,20 @@ function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmi
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    supabase.from("comments").select("id", { count: "exact", head: true }).eq("complaint_id", complaintId).then(({ count: c }) => { if (c !== null) setCount(c); });
+    let cancelled = false;
+    const fetchCount = () => {
+      supabase.from("comments").select("id", { count: "exact", head: true }).eq("complaint_id", complaintId).then(({ count: c }) => { if (!cancelled && c !== null) setCount(c); });
+    };
+    fetchCount();
+    const iv = setInterval(() => { if (!document.hidden) fetchCount(); }, 5000);
+    return () => { cancelled = true; clearInterval(iv); };
   }, [complaintId]);
+
 const loadComments = useCallback(async () => { const data = await fetchComments(complaintId); setComments(data); setCount(data.length); setLoaded(true); }, [complaintId]);
   useEffect(() => {
     if (!expanded) return;
     loadComments();
-    const iv = setInterval(() => { if (!document.hidden) loadComments(); }, 10000);
+    const iv = setInterval(() => { if (!document.hidden) loadComments(); }, 5000);
     return () => clearInterval(iv);
   }, [expanded, loadComments]);
   const post = async () => {
