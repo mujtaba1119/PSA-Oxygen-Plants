@@ -794,8 +794,13 @@ function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmi
   useEffect(() => {
     supabase.from("comments").select("id", { count: "exact", head: true }).eq("complaint_id", complaintId).then(({ count: c }) => { if (c !== null) setCount(c); });
   }, [complaintId]);
-  const loadComments = useCallback(async () => { const data = await fetchComments(complaintId); setComments(data); setCount(data.length); setLoaded(true); }, [complaintId]);
-  useEffect(() => { if (expanded) loadComments(); }, [expanded, loadComments]);
+const loadComments = useCallback(async () => { const data = await fetchComments(complaintId); setComments(data); setCount(data.length); setLoaded(true); }, [complaintId]);
+  useEffect(() => {
+    if (!expanded) return;
+    loadComments();
+    const iv = setInterval(() => { if (!document.hidden) loadComments(); }, 10000);
+    return () => clearInterval(iv);
+  }, [expanded, loadComments]);
   const post = async () => {
     if (!text.trim() || posting) return; setPosting(true);
     const author = currentUser.role === "admin" ? "Management" : currentUser.role === "hospital" ? currentUser.name + " Hospital" : currentUser.name;
