@@ -2,6 +2,23 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "./supabase";
 
+/* ─── Write helper: routes all DB writes through the service-role API ─── */
+async function dbWrite(payload) {
+  try {
+    const res = await fetch("/api/db", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok) { console.error("dbWrite error:", data.error); return { error: data.error }; }
+    return data;
+  } catch (e) {
+    console.error("dbWrite failed:", e);
+    return { error: e.message };
+  }
+}
+
 /* ─── Animated Number Counter ─── */
 function AnimatedNumber({ value, color }) {
   const [display, setDisplay] = useState(0);
@@ -54,12 +71,9 @@ async function fetchComplaints() {
   return data;
 }
 async function insertComplaint(hospital, title, description, customDate, submittedBy) {
-  const row = { hospital, title, description, status: "Open" };
-  if (customDate) row.created_at = new Date(customDate).toISOString();
-  if (submittedBy) row.submitted_by = submittedBy;
-  const { data, error } = await supabase.from("complaints").insert([row]).select();
-  if (error) { console.error(error); return null; }
-  const complaint = data[0];
+  const data = await dbWrite({ action: "insert_complaint", hospital, title, description, submitted_by: submittedBy || null, created_at: customDate ? new Date(customDate).toISOString() : null });
+  if (data.error || !data.complaint) { console.error(data.error); return null; }
+  const complaint = data.complaint;
   notifyComplaintEmail(hospital, title, description).catch((e) => console.error("Email notify failed", e));
   return complaint;
 }
@@ -78,40 +92,32 @@ async function notifyComplaintEmail(hospital, title, description) {
   });
 }
 async function updateComplaintFields(id, fields) {
-  const { error } = await supabase.from("complaints").update(fields).eq("id", id);
-  return !error;
+  const data = await dbWrite({ action: "update_complaint_fields", id, fields });
+  return !data.error;
 }
 async function requestResolution(id, requestedBy) {
-  const update = { status: "Pending Resolution", resolution_requested_at: new Date().toISOString(), resolution_requested_by: requestedBy };
-  const { error } = await supabase.from("complaints").update(update).eq("id", id);
-  return !error;
+  const data = await dbWrite({ action: "request_resolution", id, requested_by: requestedBy });
+  return !data.error;
 }
 async function resolveComplaint(id, resolvedDate, resolvedBy) {
-  const { data } = await supabase.from("complaints").select("resolution_requested_at").eq("id", id).single();
-  const update = { status: "Resolved", resolved_by: resolvedBy || null };
-  update.resolved_at = (data?.resolution_requested_at) ? data.resolution_requested_at : (resolvedDate ? new Date(resolvedDate).toISOString() : new Date().toISOString());
-  const { error } = await supabase.from("complaints").update(update).eq("id", id);
-  return !error;
+  const data = await dbWrite({ action: "resolve_complaint", id, resolved_by: resolvedBy || null, resolved_at: resolvedDate ? new Date(resolvedDate).toISOString() : null });
+  return !data.error;
 }
 async function approveResolution(id, approvedBy) {
-  const { data } = await supabase.from("complaints").select("resolution_requested_at").eq("id", id).single();
-  const update = { status: "Resolved", resolved_by: approvedBy, resolved_at: data?.resolution_requested_at || new Date().toISOString() };
-  const { error } = await supabase.from("complaints").update(update).eq("id", id);
-  return !error;
+  const data = await dbWrite({ action: "approve_resolution", id, resolved_by: approvedBy || null });
+  return !data.error;
 }
 async function rejectResolution(id) {
-  const update = { status: "Open", resolution_requested_at: null, resolution_requested_by: null };
-  const { error } = await supabase.from("complaints").update(update).eq("id", id);
-  return !error;
+  const data = await dbWrite({ action: "reject_resolution", id });
+  return !data.error;
 }
 async function unresolveComplaint(id) {
-  const { error } = await supabase.from("complaints").update({ status: "Open", resolved_at: null, resolved_by: null, resolution_requested_at: null, resolution_requested_by: null }).eq("id", id);
-  return !error;
+  const data = await dbWrite({ action: "unresolve_complaint", id });
+  return !data.error;
 }
 async function deleteComplaint(id) {
-  await supabase.from("comments").delete().eq("complaint_id", id);
-  const { error } = await supabase.from("complaints").delete().eq("id", id);
-  return !error;
+  const data = await dbWrite({ action: "delete_complaint", id });
+  return !data.error;
 }
 async function fetchUsers() {
   try {
@@ -161,17 +167,17 @@ async function fetchComments(complaintId) {
   return data;
 }
 async function insertComment(complaintId, author, authorRole, content) {
-  const { data, error } = await supabase.from("comments").insert([{ complaint_id: complaintId, author, author_role: authorRole, content }]).select();
-  if (error) { console.error(error); return null; }
-  return data[0];
+  const data = await dbWrite({ action: "insert_comment", complaint_id: complaintId, author, author_role: authorRole, content });
+  if (data.error || !data.comment) { console.error(data.error); return null; }
+  return data.comment;
 }
 async function deleteComment(id) {
-  const { error } = await supabase.from("comments").delete().eq("id", id);
-  return !error;
+  const data = await dbWrite({ action: "delete_comment", id });
+  return !data.error;
 }
 async function updateCommentContent(id, content) {
-  const { error } = await supabase.from("comments").update({ content }).eq("id", id);
-  return !error;
+  const data = await dbWrite({ action: "update_comment", id, content });
+  return !data.error;
 }
 async function fetchEmails() {
   const { data, error } = await supabase.from("notification_emails").select("*").order("created_at", { ascending: true });
@@ -179,13 +185,13 @@ async function fetchEmails() {
   return data;
 }
 async function addEmail(groupName, email) {
-  const { data, error } = await supabase.from("notification_emails").insert([{ group_name: groupName, email }]).select();
-  if (error) { console.error(error); return null; }
-  return data[0];
+  const data = await dbWrite({ action: "insert_email", group_name: groupName, email });
+  if (data.error || !data.row) { console.error(data.error); return null; }
+  return data.row;
 }
 async function deleteEmailRecord(id) {
-  const { error } = await supabase.from("notification_emails").delete().eq("id", id);
-  return !error;
+  const data = await dbWrite({ action: "delete_email", id });
+  return !data.error;
 }
 async function fetchSiteNotes() {
   const { data, error } = await supabase.from("site_notes").select("*");
@@ -193,12 +199,12 @@ async function fetchSiteNotes() {
   return data;
 }
 async function updateSiteNote(hospital, note) {
-  const { error } = await supabase.from("site_notes").update({ equipment_note: note, updated_at: new Date().toISOString() }).eq("hospital", hospital);
-  return !error;
+  const data = await dbWrite({ action: "update_site_note", hospital, equipment_note: note });
+  return !data.error;
 }
 async function updateSiteStatus(hospital, status) {
-  const { error } = await supabase.from("site_notes").update({ site_status: status, updated_at: new Date().toISOString() }).eq("hospital", hospital);
-  return !error;
+  const data = await dbWrite({ action: "update_site_note", hospital, site_status: status });
+  return !data.error;
 }
 async function sendShutdownEmail(hospital) {
   const { error } = await supabase.rpc("send_shutdown_email", { hospital_name: hospital });
@@ -214,15 +220,13 @@ async function fetchNotifications(userId, companyName) {
   return data || [];
 }
 async function markNotifRead(id) {
-  await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+  await dbWrite({ action: "mark_notification_read", id });
 }
 async function markAllNotifsRead(userId, companyName) {
-  const ids = [userId];
-  if (companyName) ids.push(companyName.toLowerCase().replace(/[\s-]+/g, ""));
-  await supabase.from("notifications").update({ is_read: true }).in("user_id", ids).eq("is_read", false);
+  await dbWrite({ action: "mark_all_read", user_id: userId, company: companyName || null });
 }
 async function createNotification(userId, type, title, message, complaintId, hospital) {
-  await supabase.from("notifications").insert([{ user_id: userId, type, title, message, complaint_id: complaintId || null, hospital: hospital || null }]);
+  await dbWrite({ action: "insert_notifications", rows: [{ user_id: userId, type, title, message, complaint_id: complaintId || null, hospital: hospital || null }] });
 }
 async function notifyUsers(type, title, message, hospital, complaintId, excludeUser) {
   const providers = { "Novair": ["novair"], "Intexim": ["intexim"], "Z-Corps": ["zcorps"] };
@@ -242,9 +246,9 @@ async function notifyUsers(type, title, message, hospital, complaintId, excludeU
     }
   } catch {}
   const uniqueTargets = [...new Set(targets)].filter(t => t !== excludeUser);
-  for (const t of uniqueTargets) {
-    await createNotification(t, type, title, message, complaintId, hospital);
-  }
+  if (!uniqueTargets.length) return;
+  const rows = uniqueTargets.map(t => ({ user_id: t, type, title, message: message || null, complaint_id: complaintId || null, hospital: hospital || null }));
+  await dbWrite({ action: "insert_notifications", rows });
 }
 
 /* ─── Notification Bell Component ─── */
@@ -1319,7 +1323,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
           <div style={{ marginTop: 32, paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
             <h3 style={{ fontSize: 15, fontWeight: 600, color: C.black, margin: "0 0 8px" }}>Reset Notifications</h3>
             <p style={{ fontSize: 13, color: C.textLight, marginBottom: 12 }}>Delete all notification records for all users. Use before launch to clear test data.</p>
-            <button style={{ ...styles.deleteBtn, fontSize: 12 }} onClick={async () => { if (window.confirm("Delete ALL notifications for ALL users? This cannot be undone.")) { await supabase.from("notifications").delete().neq("id", "00000000-0000-0000-0000-000000000000"); alert("All notifications cleared."); } }}>RESET ALL NOTIFICATIONS</button>
+            <button style={{ ...styles.deleteBtn, fontSize: 12 }} onClick={async () => { if (window.confirm("Delete ALL notifications for ALL users? This cannot be undone.")) { await dbWrite({ action: "reset_all_notifications" }); alert("All notifications cleared."); } }}>RESET ALL NOTIFICATIONS</button>
           </div>
         </>)}
         </div>
