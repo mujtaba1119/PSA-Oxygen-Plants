@@ -43,10 +43,11 @@ export default async function handler(req, res) {
   try {
     // ─────────── COMPLAINTS ───────────
     if (action === "insert_complaint") {
-      const { hospital, title, description, submitted_by } = body;
+      const { hospital, title, description, submitted_by, created_at } = body;
       if (!hospital || !title || !description) return json(res, 400, { error: "Missing fields" });
       const row = { hospital, title, description, status: "Open" };
       if (submitted_by) row.submitted_by = submitted_by;
+      if (created_at) row.created_at = created_at;
       const { data, error } = await admin.from("complaints").insert([row]).select();
       if (error) return json(res, 400, { error: error.message });
       return json(res, 200, { complaint: data[0] });
@@ -83,6 +84,25 @@ export default async function handler(req, res) {
         resolution_requested_at: null,
         resolution_requested_by: null,
       }).eq("id", id);
+      if (error) return json(res, 400, { error: error.message });
+      return json(res, 200, { success: true });
+    }
+
+    if (action === "unresolve_complaint") {
+      const { id } = body;
+      if (!id) return json(res, 400, { error: "Missing id" });
+      const { error } = await admin.from("complaints").update({
+        status: "Open", resolved_at: null, resolved_by: null,
+        resolution_requested_at: null, resolution_requested_by: null,
+      }).eq("id", id);
+      if (error) return json(res, 400, { error: error.message });
+      return json(res, 200, { success: true });
+    }
+
+    if (action === "update_complaint_fields") {
+      const { id, fields } = body;
+      if (!id || !fields || typeof fields !== "object") return json(res, 400, { error: "Missing fields" });
+      const { error } = await admin.from("complaints").update(fields).eq("id", id);
       if (error) return json(res, 400, { error: error.message });
       return json(res, 200, { success: true });
     }
@@ -168,11 +188,17 @@ export default async function handler(req, res) {
       return json(res, 200, { success: true });
     }
 
+    if (action === "reset_all_notifications") {
+      const { error } = await admin.from("notifications").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      if (error) return json(res, 400, { error: error.message });
+      return json(res, 200, { success: true });
+    }
+
     // ─────────── SITE NOTES ───────────
     if (action === "update_site_note") {
       const { hospital, site_status, equipment_note } = body;
       if (!hospital) return json(res, 400, { error: "Missing hospital" });
-      const patch = {};
+      const patch = { updated_at: new Date().toISOString() };
       if (site_status !== undefined) patch.site_status = site_status;
       if (equipment_note !== undefined) patch.equipment_note = equipment_note;
 
