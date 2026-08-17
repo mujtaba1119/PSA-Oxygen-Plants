@@ -312,7 +312,7 @@ function NotificationBell({ user, onNavigate, onFocusComplaint, light }) {
           </div>
           {notifs.length === 0 && <div style={{ padding: "24px 16px", textAlign: "center", color: "#999", fontSize: 13 }}>No notifications yet</div>}
           {notifs.map(n => (
-            <div key={n.id} onClick={() => handleClick(n)} style={{ padding: "10px 16px", borderBottom: "1px solid #f5f5f5", background: n.is_read ? "#fff" : "#f0fdfa", cursor: n.hospital ? "pointer" : "default" }}>
+            <div key={n.id} onClick={() => handleClick(n)} style={{ padding: "10px 16px", borderBottom: "1px solid #f5f5f5", background: n.is_read ? "#fff" : "#d4f3ee", borderLeft: n.is_read ? "3px solid transparent" : `3px solid ${C.teal}`, cursor: n.hospital ? "pointer" : "default" }}>
               <strong style={{ fontSize: 12, color: "#111" }}>{n.title}</strong>
               {n.message && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}>{n.message}</p>}
               <span style={{ fontSize: 10, color: "#999" }}>{new Date(n.created_at).toLocaleDateString("en-PK", dateFmt)}</span>
@@ -1006,7 +1006,11 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
   const [editing, setEditing] = useState(false); const [editTitle, setEditTitle] = useState(complaint.title);
   const [editDesc, setEditDesc] = useState(complaint.description); const [editSaving, setEditSaving] = useState(false);
   const [rejecting, setRejecting] = useState(false); const [rejectReason, setRejectReason] = useState("");
+  const [expanded, setExpanded] = useState(false);
   const c = complaint;
+
+  // Auto-expand when this card is focused from a notification
+  useEffect(() => { if (cardHighlight || (highlightCommentText && highlightCommentText.trim())) setExpanded(true); }, [cardHighlight, highlightCommentText]);
   const handleResolve = async () => {
     setResolving(true);
     if (isAdmin || isAmex) { await onResolve(c.id, resolveDate || null); }
@@ -1036,13 +1040,17 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
         </div>
       ) : (
         <>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.tealBg, padding: "14px 16px", borderBottom: `1px solid ${C.tealLight}` }}>
+          <div onClick={() => setExpanded(!expanded)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.tealBg, padding: "14px 16px", borderBottom: expanded ? `1px solid ${C.tealLight}` : "none", cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
               <span style={{ width: 9, height: 9, borderRadius: "50%", background: accent, flexShrink: 0 }} />
-              <strong style={{ fontSize: 16, fontWeight: 700, color: C.black }}>{c.title}</strong>
+              <strong style={{ fontSize: 16, fontWeight: 700, color: C.black, whiteSpace: expanded ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</strong>
             </div>
-            <StatusBadge status={c.status} />
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+              <StatusBadge status={c.status} />
+              <span style={{ fontSize: 16, color: C.tealDark, transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>⌄</span>
+            </div>
           </div>
+          {expanded && (
           <div style={{ padding: 16 }}>
             <p style={styles.cardDesc}>{c.description}</p>
             {c.submitted_by && <p style={{ fontSize: 12.5, color: C.tealDark, fontWeight: 600, marginTop: 10 }}>👤 {c.submitted_by}</p>}
@@ -1076,6 +1084,7 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
             </div>
             <CommentSection complaintId={c.id} hospital={c.hospital} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} highlightCommentText={highlightCommentText} />
           </div>
+          )}
         </>
       )}
     </div>
