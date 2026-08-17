@@ -1461,7 +1461,17 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
             )}
           </div>
           <button disabled={!operatorName.trim() || !title.trim() || !desc.trim() || submitting} style={{ ...styles.btnTeal, background: submitting ? "#9db8b4" : (!operatorName.trim() || !title.trim() || !desc.trim()) ? "#9db8b4" : C.teal, cursor: submitting ? "not-allowed" : "pointer", pointerEvents: submitting ? "none" : "auto" }} onClick={submitComplaint}>{submitting ? "SUBMITTING..." : "SUBMIT TICKET"}</button>
-          {success && <p style={styles.successMsgTeal}>Ticket raised successfully.</p>}
+          {success && (
+            <div className="fade-in" style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, padding: "14px 18px", background: "#e6f7ee", border: "1px solid #a7e3c4", borderRadius: 14, boxShadow: "0 4px 14px rgba(39,174,96,0.12)" }}>
+              <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#27ae60", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#166534" }}>Ticket submitted successfully</div>
+                <div style={{ fontSize: 12.5, color: "#3f8f5f", marginTop: 1 }}>Your service provider has been notified.</div>
+              </div>
+            </div>
+          )}
         </section>
         <section style={styles.listSection}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><h2 style={{ ...styles.sectionTitleTeal, margin: 0, borderLeft: "none", paddingLeft: 0 }}>All Tickets ({mine.length})</h2>{openCount > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: C.tealDark, background: C.tealLight, padding: "3px 12px", borderRadius: 12 }}>{openCount} open</span>}</div>
@@ -1578,7 +1588,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
       </div>
       <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s", position: "relative" }}>
         {["overview","complaints","submit","users","emails"].map(t => (<button key={t} className="tab-btn" style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>{t === "overview" ? "Overview" : t === "complaints" ? "Tickets" : t === "submit" ? "Submit" : t === "users" ? "Users" : "Emails"}</button>))}
-        {tab === "complaints" && !selected && <button style={styles.tabActionBtn} onClick={() => downloadCSV(complaints, "all-complaints")}>↓ Download Data</button>}
+        {tab === "complaints" && !selected && <button style={styles.tabActionBtn} onClick={() => downloadCSV(complaints, "All Tickets Data")}>↓ Download Data</button>}
       </div>
       <main className="main-responsive" style={styles.main}>
         <div key={tab} className="scale-in">
@@ -1797,7 +1807,7 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
       <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s", position: "relative" }}>
         <button className="tab-btn" style={tab === "overview" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("overview"); setSelected(null); }}>Overview</button>
         <button className="tab-btn" style={tab === "complaints" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("complaints"); setSelected(null); }}>Tickets</button>
-        {tab === "complaints" && !selected && <button style={styles.tabActionBtn} onClick={() => downloadCSV(myComplaints, user.name.toLowerCase() + "-complaints")}>↓ Download Data</button>}
+        {tab === "complaints" && !selected && <button style={styles.tabActionBtn} onClick={() => downloadCSV(myComplaints, "All Tickets Data")}>↓ Download Data</button>}
       </div>
       <main className="main-responsive" style={styles.main}>
         <div key={tab} className="scale-in">
