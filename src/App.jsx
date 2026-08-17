@@ -298,7 +298,13 @@ function NotificationBell({ user, onNavigate, onFocusComplaint, light, complaint
     const willOpen = !open;
     if (willOpen && bellRef.current) {
       const rect = bellRef.current.getBoundingClientRect();
-      setDropPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+      const isMobile = window.innerWidth <= 600;
+      if (isMobile) {
+        // Full-width panel with small margins, anchored below the bell
+        setDropPos({ top: rect.bottom + 6, right: 10, left: 10, mobile: true });
+      } else {
+        setDropPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right, left: null, mobile: false });
+      }
     }
     setOpen(willOpen);
   };
@@ -314,7 +320,7 @@ function NotificationBell({ user, onNavigate, onFocusComplaint, light, complaint
       </button>
       {open && createPortal(<>
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998, background: "rgba(0,0,0,0.1)" }} onClick={() => setOpen(false)} />
-        <div style={{ position: "fixed", top: dropPos.top, right: dropPos.right, width: 340, maxHeight: 420, overflowY: "auto", background: "#fff", border: "1px solid #ddd", borderRadius: 8, boxShadow: "0 8px 30px rgba(0,0,0,0.2)", zIndex: 9999 }}>
+        <div style={{ position: "fixed", top: dropPos.top, right: dropPos.right, left: dropPos.mobile ? dropPos.left : "auto", width: dropPos.mobile ? "auto" : 340, maxWidth: "calc(100vw - 20px)", maxHeight: "70vh", overflowY: "auto", background: "#fff", border: "1px solid #ddd", borderRadius: 12, boxShadow: "0 8px 30px rgba(0,0,0,0.2)", zIndex: 9999 }}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid #eee", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <strong style={{ fontSize: 14, color: "#111" }}>Notifications</strong>
           </div>
@@ -408,28 +414,48 @@ function AppHeader({ user, children, minimal }) {
 
 /* Partner logo footer — one line, in order: Global Fund, UNDP, Amex, Noxerior, CMU */
 function PartnerFooter() {
-  const divider = <div style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />;
   return (
     <footer style={{ background: "#f4f6f7", boxShadow: "0 -4px 16px rgba(0,0,0,0.04)" }}>
       {/* gradient accent line */}
       <div style={{ height: 4, background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
-      <div style={{ padding: "36px 24px 22px" }}>
-        <div style={{ maxWidth: 1040, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 40, flexWrap: "wrap" }}>
-          <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 108, objectFit: "contain" }} />
-          {divider}
-          <img src={LOGO_UNDP} alt="UNDP" style={{ height: 74, objectFit: "contain" }} />
-          {divider}
-          <img src={LOGO_AMEX} alt="Amex" style={{ height: 56, objectFit: "contain" }} />
-          {divider}
-          <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 50, objectFit: "contain" }} />
-          {divider}
-          <img src={LOGO_CMU} alt="CMU" style={{ height: 74, objectFit: "contain" }} />
+      <div style={{ padding: "28px 16px 20px" }}>
+        <div className="pf-row" style={{ maxWidth: 1040, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 24 }}>
+          <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 100, objectFit: "contain" }} />
+          <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
+          <img className="pf-img pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 72, objectFit: "contain" }} />
+          <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
+          <img className="pf-img pf-amex" src={LOGO_AMEX} alt="Amex" style={{ height: 54, objectFit: "contain" }} />
+          <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
+          <img className="pf-img pf-nox" src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 48, objectFit: "contain" }} />
+          <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
+          <img className="pf-img pf-cmu" src={LOGO_CMU} alt="CMU" style={{ height: 72, objectFit: "contain" }} />
         </div>
       </div>
       {/* closing line */}
       <div style={{ borderTop: "1px solid #e4e8ea", padding: "14px 24px", textAlign: "center" }}>
         <span style={{ fontSize: 12, color: C.textLight, fontWeight: 500, letterSpacing: 0.3 }}>PSA Oxygen Plants · Management System</span>
       </div>
+      <style>{`
+        .pf-img { flex-shrink: 1; min-width: 0; }
+        @media (max-width: 640px) {
+          .pf-row { gap: 8px !important; }
+          .pf-div { height: 40px !important; }
+          .pf-gf { height: 58px !important; }
+          .pf-undp { height: 46px !important; }
+          .pf-amex { height: 32px !important; }
+          .pf-nox { height: 30px !important; }
+          .pf-cmu { height: 46px !important; }
+        }
+        @media (max-width: 400px) {
+          .pf-row { gap: 5px !important; }
+          .pf-div { height: 32px !important; }
+          .pf-gf { height: 46px !important; }
+          .pf-undp { height: 38px !important; }
+          .pf-amex { height: 26px !important; }
+          .pf-nox { height: 24px !important; }
+          .pf-cmu { height: 38px !important; }
+        }
+      `}</style>
     </footer>
   );
 }
@@ -1559,9 +1585,9 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
       {/* Teal gradient hero header */}
       <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "20px 24px 24px", color: "#fff" }}>
         <div style={{ maxWidth: 980, margin: "0 auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
             <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.22)", padding: "4px 12px", borderRadius: 20 }}>Management</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
               <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
               <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 14px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={handleRefresh}>{refreshing ? "…" : "Refresh"}</button>
               <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 16px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={onLogout}>Sign Out</button>
@@ -1777,7 +1803,7 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
       <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "20px 24px 24px", color: "#fff" }}>
         <div style={{ maxWidth: 980, margin: "0 auto" }}>
           {/* actions row */}
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
             <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
             <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 14px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={handleRefresh}>{refreshing ? "…" : "Refresh"}</button>
             <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 16px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={onLogout}>Sign Out</button>
