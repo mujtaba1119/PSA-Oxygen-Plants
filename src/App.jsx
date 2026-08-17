@@ -437,7 +437,9 @@ function PartnerFooter() {
       </div>
       <style>{`
         .pf-img { flex-shrink: 1; min-width: 0; }
+        .tab-download-btn { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); }
         @media (max-width: 640px) {
+          .tab-download-btn { position: static !important; transform: none !important; width: 100%; margin-top: 10px; text-align: center; }
           .pf-row { gap: 8px !important; }
           .pf-div { height: 40px !important; }
           .pf-gf { height: 58px !important; }
@@ -1587,10 +1589,14 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         <div style={{ maxWidth: 980, margin: "0 auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
             <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.22)", padding: "4px 12px", borderRadius: 20 }}>Management</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
               <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
-              <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 14px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={handleRefresh}>{refreshing ? "…" : "Refresh"}</button>
-              <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 16px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={onLogout}>Sign Out</button>
+              <button title="Refresh" aria-label="Refresh" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={handleRefresh}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: refreshing ? 0.5 : 1 }}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              </button>
+              <button title="Sign Out" aria-label="Sign Out" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={onLogout}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              </button>
             </div>
           </div>
           <div style={{ fontSize: 12, letterSpacing: 1.6, opacity: 0.8, fontWeight: 700, textTransform: "uppercase" }}>Project Status</div>
@@ -1614,7 +1620,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
       </div>
       <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s", position: "relative" }}>
         {["overview","complaints","submit","users","emails"].map(t => (<button key={t} className="tab-btn" style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>{t === "overview" ? "Overview" : t === "complaints" ? "Tickets" : t === "submit" ? "Submit" : t === "users" ? "Users" : "Emails"}</button>))}
-        {tab === "complaints" && !selected && <button style={styles.tabActionBtn} onClick={() => downloadCSV(complaints, "All Tickets Data")}>↓ Download Data</button>}
+        {tab === "complaints" && !selected && <button className="tab-download-btn" style={styles.tabActionBtn} onClick={() => downloadCSV(complaints, "All Tickets Data")}>↓ Download Data</button>}
       </div>
       <main className="main-responsive" style={styles.main}>
         <div key={tab} className="scale-in">
@@ -1803,10 +1809,14 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
       <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "20px 24px 24px", color: "#fff" }}>
         <div style={{ maxWidth: 980, margin: "0 auto" }}>
           {/* actions row */}
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 12 }}>
             <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
-            <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 14px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={handleRefresh}>{refreshing ? "…" : "Refresh"}</button>
-            <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 16px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={onLogout}>Sign Out</button>
+            <button title="Refresh" aria-label="Refresh" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={handleRefresh}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: refreshing ? 0.5 : 1 }}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            </button>
+            <button title="Sign Out" aria-label="Sign Out" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={onLogout}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </button>
           </div>
           <div style={{ fontSize: 12, letterSpacing: 1.6, opacity: 0.8, fontWeight: 700, textTransform: "uppercase" }}>Project Status</div>
           {/* hero metric */}
@@ -1833,7 +1843,7 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
       <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s", position: "relative" }}>
         <button className="tab-btn" style={tab === "overview" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("overview"); setSelected(null); }}>Overview</button>
         <button className="tab-btn" style={tab === "complaints" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("complaints"); setSelected(null); }}>Tickets</button>
-        {tab === "complaints" && !selected && <button style={styles.tabActionBtn} onClick={() => downloadCSV(myComplaints, "All Tickets Data")}>↓ Download Data</button>}
+        {tab === "complaints" && !selected && <button className="tab-download-btn" style={styles.tabActionBtn} onClick={() => downloadCSV(myComplaints, "All Tickets Data")}>↓ Download Data</button>}
       </div>
       <main className="main-responsive" style={styles.main}>
         <div key={tab} className="scale-in">
@@ -1911,7 +1921,7 @@ const styles = {
   tabBar: { display: "flex", gap: 8, maxWidth: 980, margin: "0 auto", padding: "16px 24px 20px", flexWrap: "wrap", justifyContent: "center" },
   tabActive: { padding: "10px 24px", fontSize: 12, fontWeight: 700, color: C.white, background: C.teal, border: `1px solid ${C.teal}`, borderRadius: 10, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase", boxShadow: "0 3px 8px rgba(13,148,136,0.25)" },
   tabInactive: { padding: "10px 24px", fontSize: 12, fontWeight: 600, color: C.tealDark, background: C.white, border: `1px solid ${C.tealLight}`, borderRadius: 10, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
-  tabActionBtn: { position: "absolute", right: 24, top: "50%", transform: "translateY(-50%)", padding: "10px 20px", fontSize: 12, fontWeight: 700, color: C.tealDark, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, cursor: "pointer", letterSpacing: 0.8, textTransform: "uppercase" },
+  tabActionBtn: { padding: "10px 20px", fontSize: 12, fontWeight: 700, color: C.tealDark, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, cursor: "pointer", letterSpacing: 0.8, textTransform: "uppercase" },
   pwCard: { background: C.white, borderRadius: 0, padding: "14px 18px", marginBottom: 8, border: `1px solid ${C.borderLight}` },
   pwRow: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 },
   pwName: { fontSize: 15, fontWeight: 600, color: C.black, marginRight: 8 },
