@@ -1576,7 +1576,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
           </div>
         </div>
       </div>
-      <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s" }}>
+      <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s", position: "relative" }}>
         {["overview","complaints","submit","users","emails"].map(t => (<button key={t} className="tab-btn" style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>{t === "overview" ? "Overview" : t === "complaints" ? "Tickets" : t === "submit" ? "Submit" : t === "users" ? "Users" : "Emails"}</button>))}
         {tab === "complaints" && !selected && <button style={styles.tabActionBtn} onClick={() => downloadCSV(complaints, "all-complaints")}>↓ Download Data</button>}
       </div>
@@ -1875,7 +1875,7 @@ const styles = {
   tabBar: { display: "flex", gap: 8, maxWidth: 980, margin: "0 auto", padding: "16px 24px 20px", flexWrap: "wrap", justifyContent: "center" },
   tabActive: { padding: "10px 24px", fontSize: 12, fontWeight: 700, color: C.white, background: C.teal, border: `1px solid ${C.teal}`, borderRadius: 10, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase", boxShadow: "0 3px 8px rgba(13,148,136,0.25)" },
   tabInactive: { padding: "10px 24px", fontSize: 12, fontWeight: 600, color: C.tealDark, background: C.white, border: `1px solid ${C.tealLight}`, borderRadius: 10, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
-  tabActionBtn: { marginLeft: "auto", padding: "10px 20px", fontSize: 12, fontWeight: 700, color: C.tealDark, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, cursor: "pointer", letterSpacing: 0.8, textTransform: "uppercase" },
+  tabActionBtn: { position: "absolute", right: 24, top: "50%", transform: "translateY(-50%)", padding: "10px 20px", fontSize: 12, fontWeight: 700, color: C.tealDark, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, cursor: "pointer", letterSpacing: 0.8, textTransform: "uppercase" },
   pwCard: { background: C.white, borderRadius: 0, padding: "14px 18px", marginBottom: 8, border: `1px solid ${C.borderLight}` },
   pwRow: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 },
   pwName: { fontSize: 15, fontWeight: 600, color: C.black, marginRight: 8 },
