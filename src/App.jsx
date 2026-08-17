@@ -323,16 +323,20 @@ function NotificationBell({ user, onNavigate, onFocusComplaint, light, complaint
             const ticketTitle = complaintTitleFor(n);
             const cleanTitle = n.title ? n.title.split(":")[0].trim() : n.title;
             const isHospitalUser = user.role === "hospital";
-            const secondLine = isHospitalUser
-              ? (ticketTitle ? { label: "Ticket: ", value: ticketTitle } : null)
-              : (n.hospital ? { label: "Site: ", value: n.hospital } : (ticketTitle ? { label: "Ticket: ", value: ticketTitle } : null));
             return (
             <div key={n.id} onClick={() => handleClick(n)} style={{ padding: "10px 16px", borderBottom: "1px solid #f5f5f5", background: n.is_read ? "#fff" : "#d4f3ee", borderLeft: n.is_read ? "3px solid transparent" : `3px solid ${C.teal}`, cursor: n.complaint_id || n.hospital ? "pointer" : "default" }}>
               <strong style={{ fontSize: 12, color: "#111" }}>{cleanTitle}</strong>
-              {secondLine ? (
-                <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}><span style={{ color: C.teal, fontWeight: 700 }}>{secondLine.label}</span>{secondLine.value}</p>
-              ) : (n.message && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}>{n.message}</p>)}
-              <span style={{ fontSize: 10, color: "#999" }}>{new Date(n.created_at).toLocaleDateString("en-PK", dateFmt)}</span>
+              {isHospitalUser ? (
+                ticketTitle ? <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}><span style={{ color: C.teal, fontWeight: 700 }}>Ticket: </span>{ticketTitle}</p>
+                : (n.message && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}>{n.message}</p>)
+              ) : (
+                <>
+                  {n.hospital && <p style={{ fontSize: 12, color: "#111", fontWeight: 700, margin: "2px 0 0", lineHeight: 1.4 }}>{n.hospital}</p>}
+                  {ticketTitle && <p style={{ fontSize: 12, color: "#555", margin: "1px 0 0", lineHeight: 1.4 }}>{ticketTitle}</p>}
+                  {!n.hospital && !ticketTitle && n.message && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}>{n.message}</p>}
+                </>
+              )}
+              <span style={{ fontSize: 10, color: "#999", display: "block", marginTop: 3 }}>{new Date(n.created_at).toLocaleDateString("en-PK", dateFmt)} · {new Date(n.created_at).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}</span>
             </div>
             );
           })}
