@@ -253,11 +253,17 @@ async function notifyUsers(type, title, message, hospital, complaintId, excludeU
 }
 
 /* ─── Notification Bell Component ─── */
-function NotificationBell({ user, onNavigate, onFocusComplaint, light }) {
+function NotificationBell({ user, onNavigate, onFocusComplaint, light, complaints }) {
   const [notifs, setNotifs] = useState([]);
   const [open, setOpen] = useState(false);
   const companyName = user.company || (user.role === "company" ? user.name : null);
   const userId = user.id || user.name?.toLowerCase().replace(/[\s-]+/g, "");
+
+  const complaintTitleFor = (n) => {
+    if (!n.complaint_id || !Array.isArray(complaints)) return null;
+    const found = complaints.find(c => c.id === n.complaint_id);
+    return found ? found.title : null;
+  };
 
   const loadNotifs = useCallback(async () => {
     const data = await fetchNotifications(userId, companyName);
@@ -311,13 +317,19 @@ function NotificationBell({ user, onNavigate, onFocusComplaint, light }) {
             <strong style={{ fontSize: 14, color: "#111" }}>Notifications</strong>
           </div>
           {notifs.length === 0 && <div style={{ padding: "24px 16px", textAlign: "center", color: "#999", fontSize: 13 }}>No notifications yet</div>}
-          {notifs.map(n => (
+          {notifs.map(n => {
+            const ticketTitle = complaintTitleFor(n);
+            const cleanTitle = n.title ? n.title.split(":")[0].trim() : n.title;
+            return (
             <div key={n.id} onClick={() => handleClick(n)} style={{ padding: "10px 16px", borderBottom: "1px solid #f5f5f5", background: n.is_read ? "#fff" : "#d4f3ee", borderLeft: n.is_read ? "3px solid transparent" : `3px solid ${C.teal}`, cursor: n.hospital ? "pointer" : "default" }}>
-              <strong style={{ fontSize: 12, color: "#111" }}>{n.title}</strong>
-              {n.message && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}>{n.message}</p>}
+              <strong style={{ fontSize: 12, color: "#111" }}>{cleanTitle}</strong>
+              {ticketTitle ? (
+                <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}><span style={{ color: C.teal, fontWeight: 700 }}>Ticket: </span>{ticketTitle}</p>
+              ) : (n.message && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}>{n.message}</p>)}
               <span style={{ fontSize: 10, color: "#999" }}>{new Date(n.created_at).toLocaleDateString("en-PK", dateFmt)}</span>
             </div>
-          ))}
+            );
+          })}
         </div>
       </>, document.body)}
     </div>
@@ -1185,7 +1197,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
             <div style={{ fontSize: 28, fontWeight: 800 }}>{user.name}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <NotificationBell user={user} onFocusComplaint={handleFocusComplaint} light={true} />
+              <NotificationBell user={user} onFocusComplaint={handleFocusComplaint} light={true} complaints={complaints} />
               <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 16px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={onLogout}>Sign Out</button>
             </div>
           </div>
