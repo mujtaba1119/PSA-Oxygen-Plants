@@ -746,17 +746,17 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
           <div style={{ ...styles.ovCellHeader, ...styles.ovCellSite }}>Site</div>
           <div style={{ ...styles.ovCellHeader, ...styles.ovCellProvider }}>Service Provider</div>
           <div style={{ ...styles.ovCellHeader, ...styles.ovCellStatus }}>Status</div>
-          <div style={{ ...styles.ovCellHeader, ...styles.ovCellOpen }}>Open Complaints</div>
+          <div style={{ ...styles.ovCellHeader, ...styles.ovCellOpen }}>Open Tickets</div>
           <div style={{ ...styles.ovCellHeader, ...styles.ovCellNote, borderRight: "none" }}>Equipment / Notes</div>
         </div>
         {sortedHospitals.map((h, i) => {
           const open = openComplaints(h);
           const siteStatus = getSiteDisplayStatus(h, complaints, siteNotes);
-          const rowBg = i % 2 === 0 ? C.white : "#fafafa";
+          const rowBg = i % 2 === 0 ? C.white : "#f6faf9";
           const isShutDown = siteStatus === "Shut Down";
           return (
             <div key={h} style={{ cursor: "pointer" }} onClick={() => setExpandedRow(expandedRow === h ? null : h)}>
-            <div style={{ ...styles.overviewRow, background: rowBg, borderLeft: isShutDown ? "3px solid #c0392b" : "3px solid transparent" }} onMouseEnter={e => e.currentTarget.style.background = "#f0f0f0"} onMouseLeave={e => e.currentTarget.style.background = rowBg}>
+            <div style={{ ...styles.overviewRow, background: rowBg, borderLeft: isShutDown ? "3px solid #c0392b" : "3px solid transparent" }} onMouseEnter={e => e.currentTarget.style.background = C.tealBg} onMouseLeave={e => e.currentTarget.style.background = rowBg}>
               <div style={{ ...styles.ovCell, ...styles.ovCellSr, color: C.textLight, fontWeight: 500, fontSize: 12 }}>{i + 1}</div>
               <div style={{ ...styles.ovCell, ...styles.ovCellSite }}><span style={{ color: C.black, fontWeight: 600, fontSize: 13 }}>{displayName(h)}</span></div>
               <div style={{ ...styles.ovCell, ...styles.ovCellProvider, color: C.textLight, fontWeight: 400, fontSize: 12 }}>{getProvider(h)}</div>
@@ -1668,8 +1668,8 @@ const styles = {
   commentSendBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, padding: "10px 22px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
   overviewTable: { background: C.white, borderRadius: 14, border: `1px solid ${C.tealLight}`, overflow: "auto", WebkitOverflowScrolling: "touch", boxShadow: "0 4px 14px rgba(15,118,110,0.08)" },
   overviewHeaderRow: { display: "flex", padding: "0", background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", fontWeight: 700, fontSize: 10, color: "#fff", gap: 0, minWidth: 900, letterSpacing: 1.5, textTransform: "uppercase", position: "sticky", top: 0, zIndex: 2 },
-  overviewRow: { display: "flex", padding: "0", borderBottom: `1px solid #eee`, gap: 0, alignItems: "stretch", minWidth: 900, transition: "background 0.15s" },
-  ovCell: { padding: "14px 16px", borderRight: `1px solid #eee`, fontSize: 13, display: "flex", flexDirection: "column", justifyContent: "center" },
+  overviewRow: { display: "flex", padding: "0", borderBottom: `1px solid ${C.borderLight}`, gap: 0, alignItems: "stretch", minWidth: 900, transition: "background 0.15s" },
+  ovCell: { padding: "14px 16px", borderRight: `1px solid ${C.borderLight}`, fontSize: 13, display: "flex", flexDirection: "column", justifyContent: "center" },
   ovCellHeader: { padding: "14px 16px", borderRight: "1px solid rgba(255,255,255,0.15)", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" },
   ovCellSr: { width: 40, flexShrink: 0, justifyContent: "center", alignItems: "center" },
   ovCellSite: { width: 160, flexShrink: 0 },
