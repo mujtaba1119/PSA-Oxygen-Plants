@@ -955,55 +955,59 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
   const handleDelete = async () => { if (window.confirm("Delete this complaint permanently?")) { await onDelete(c.id); await onRefresh(); } };
   const handleEditSave = async () => { if (!editTitle.trim() || !editDesc.trim()) return; setEditSaving(true); await updateComplaintFields(c.id, { title: editTitle.trim(), description: editDesc.trim() }); setEditSaving(false); setEditing(false); await onRefresh(); };
   const dateFmt = { year: "numeric", month: "short", day: "numeric" };
+  const accent = c.status === "Resolved" ? C.green : c.status === "Pending Resolution" ? "#e0912f" : C.red;
   return (
-    <div style={styles.card}>
+    <div style={styles.cardTeal}>
       {editing ? (
-        <>
-          <ComplaintTypeSelect value={editTitle} onChange={e => setEditTitle(e.target.value)} style={{ ...styles.input, marginBottom: 8 }} />
-          <textarea style={{ ...styles.input, minHeight: 80, resize: "vertical", fontFamily: "inherit" }} value={editDesc} onChange={e => setEditDesc(e.target.value)} />
+        <div style={{ padding: 18 }}>
+          <ComplaintTypeSelect value={editTitle} onChange={e => setEditTitle(e.target.value)} style={{ ...styles.inputTeal, marginBottom: 8 }} />
+          <textarea style={{ ...styles.inputTeal, minHeight: 80, resize: "vertical", fontFamily: "inherit" }} value={editDesc} onChange={e => setEditDesc(e.target.value)} />
           <div style={{ display: "flex", gap: 8 }}><button style={styles.pwSaveBtn} onClick={handleEditSave}>{editSaving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditing(false); setEditTitle(c.title); setEditDesc(c.description); }}>Cancel</button></div>
-        </>
+        </div>
       ) : (
         <>
-          <div style={styles.cardTop}>
-            <strong style={styles.cardTitle}>{c.title}</strong>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-              <StatusBadge status={c.status} />
-              <span style={{ fontSize: 12, color: C.textLight }}>Submitted: {new Date(c.created_at).toLocaleDateString("en-PK", dateFmt)}</span>
-              {c.status === "Resolved" && c.resolved_at && <span style={{ fontSize: 12, color: "#276749" }}>Resolved: {new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt)}</span>}
-              {c.status === "Pending Resolution" && c.resolution_requested_at && <span style={{ fontSize: 12, color: "#7c5e10" }}>Requested: {new Date(c.resolution_requested_at).toLocaleDateString("en-PK", dateFmt)}</span>}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.tealBg, padding: "14px 16px", borderBottom: `1px solid ${C.tealLight}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+              <span style={{ width: 9, height: 9, borderRadius: "50%", background: accent, flexShrink: 0 }} />
+              <strong style={{ fontSize: 16, fontWeight: 700, color: C.black }}>{c.title}</strong>
             </div>
+            <StatusBadge status={c.status} />
           </div>
-          <p style={styles.cardDesc}>{c.description}</p>
-          {c.submitted_by && <p style={{ fontSize: 12, color: C.textLight, marginTop: 4 }}>Submitted by: {c.submitted_by}</p>}
-          <AttachmentViewer attachments={c.attachments} />
-          <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
-            {/* Open complaints: Hospital/Provider can request, Amex/Admin can resolve directly */}
-            {c.status === "Open" && canResolve && (
-              <>{isAdmin && <input type="date" style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #e2e8f0", borderRadius: 6 }} value={resolveDate} onChange={e => setResolveDate(e.target.value)} />}<button style={styles.resolveBtn} onClick={handleResolve} disabled={resolving}>{resolving ? "…" : (isAdmin || isAmex) ? "RESOLVE" : "MARK AS RESOLVED"}</button></>
-            )}
-            {/* Pending: Amex/Admin can approve or reject */}
-            {c.status === "Pending Resolution" && (isAdmin || isAmex) && (
-              <>
-                <button style={{ ...styles.resolveBtn, background: "#27ae60" }} onClick={handleApprove} disabled={resolving}>{resolving ? "…" : "APPROVE"}</button>
-                {!rejecting ? (
-                  <button style={{ ...styles.deleteBtn, background: "#c0392b" }} onClick={() => setRejecting(true)}>REJECT</button>
-                ) : (
-                  <div style={{ display: "flex", gap: 6, alignItems: "center", flex: 1 }}>
-                    <input style={{ ...styles.pwInput, flex: 1, fontSize: 12 }} placeholder="Reason for rejection..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} onKeyDown={e => e.key === "Enter" && handleReject()} />
-                    <button style={{ ...styles.pwSaveBtn, fontSize: 11 }} onClick={handleReject}>Send</button>
-                    <button style={styles.pwCancelBtn} onClick={() => { setRejecting(false); setRejectReason(""); }}>✕</button>
-                  </div>
-                )}
-              </>
-            )}
-            {isAdmin && c.status === "Resolved" && (<button style={{ fontSize: 12, fontWeight: 600, color: "#9c4221", background: "#feebc8", border: "none", borderRadius: 0, padding: "6px 14px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" }} onClick={handleUnresolve}>Unresolve</button>)}
-            {isAdmin && <button style={{ fontSize: 12, fontWeight: 500, color: C.black, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 0, padding: "6px 14px", cursor: "pointer" }} onClick={() => setEditing(true)}>Edit</button>}
-            {isAdmin && <button style={styles.deleteBtn} onClick={handleDelete}>Delete</button>}
+          <div style={{ padding: 16 }}>
+            <p style={styles.cardDesc}>{c.description}</p>
+            {c.submitted_by && <p style={{ fontSize: 12.5, color: C.tealDark, fontWeight: 600, marginTop: 10 }}>👤 {c.submitted_by}</p>}
+            <div style={{ marginTop: 12, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 11 }}>
+              <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Report Date: </span><span style={{ color: C.black, fontWeight: 700 }}>{new Date(c.created_at).toLocaleDateString("en-PK", dateFmt)}</span></div>
+              {c.status === "Resolved" && c.resolved_at && <div style={{ fontSize: 12.5, marginTop: 5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Resolved Date: </span><span style={{ color: "#276749", fontWeight: 700 }}>{new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
+              {c.status === "Pending Resolution" && c.resolution_requested_at && <div style={{ fontSize: 12.5, marginTop: 5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Requested: </span><span style={{ color: "#c47f1e", fontWeight: 700 }}>{new Date(c.resolution_requested_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
+            </div>
+            <AttachmentViewer attachments={c.attachments} />
+            <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
+              {c.status === "Open" && canResolve && (
+                <>{isAdmin && <input type="date" style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={resolveDate} onChange={e => setResolveDate(e.target.value)} />}<button style={styles.btnTealSmall} onClick={handleResolve} disabled={resolving}>{resolving ? "…" : "✓ Close Ticket"}</button></>
+              )}
+              {c.status === "Pending Resolution" && (isAdmin || isAmex) && (
+                <>
+                  <button style={{ ...styles.btnTealSmall, background: "#27ae60", boxShadow: "none" }} onClick={handleApprove} disabled={resolving}>{resolving ? "…" : "✓ Approve"}</button>
+                  {!rejecting ? (
+                    <button style={{ ...styles.btnTealSmall, background: "#c0392b", boxShadow: "none" }} onClick={() => setRejecting(true)}>✕ Reject</button>
+                  ) : (
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flex: 1 }}>
+                      <input style={{ ...styles.pwInput, flex: 1, fontSize: 12 }} placeholder="Reason for rejection..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} onKeyDown={e => e.key === "Enter" && handleReject()} />
+                      <button style={{ ...styles.pwSaveBtn, fontSize: 11 }} onClick={handleReject}>Send</button>
+                      <button style={styles.pwCancelBtn} onClick={() => { setRejecting(false); setRejectReason(""); }}>✕</button>
+                    </div>
+                  )}
+                </>
+              )}
+              {isAdmin && c.status === "Resolved" && (<button style={{ fontSize: 12, fontWeight: 600, color: "#9c4221", background: "#feebc8", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" }} onClick={handleUnresolve}>Unresolve</button>)}
+              {isAdmin && <button style={{ fontSize: 12, fontWeight: 500, color: C.black, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 16px", cursor: "pointer" }} onClick={() => setEditing(true)}>Edit</button>}
+              {isAdmin && <button style={{ ...styles.deleteBtn, borderRadius: 8 }} onClick={handleDelete}>Delete</button>}
+            </div>
+            <CommentSection complaintId={c.id} hospital={c.hospital} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} />
           </div>
         </>
       )}
-      <CommentSection complaintId={c.id} hospital={c.hospital} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} />
     </div>
   );
 }
@@ -1083,7 +1087,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   };
   const handleResolve = async (id) => { const c = complaints.find(x => x.id === id); await requestResolution(id, operatorName.trim() || user.name + " Hospital"); notifyUsers("resolution_request", `Resolution Requested: ${user.name}`, c ? c.title : "", user.name, id, user.id).catch(() => {}); await onRefresh(); };
   return (
-    <div style={styles.shell}>
+    <div style={{ ...styles.shell, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
       <AppHeader user={user}><NotificationBell user={user} /><button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button></AppHeader>
 
       {/* Teal gradient hero header */}
@@ -1112,7 +1116,10 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
 
       <main className="main-responsive" style={styles.main}>
         <section style={styles.formSectionTeal}>
-          <h2 style={styles.sectionTitleTeal}>Submit a Ticket</h2>
+          <h2 style={{ ...styles.sectionTitleTeal, borderLeft: "none", paddingLeft: 0, display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ width: 40, height: 40, borderRadius: "50%", background: C.teal, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 400, boxShadow: "0 3px 8px rgba(13,148,136,0.3)" }}>+</span>
+            Submit a Ticket
+          </h2>
           <input style={styles.inputTeal} placeholder="Your name (operator name)" value={operatorName} onChange={e => setOperatorName(e.target.value)} />
           <ComplaintTypeSelect value={title} onChange={e => setTitle(e.target.value)} style={styles.inputTealSelect} />
           <textarea style={{ ...styles.inputTeal, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue in detail…" value={desc} onChange={e => setDesc(e.target.value)} />
@@ -1405,6 +1412,8 @@ const styles = {
   inputTealSelect: { display: "block", width: "100%", padding: "14px 16px", fontSize: 14, border: `1.5px solid ${C.teal}`, borderRadius: 12, marginBottom: 14, outline: "none", boxSizing: "border-box", color: C.text, background: C.tealBg, fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 600, cursor: "pointer" },
   btnTeal: { display: "block", width: "100%", padding: "15px 0", fontSize: 14, fontWeight: 700, color: C.white, background: C.teal, border: "none", borderRadius: 12, cursor: "pointer", letterSpacing: 1.2, textTransform: "uppercase", boxShadow: "0 4px 12px rgba(13,148,136,0.3)" },
   successMsgTeal: { color: C.teal, fontSize: 14, fontWeight: 700, marginTop: 12, textAlign: "center" },
+  cardTeal: { background: C.white, borderRadius: 18, marginBottom: 14, overflow: "hidden", border: `1px solid ${C.tealLight}`, boxShadow: "0 4px 14px rgba(15,118,110,0.1)" },
+  btnTealSmall: { display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13.5, fontWeight: 700, color: "#fff", background: C.teal, border: "none", borderRadius: 12, padding: "11px 20px", cursor: "pointer", boxShadow: "0 3px 8px rgba(13,148,136,0.25)" },
 
   loadWrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif" },
   loadLogo: { fontSize: 56, fontWeight: 800, color: C.black, letterSpacing: -3 },
