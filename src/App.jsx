@@ -280,9 +280,9 @@ function NotificationBell({ user, onNavigate, onFocusComplaint, light, complaint
       markNotifRead(n.id).catch(() => {});
     }
     setOpen(false);
-    // If a focus handler is provided (hospital view), use it to open + highlight the specific complaint/comment
+    // If a focus handler is provided, use it to open + highlight the specific complaint/comment
     if (n.complaint_id && onFocusComplaint) {
-      onFocusComplaint({ complaintId: n.complaint_id, isComment: n.type === "comment", commentText: n.type === "comment" ? (n.message || "") : "" });
+      onFocusComplaint({ complaintId: n.complaint_id, hospital: n.hospital, isComment: n.type === "comment", commentText: n.type === "comment" ? (n.message || "") : "" });
     } else if (n.hospital && onNavigate) {
       onNavigate(n.hospital);
     }
@@ -320,11 +320,15 @@ function NotificationBell({ user, onNavigate, onFocusComplaint, light, complaint
           {notifs.map(n => {
             const ticketTitle = complaintTitleFor(n);
             const cleanTitle = n.title ? n.title.split(":")[0].trim() : n.title;
+            const isHospitalUser = user.role === "hospital";
+            const secondLine = isHospitalUser
+              ? (ticketTitle ? { label: "Ticket: ", value: ticketTitle } : null)
+              : (n.hospital ? { label: "Site: ", value: n.hospital } : (ticketTitle ? { label: "Ticket: ", value: ticketTitle } : null));
             return (
-            <div key={n.id} onClick={() => handleClick(n)} style={{ padding: "10px 16px", borderBottom: "1px solid #f5f5f5", background: n.is_read ? "#fff" : "#d4f3ee", borderLeft: n.is_read ? "3px solid transparent" : `3px solid ${C.teal}`, cursor: n.hospital ? "pointer" : "default" }}>
+            <div key={n.id} onClick={() => handleClick(n)} style={{ padding: "10px 16px", borderBottom: "1px solid #f5f5f5", background: n.is_read ? "#fff" : "#d4f3ee", borderLeft: n.is_read ? "3px solid transparent" : `3px solid ${C.teal}`, cursor: n.complaint_id || n.hospital ? "pointer" : "default" }}>
               <strong style={{ fontSize: 12, color: "#111" }}>{cleanTitle}</strong>
-              {ticketTitle ? (
-                <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}><span style={{ color: C.teal, fontWeight: 700 }}>Ticket: </span>{ticketTitle}</p>
+              {secondLine ? (
+                <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}><span style={{ color: C.teal, fontWeight: 700 }}>{secondLine.label}</span>{secondLine.value}</p>
               ) : (n.message && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}>{n.message}</p>)}
               <span style={{ fontSize: 10, color: "#999" }}>{new Date(n.created_at).toLocaleDateString("en-PK", dateFmt)}</span>
             </div>
@@ -847,7 +851,7 @@ function StatusBadge({ status }) {
 }
 
 /* ─── Overview Tab ─── */
-function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, onRefresh }) {
+function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, onRefresh, onViewSite }) {
   const [editingNote, setEditingNote] = useState(null);
   const [noteText, setNoteText] = useState(""); const [saving, setSaving] = useState(false);
   const [statusEditing, setStatusEditing] = useState(null);
@@ -1015,6 +1019,14 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                     {getNoteForComplaint(h, c.id) && <div style={{ fontSize: 11, color: C.textMid, marginTop: 6, paddingTop: 6, borderTop: "1px solid #eee" }}>Note: {getNoteForComplaint(h, c.id)}</div>}
                   </div>
                 )) : <p style={{ fontSize: 12, color: C.textLight }}>No open complaints for this site.</p>}
+                {onViewSite && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onViewSite(h); }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 12.5, fontWeight: 700, color: C.teal, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: "9px 16px", cursor: "pointer" }}
+                  >
+                    View all tickets for this site <span style={{ fontSize: 14 }}>→</span>
+                  </button>
+                )}
               </div>
             )}
             </div>
@@ -1277,13 +1289,33 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
   );
 }
 
-function ComplaintListView({ hospital, complaints, currentUser, canResolve, canComment, isAdmin, isAmex, isProvider, onBack, onResolve, onRequestResolve, onApprove, onReject, onUnresolve, onDelete, onRefresh }) {
+function ComplaintListView({ hospital, complaints, currentUser, canResolve, canComment, isAdmin, isAmex, isProvider, onBack, onResolve, onRequestResolve, onApprove, onReject, onUnresolve, onDelete, onRefresh, focusInfo }) {
   const hc = complaints.filter(c => c.hospital === hospital).sort((a, b) => {   const aOpen = a.status !== "Resolved" ? 0 : 1;   const bOpen = b.status !== "Resolved" ? 0 : 1;   if (aOpen !== bOpen) return aOpen - bOpen;   return new Date(b.created_at) - new Date(a.created_at); });
+  const cardRefs = useRef({});
+  const [localFocus, setLocalFocus] = useState(null);
+  useEffect(() => {
+    if (focusInfo && focusInfo.complaintId) {
+      setLocalFocus(focusInfo);
+      setTimeout(() => {
+        const el = cardRefs.current[focusInfo.complaintId];
+        if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 120);
+      const t = setTimeout(() => setLocalFocus(null), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [focusInfo]);
   return (<>
     <button style={styles.backBtn} onClick={onBack}>← BACK</button>
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>{hospital}</h2><span style={{ fontSize: 13, color: "#999" }}>({hc.length})</span><span style={{ fontSize: 12, color: "#555", background: "#f0f0f0", padding: "2px 8px" }}>{getProvider(hospital)}</span></div>
     {hc.length === 0 && <p style={styles.empty}>No complaints from this hospital.</p>}
-    {hc.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={currentUser} canResolve={canResolve} canComment={canComment} isAdmin={isAdmin} isAmex={isAmex} isProvider={isProvider} onResolve={onResolve} onRequestResolve={onRequestResolve} onApprove={onApprove} onReject={onReject} onUnresolve={onUnresolve} onDelete={onDelete} onRefresh={onRefresh} />))}
+    {hc.map(c => (
+      <div key={c.id} ref={el => { cardRefs.current[c.id] = el; }}>
+        <ComplaintCard complaint={c} currentUser={currentUser} canResolve={canResolve} canComment={canComment} isAdmin={isAdmin} isAmex={isAmex} isProvider={isProvider} onResolve={onResolve} onRequestResolve={onRequestResolve} onApprove={onApprove} onReject={onReject} onUnresolve={onUnresolve} onDelete={onDelete} onRefresh={onRefresh}
+          cardHighlight={localFocus && localFocus.complaintId === c.id}
+          highlightCommentText={localFocus && localFocus.complaintId === c.id && localFocus.isComment ? localFocus.commentText : ""}
+        />
+      </div>
+    ))}
   </>);
 }
 
@@ -1455,6 +1487,12 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const [adminSubmitting, setAdminSubmitting] = useState(false); const [adminSuccess, setAdminSuccess] = useState(false);
   const [newUserId, setNewUserId] = useState(""); const [newUserName, setNewUserName] = useState(""); const [newUserRole, setNewUserRole] = useState("company"); const [newUserPw, setNewUserPw] = useState(""); const [newUserCompany, setNewUserCompany] = useState("Amex"); const [newUserEmail, setNewUserEmail] = useState(""); const [addingUser, setAddingUser] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [pendingFocus, setPendingFocus] = useState(null);
+  const handleNotifFocus = (info) => {
+    setTab("complaints");
+    setSelected(info.hospital);
+    setPendingFocus({ complaintId: info.complaintId, isComment: info.isComment, commentText: info.commentText });
+  };
 
 
   const totalComplaints = complaints.length; const totalOpen = complaints.filter(c => c.status !== "Resolved").length;
@@ -1508,7 +1546,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.22)", padding: "4px 12px", borderRadius: 20 }}>Management</span>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <NotificationBell user={user} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
+              <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
               <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 14px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={handleRefresh}>{refreshing ? "…" : "Refresh"}</button>
               <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 16px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={onLogout}>Sign Out</button>
             </div>
@@ -1538,9 +1576,9 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
       </div>
       <main className="main-responsive" style={styles.main}>
         <div key={tab} className="scale-in">
-        {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} />}
+        {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} onViewSite={(h) => { setTab("complaints"); setSelected(h); }} />}
         {tab === "complaints" && !selected && (<GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} />)}
-        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} isAmex={false} isProvider={false} onBack={() => setSelected(null)} onResolve={handleResolve} onRequestResolve={handleRequestResolve} onApprove={handleApprove} onReject={handleReject} onUnresolve={handleUnresolve} onDelete={handleDelete} onRefresh={onRefresh} />)}
+        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} isAmex={false} isProvider={false} onBack={() => setSelected(null)} onResolve={handleResolve} onRequestResolve={handleRequestResolve} onApprove={handleApprove} onReject={handleReject} onUnresolve={handleUnresolve} onDelete={handleDelete} onRefresh={onRefresh} focusInfo={pendingFocus} />)}
         {tab === "submit" && (<section style={styles.formSection}><h2 style={styles.sectionTitle}>Submit Complaint on Behalf of Hospital</h2><select style={{ ...styles.input, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h} — {getProvider(h)}</option>)}</select><ComplaintTypeSelect value={adminTitle} onChange={e => setAdminTitle(e.target.value)} style={styles.input} /><textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} /><div style={{ marginBottom: 12 }}><label style={{ fontSize: 13, color: "#4a5568", marginBottom: 4, display: "block" }}>Date (leave empty for today)</label><input style={styles.input} type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} /></div><button style={{ ...styles.btnPrimary, opacity: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? 0.5 : 1 }} onClick={submitAdminComplaint}>{adminSubmitting ? "Submitting…" : "Submit Complaint"}</button>{adminSuccess && <p style={styles.successMsg}>Complaint submitted for {adminHospital}.</p>}</section>)}
         {tab === "users" && (<>
           {/* Add User Form */}
@@ -1692,6 +1730,12 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 /* ─── Company Dashboard ─── */
 function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) {
   const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
+  const [pendingFocus, setPendingFocus] = useState(null);
+  const handleNotifFocus = (info) => {
+    setTab("complaints");
+    setSelected(info.hospital);
+    setPendingFocus({ complaintId: info.complaintId, isComment: info.isComment, commentText: info.commentText });
+  };
   const companyName = user.company || user.name;
   const seesAll = ["Novair", "Amex", "UNDP", "CMU", "Global Fund"].includes(companyName);
   const isAmex = companyName === "Amex";
@@ -1718,7 +1762,7 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
         <div style={{ maxWidth: 980, margin: "0 auto" }}>
           {/* actions row */}
           <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginBottom: 12 }}>
-            <NotificationBell user={user} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
+            <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
             <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 14px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={handleRefresh}>{refreshing ? "…" : "Refresh"}</button>
             <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 16px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={onLogout}>Sign Out</button>
           </div>
@@ -1751,9 +1795,9 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
       </div>
       <main className="main-responsive" style={styles.main}>
         <div key={tab} className="scale-in">
-        {tab === "overview" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} />}
+        {tab === "overview" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} onViewSite={(h) => { setTab("complaints"); setSelected(h); }} />}
         {tab === "complaints" && !selected && (<GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} />)}
-        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={canResolveHospital} canComment={canCommentOnHospital(selected)} isAdmin={false} isAmex={isAmex} isProvider={isProvider} onBack={() => setSelected(null)} onResolve={handleResolve} onRequestResolve={handleRequestResolve} onApprove={handleApprove} onReject={handleReject} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />)}
+        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={canResolveHospital} canComment={canCommentOnHospital(selected)} isAdmin={false} isAmex={isAmex} isProvider={isProvider} onBack={() => setSelected(null)} onResolve={handleResolve} onRequestResolve={handleRequestResolve} onApprove={handleApprove} onReject={handleReject} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} focusInfo={pendingFocus} />)}
         </div>
       </main>
       <PartnerFooter />
