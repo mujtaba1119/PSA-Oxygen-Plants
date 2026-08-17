@@ -386,15 +386,14 @@ function AppHeader({ user, children, minimal }) {
 
 /* Partner logo footer — one line, in order: Global Fund, UNDP, Amex, Noxerior, CMU */
 function PartnerFooter() {
-  var tile = { background: "#fff", borderRadius: 12, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.25)" };
   return (
-    <footer style={{ background: "#0d2b28", padding: "30px 20px" }}>
-      <div style={{ maxWidth: 940, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 18, flexWrap: "wrap" }}>
-        <div style={tile}><img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 48, objectFit: "contain" }} /></div>
-        <div style={tile}><img src={LOGO_UNDP} alt="UNDP" style={{ height: 46, objectFit: "contain" }} /></div>
-        <div style={tile}><img src={LOGO_AMEX} alt="Amex" style={{ height: 34, objectFit: "contain" }} /></div>
-        <div style={tile}><img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 30, objectFit: "contain" }} /></div>
-        <div style={tile}><img src={LOGO_CMU} alt="CMU" style={{ height: 46, objectFit: "contain" }} /></div>
+    <footer style={{ background: "#ffffff", padding: "34px 20px", borderTop: `2px solid ${C.tealLight}`, boxShadow: "0 -4px 16px rgba(0,0,0,0.05)" }}>
+      <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 46, flexWrap: "wrap" }}>
+        <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 84, objectFit: "contain" }} />
+        <img src={LOGO_UNDP} alt="UNDP" style={{ height: 74, objectFit: "contain" }} />
+        <img src={LOGO_AMEX} alt="Amex" style={{ height: 56, objectFit: "contain" }} />
+        <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 50, objectFit: "contain" }} />
+        <img src={LOGO_CMU} alt="CMU" style={{ height: 74, objectFit: "contain" }} />
       </div>
     </footer>
   );
@@ -1160,27 +1159,31 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
       {/* Teal gradient hero header — now the very top, with actions integrated */}
       <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "20px 24px 24px", color: "#fff" }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
-          {/* top row: actions only, right-aligned */}
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <NotificationBell user={user} onFocusComplaint={handleFocusComplaint} light={true} />
-            <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 16px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={onLogout}>Sign Out</button>
-          </div>
           <div style={{ fontSize: 12, letterSpacing: 1.4, opacity: 0.8, fontWeight: 600, textTransform: "uppercase" }}>PSA Oxygen Plant</div>
-          <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4 }}>{user.name}</div>
-          <div style={{ display: "flex", gap: 0, marginTop: 20, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 16, overflow: "hidden" }}>
-            <div style={{ flex: 1, textAlign: "center", padding: "14px 8px" }}>
-              <div style={{ fontSize: 24, fontWeight: 800 }}>{mine.length}</div>
-              <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 3 }}>Total</div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+            <div style={{ fontSize: 28, fontWeight: 800 }}>{user.name}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <NotificationBell user={user} onFocusComplaint={handleFocusComplaint} light={true} />
+              <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 16px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={onLogout}>Sign Out</button>
             </div>
-            <div style={{ width: 1, background: "rgba(255,255,255,0.18)" }} />
-            <div style={{ flex: 1, textAlign: "center", padding: "14px 8px" }}>
-              <div style={{ fontSize: 24, fontWeight: 800 }}>{openCount}</div>
-              <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 3 }}>Open</div>
-            </div>
-            <div style={{ width: 1, background: "rgba(255,255,255,0.18)" }} />
-            <div style={{ flex: 1, textAlign: "center", padding: "14px 8px" }}>
-              <div style={{ fontSize: 24, fontWeight: 800 }}>{mine.length - openCount}</div>
-              <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 3 }}>Resolved</div>
+          </div>
+          <div style={{ marginTop: 20, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 16, padding: "12px 8px 14px" }}>
+            <div style={{ fontSize: 10.5, letterSpacing: 2, fontWeight: 700, opacity: 0.7, textAlign: "center", marginBottom: 10 }}>TICKETS</div>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <div style={{ flex: 1, textAlign: "center" }}>
+                <div style={{ fontSize: 24, fontWeight: 800 }}>{mine.length}</div>
+                <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 3 }}>Total</div>
+              </div>
+              <div style={{ width: 1, height: 34, background: "rgba(255,255,255,0.18)" }} />
+              <div style={{ flex: 1, textAlign: "center" }}>
+                <div style={{ fontSize: 24, fontWeight: 800 }}>{openCount}</div>
+                <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 3 }}>Open</div>
+              </div>
+              <div style={{ width: 1, height: 34, background: "rgba(255,255,255,0.18)" }} />
+              <div style={{ flex: 1, textAlign: "center" }}>
+                <div style={{ fontSize: 24, fontWeight: 800 }}>{mine.length - openCount}</div>
+                <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 3 }}>Resolved</div>
+              </div>
             </div>
           </div>
         </div>
