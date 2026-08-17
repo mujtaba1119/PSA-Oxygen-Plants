@@ -624,6 +624,117 @@ async function loginUser(username, password) {
   }
 }
 
+/* ─── Vessel of Light — web port of the app's tank animation ─── */
+function WebVessel() {
+  const VW = 300, VH = 200;
+  const cx = VW / 2;
+  const vW = 60, vX = cx - vW / 2;
+  const vTop = 30, vBottom = 168;
+  const inTop = vTop + 3, inBottom = vBottom - 3;
+  const inH = inBottom - inTop;
+  // rise 0.4↔1 over 5.2s; surface positions
+  const surfHi = inTop + 4;      // rise=1
+  const surfLo = inBottom;       // rise=0.4-ish baseline (approx inBottom)
+  // For rise 0.4 the surface sits partway; compute both extremes for animation
+  const surfAt = (r) => inBottom + (surfHi - inBottom) * r;
+  const colAt = (r) => (inH - 4) * r;
+  const rLo = 0.4, rHi = 1;
+  const surfY_lo = surfAt(rLo), surfY_hi = surfAt(rHi);
+  const colH_lo = colAt(rLo), colH_hi = colAt(rHi);
+
+  // motes: rising bubbles inside the column
+  const Mote = ({ mx, r, top, bottom, dur, delay, color }) => (
+    <circle cx={mx} r={r} fill={color || "#eafff9"}>
+      <animate attributeName="cy" values={`${bottom};${top};${bottom}`} dur={`${dur}ms`} begin={`${delay}ms`} repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
+      <animate attributeName="opacity" values="0;0.9;0" dur={`${dur}ms`} begin={`${delay}ms`} repeatCount="indefinite" />
+    </circle>
+  );
+
+  return (
+    <svg width={VW} height={VH} viewBox={`0 0 ${VW} ${VH}`} style={{ display: "block" }}>
+      <defs>
+        <radialGradient id="wv-halo" cx="50%" cy="50%" r="50%">
+          <stop offset="0" stopColor="#5eead4" stopOpacity="0.5" />
+          <stop offset="1" stopColor="#5eead4" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id="wv-column" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#c4fff2" stopOpacity="0.95" />
+          <stop offset="0.5" stopColor="#5eead4" stopOpacity="0.8" />
+          <stop offset="1" stopColor="#14b8a6" stopOpacity="0.55" />
+        </linearGradient>
+        <linearGradient id="wv-glass" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="rgba(255,255,255,0.9)" />
+          <stop offset="0.5" stopColor="rgba(255,255,255,0.35)" />
+          <stop offset="1" stopColor="rgba(255,255,255,0.9)" />
+        </linearGradient>
+        <clipPath id="wv-clip">
+          <rect x={vX + 3} y={inTop} width={vW - 6} height={inH} rx={(vW - 6) / 2} />
+        </clipPath>
+      </defs>
+
+      {/* ambient halo */}
+      <circle cx={cx} cy="98" fill="url(#wv-halo)">
+        <animate attributeName="r" values="78;92;78" dur="6000ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
+        <animate attributeName="opacity" values="0.10;0.20;0.10" dur="6000ms" repeatCount="indefinite" />
+      </circle>
+
+      {/* neck + crown valve */}
+      <line x1={cx} y1={vTop} x2={cx} y2="16" stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" strokeLinecap="round" />
+      <circle cx={cx} cy="13" r="4.5" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.5" />
+
+      {/* luminous column, clipped */}
+      <g clipPath="url(#wv-clip)">
+        <rect x={vX + 3} width={vW - 6} fill="url(#wv-column)">
+          <animate attributeName="y" values={`${surfY_lo};${surfY_hi};${surfY_lo}`} dur="10400ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
+          <animate attributeName="height" values={`${colH_lo};${colH_hi};${colH_lo}`} dur="10400ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
+        </rect>
+        {/* surface meniscus */}
+        <ellipse cx={cx} rx={(vW - 8) / 2} fill="#eafff9" opacity="0.85">
+          <animate attributeName="cy" values={`${surfY_lo};${surfY_hi};${surfY_lo}`} dur="10400ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
+          <animate attributeName="ry" values="4.5;7;4.5" dur="4800ms" repeatCount="indefinite" />
+        </ellipse>
+        {/* rising motes */}
+        <Mote mx={cx - 10} r={2} top={inTop + 10} bottom={inBottom - 8} dur={3400} delay={0} />
+        <Mote mx={cx + 8} r={2.5} top={inTop + 10} bottom={inBottom - 8} dur={4000} delay={1200} />
+        <Mote mx={cx} r={1.8} top={inTop + 10} bottom={inBottom - 8} dur={3700} delay={2200} />
+      </g>
+
+      {/* glass outline */}
+      <rect x={vX} y={vTop} width={vW} height={vBottom - vTop} rx={vW / 2} fill="none" stroke="url(#wv-glass)" strokeWidth="1.6" />
+      {/* specular highlight */}
+      <line x1={vX + 9} y1={vTop + 16} x2={vX + 9} y2={vBottom - 16} stroke="rgba(255,255,255,0.4)" strokeWidth="2" strokeLinecap="round" />
+
+      {/* pedestal */}
+      <line x1={cx - 34} y1="182" x2={cx + 34} y2="182" stroke="rgba(255,255,255,0.4)" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1={vX + 10} y1={vBottom} x2={cx - 22} y2="182" stroke="rgba(255,255,255,0.32)" strokeWidth="1.2" />
+      <line x1={vX + vW - 10} y1={vBottom} x2={cx + 22} y2="182" stroke="rgba(255,255,255,0.32)" strokeWidth="1.2" />
+
+      {/* measurement scale */}
+      <line x1={vX - 16} y1={inTop} x2={vX - 16} y2={inBottom} stroke="rgba(255,255,255,0.22)" strokeWidth="1" />
+      <line x1={vX - 19} y1={inTop} x2={vX - 13} y2={inTop} stroke="rgba(255,255,255,0.22)" strokeWidth="1" />
+      <line x1={vX - 18} y1={inTop + inH * 0.25} x2={vX - 14} y2={inTop + inH * 0.25} stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+      <line x1={vX - 19} y1={inTop + inH * 0.5} x2={vX - 13} y2={inTop + inH * 0.5} stroke="rgba(255,255,255,0.22)" strokeWidth="1" />
+      <line x1={vX - 18} y1={inTop + inH * 0.75} x2={vX - 14} y2={inTop + inH * 0.75} stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+      <line x1={vX - 19} y1={inBottom} x2={vX - 13} y2={inBottom} stroke="rgba(255,255,255,0.22)" strokeWidth="1" />
+      {/* level marker tracks surface */}
+      <circle cx={vX - 16} r="2.5" fill="#5eead4">
+        <animate attributeName="cy" values={`${surfY_lo};${surfY_hi};${surfY_lo}`} dur="10400ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
+      </circle>
+
+      {/* reflection */}
+      <ellipse cx={cx} cy="190" rx="40" ry="7" fill="#5eead4" opacity="0.10" />
+      <ellipse cx={cx} cy="192" rx="24" ry="4" fill="#5eead4" opacity="0.12" />
+
+      {/* atmosphere particles */}
+      <Mote mx={cx - 66} r={2} top={40} bottom={150} dur={6000} delay={0} color="rgba(94,234,212,0.5)" />
+      <Mote mx={cx + 70} r={2.5} top={36} bottom={150} dur={7000} delay={1500} color="rgba(94,234,212,0.45)" />
+      <Mote mx={cx - 84} r={1.6} top={60} bottom={150} dur={5400} delay={3000} color="rgba(94,234,212,0.4)" />
+      <Mote mx={cx + 88} r={2} top={50} bottom={150} dur={6600} delay={2200} color="rgba(94,234,212,0.45)" />
+      <Mote mx={cx - 50} r={1.5} top={30} bottom={130} dur={5800} delay={4000} color="rgba(94,234,212,0.4)" />
+    </svg>
+  );
+}
+
 function LoginScreen({ onLogin }) {
   const [id, setId] = useState(""); const [pw, setPw] = useState(""); const [err, setErr] = useState("");
   const [attempts, setAttempts] = useState(0); const [locked, setLocked] = useState(false); const [submitting, setSubmitting] = useState(false);
@@ -654,8 +765,11 @@ function LoginScreen({ onLogin }) {
   };
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px", background: "linear-gradient(180deg, #062825 0%, #0b3b38 30%, #0f5650 55%, #0f766e 80%, #14a89a 100%)", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+      {/* Tank animation */}
+      <div style={{ marginBottom: 8 }}><WebVessel /></div>
+
       {/* Title */}
-      <div style={{ textAlign: "center", marginBottom: 26 }}>
+      <div style={{ textAlign: "center", marginBottom: 22 }}>
         <div style={{ fontSize: 26, fontWeight: 800, color: "#fff", letterSpacing: 0.3 }}>PSA Oxygen Plants</div>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 8 }}>
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#5eead4", display: "inline-block" }} />
@@ -681,18 +795,18 @@ function LoginScreen({ onLogin }) {
       </div>
 
       {/* Partner logos panel — one row with dividers, teal accent line */}
-      <div style={{ width: "100%", maxWidth: 520, marginTop: 26, background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
-        <div style={{ height: 4, width: "100%", background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 18px", gap: 4 }}>
-          <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 62, objectFit: "contain", flexShrink: 0 }} />
-          <div style={{ width: 1, height: 44, background: "#e0e4e6", flexShrink: 0 }} />
-          <img src={LOGO_UNDP} alt="UNDP" style={{ height: 54, objectFit: "contain", flexShrink: 0 }} />
-          <div style={{ width: 1, height: 44, background: "#e0e4e6", flexShrink: 0 }} />
-          <img src={LOGO_AMEX} alt="Amex" style={{ height: 34, objectFit: "contain", flexShrink: 0 }} />
-          <div style={{ width: 1, height: 44, background: "#e0e4e6", flexShrink: 0 }} />
-          <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 34, objectFit: "contain", flexShrink: 0 }} />
-          <div style={{ width: 1, height: 44, background: "#e0e4e6", flexShrink: 0 }} />
-          <img src={LOGO_CMU} alt="CMU" style={{ height: 54, objectFit: "contain", flexShrink: 0 }} />
+      <div style={{ width: "100%", maxWidth: 640, marginTop: 26, background: "#fff", borderRadius: 18, overflow: "hidden", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
+        <div style={{ height: 5, width: "100%", background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 24px", gap: 6 }}>
+          <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 88, objectFit: "contain", flexShrink: 0 }} />
+          <div style={{ width: 1, height: 58, background: "#e0e4e6", flexShrink: 0 }} />
+          <img src={LOGO_UNDP} alt="UNDP" style={{ height: 74, objectFit: "contain", flexShrink: 0 }} />
+          <div style={{ width: 1, height: 58, background: "#e0e4e6", flexShrink: 0 }} />
+          <img src={LOGO_AMEX} alt="Amex" style={{ height: 46, objectFit: "contain", flexShrink: 0 }} />
+          <div style={{ width: 1, height: 58, background: "#e0e4e6", flexShrink: 0 }} />
+          <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 46, objectFit: "contain", flexShrink: 0 }} />
+          <div style={{ width: 1, height: 58, background: "#e0e4e6", flexShrink: 0 }} />
+          <img src={LOGO_CMU} alt="CMU" style={{ height: 74, objectFit: "contain", flexShrink: 0 }} />
         </div>
       </div>
     </div>
