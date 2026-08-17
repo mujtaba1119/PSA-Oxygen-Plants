@@ -386,18 +386,27 @@ function AppHeader({ user, children, minimal }) {
 
 /* Partner logo footer — one line, in order: Global Fund, UNDP, Amex, Noxerior, CMU */
 function PartnerFooter() {
+  const divider = <div style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />;
   return (
-    <footer style={{ background: "#ffffff", boxShadow: "0 -4px 16px rgba(0,0,0,0.05)" }}>
+    <footer style={{ background: "#f4f6f7", boxShadow: "0 -4px 16px rgba(0,0,0,0.04)" }}>
       {/* gradient accent line */}
       <div style={{ height: 4, background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
-      <div style={{ padding: "34px 20px" }}>
-        <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 46, flexWrap: "wrap" }}>
+      <div style={{ padding: "36px 24px 22px" }}>
+        <div style={{ maxWidth: 1040, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 40, flexWrap: "wrap" }}>
           <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 108, objectFit: "contain" }} />
+          {divider}
           <img src={LOGO_UNDP} alt="UNDP" style={{ height: 74, objectFit: "contain" }} />
+          {divider}
           <img src={LOGO_AMEX} alt="Amex" style={{ height: 56, objectFit: "contain" }} />
+          {divider}
           <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 50, objectFit: "contain" }} />
+          {divider}
           <img src={LOGO_CMU} alt="CMU" style={{ height: 74, objectFit: "contain" }} />
         </div>
+      </div>
+      {/* closing line */}
+      <div style={{ borderTop: "1px solid #e4e8ea", padding: "14px 24px", textAlign: "center" }}>
+        <span style={{ fontSize: 12, color: C.textLight, fontWeight: 500, letterSpacing: 0.3 }}>PSA Oxygen Plants · Management System</span>
       </div>
     </footer>
   );
