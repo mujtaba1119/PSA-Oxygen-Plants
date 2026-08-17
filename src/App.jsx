@@ -1085,34 +1085,59 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   return (
     <div style={styles.shell}>
       <AppHeader user={user}><NotificationBell user={user} /><button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button></AppHeader>
+
+      {/* Teal gradient hero header */}
+      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "28px 24px 24px", color: "#fff" }}>
+        <div style={{ maxWidth: 900, margin: "0 auto" }}>
+          <div style={{ fontSize: 12, letterSpacing: 1.4, opacity: 0.8, fontWeight: 600, textTransform: "uppercase" }}>PSA Oxygen Plant</div>
+          <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4 }}>{user.name}</div>
+          <div style={{ display: "flex", gap: 0, marginTop: 20, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 16, overflow: "hidden" }}>
+            <div style={{ flex: 1, textAlign: "center", padding: "14px 8px" }}>
+              <div style={{ fontSize: 24, fontWeight: 800 }}>{mine.length}</div>
+              <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 3 }}>Total</div>
+            </div>
+            <div style={{ width: 1, background: "rgba(255,255,255,0.18)" }} />
+            <div style={{ flex: 1, textAlign: "center", padding: "14px 8px" }}>
+              <div style={{ fontSize: 24, fontWeight: 800 }}>{openCount}</div>
+              <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 3 }}>Open</div>
+            </div>
+            <div style={{ width: 1, background: "rgba(255,255,255,0.18)" }} />
+            <div style={{ flex: 1, textAlign: "center", padding: "14px 8px" }}>
+              <div style={{ fontSize: 24, fontWeight: 800 }}>{mine.length - openCount}</div>
+              <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 3 }}>Resolved</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <main className="main-responsive" style={styles.main}>
-        <section style={styles.formSection}>
-          <h2 style={styles.sectionTitle}>Register a Complaint</h2>
-          <input style={styles.input} placeholder="Your name (operator name)" value={operatorName} onChange={e => setOperatorName(e.target.value)} />
-          <ComplaintTypeSelect value={title} onChange={e => setTitle(e.target.value)} style={styles.input} />
-          <textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue in detail…" value={desc} onChange={e => setDesc(e.target.value)} />
+        <section style={styles.formSectionTeal}>
+          <h2 style={styles.sectionTitleTeal}>Submit a Ticket</h2>
+          <input style={styles.inputTeal} placeholder="Your name (operator name)" value={operatorName} onChange={e => setOperatorName(e.target.value)} />
+          <ComplaintTypeSelect value={title} onChange={e => setTitle(e.target.value)} style={styles.inputTealSelect} />
+          <textarea style={{ ...styles.inputTeal, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue in detail…" value={desc} onChange={e => setDesc(e.target.value)} />
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: C.textMid, cursor: "pointer", padding: "8px 16px", border: `1px solid ${C.border}`, borderRadius: 0 }}>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: C.teal, fontWeight: 600, cursor: "pointer", padding: "10px 18px", border: `1.5px solid ${C.tealLight}`, background: C.tealBg, borderRadius: 10 }}>
               📎 Attach Photos
               <input type="file" accept="image/*,application/pdf" multiple capture="environment" style={{ display: "none" }} onChange={e => setFiles(prev => [...prev, ...Array.from(e.target.files)])} />
             </label>
             {files.length > 0 && (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
                 {files.map((f, i) => (
-                  <div key={i} style={{ position: "relative", border: `1px solid ${C.border}`, padding: 4, borderRadius: 4 }}>
-                    {f.type.startsWith("image/") ? <img src={URL.createObjectURL(f)} alt="" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 2 }} /> : <div style={{ width: 60, height: 60, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: C.textLight, background: C.bg }}>{f.name.slice(-8)}</div>}
+                  <div key={i} style={{ position: "relative", border: `1px solid ${C.tealLight}`, padding: 4, borderRadius: 8 }}>
+                    {f.type.startsWith("image/") ? <img src={URL.createObjectURL(f)} alt="" style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 6 }} /> : <div style={{ width: 60, height: 60, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: C.textLight, background: C.bg }}>{f.name.slice(-8)}</div>}
                     <button onClick={() => setFiles(files.filter((_, j) => j !== i))} style={{ position: "absolute", top: -6, right: -6, width: 18, height: 18, borderRadius: "50%", background: C.red, color: "#fff", border: "none", fontSize: 10, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
                   </div>
                 ))}
               </div>
             )}
           </div>
-          <button disabled={!operatorName.trim() || !title.trim() || !desc.trim() || submitting} style={{ ...styles.btnPrimary, background: submitting ? "#999" : (!operatorName.trim() || !title.trim() || !desc.trim()) ? "#999" : C.black, cursor: submitting ? "not-allowed" : "pointer", pointerEvents: submitting ? "none" : "auto" }} onClick={submitComplaint}>{submitting ? "SUBMITTING..." : "SUBMIT COMPLAINT"}</button>
-          {success && <p style={styles.successMsg}>Complaint registered successfully.</p>}
+          <button disabled={!operatorName.trim() || !title.trim() || !desc.trim() || submitting} style={{ ...styles.btnTeal, background: submitting ? "#9db8b4" : (!operatorName.trim() || !title.trim() || !desc.trim()) ? "#9db8b4" : C.teal, cursor: submitting ? "not-allowed" : "pointer", pointerEvents: submitting ? "none" : "auto" }} onClick={submitComplaint}>{submitting ? "SUBMITTING..." : "SUBMIT TICKET"}</button>
+          {success && <p style={styles.successMsgTeal}>Ticket raised successfully.</p>}
         </section>
         <section style={styles.listSection}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>Your Complaints ({mine.length})</h2>{openCount > 0 && <span style={{ fontSize: 13, fontWeight: 600, color: "#9c4221", background: "#feebc8", padding: "3px 10px", borderRadius: 12 }}>{openCount} open</span>}</div>
-          {mine.length === 0 && <p style={styles.empty}>No complaints registered yet.</p>}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><h2 style={{ ...styles.sectionTitleTeal, margin: 0, borderLeft: "none", paddingLeft: 0 }}>All Tickets ({mine.length})</h2>{openCount > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: C.tealDark, background: C.tealLight, padding: "3px 12px", borderRadius: 12 }}>{openCount} open</span>}</div>
+          {mine.length === 0 && <p style={styles.empty}>No tickets raised yet.</p>}
           {mine.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={user} canResolve={true} canComment={true} isAdmin={false} isAmex={false} isProvider={false} onResolve={() => {}} onRequestResolve={handleResolve} onApprove={() => {}} onReject={() => {}} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />))}
         </section>
       </main>
@@ -1372,8 +1397,15 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
 }
 
 /* ─── Styles ─── */
-const C = { bg: "#f0f0f0", white: "#ffffff", black: "#111111", text: "#111111", textMid: "#555555", textLight: "#999999", border: "#d0d0d0", borderLight: "#e0e0e0", red: "#c0392b", green: "#27ae60" };
+const C = { bg: "#f0f2f4", white: "#ffffff", black: "#111111", text: "#111111", textMid: "#555555", textLight: "#999999", border: "#d0d0d0", borderLight: "#e0e0e0", red: "#c0392b", green: "#27ae60", teal: "#0d9488", tealDark: "#0f766e", tealLight: "#ccfbf1", tealBg: "#f0fdfa" };
 const styles = {
+  formSectionTeal: { background: C.white, borderRadius: 18, padding: 28, marginBottom: 28, border: `1px solid ${C.borderLight}`, boxShadow: "0 4px 16px rgba(15,118,110,0.08)" },
+  sectionTitleTeal: { fontSize: 18, fontWeight: 800, color: C.black, margin: "0 0 20px", letterSpacing: -0.2, borderLeft: `4px solid ${C.teal}`, paddingLeft: 12 },
+  inputTeal: { display: "block", width: "100%", padding: "14px 16px", fontSize: 14, border: `1.5px solid ${C.borderLight}`, borderRadius: 12, marginBottom: 14, outline: "none", boxSizing: "border-box", color: C.text, background: C.white, fontFamily: "'DM Sans', system-ui, sans-serif" },
+  inputTealSelect: { display: "block", width: "100%", padding: "14px 16px", fontSize: 14, border: `1.5px solid ${C.teal}`, borderRadius: 12, marginBottom: 14, outline: "none", boxSizing: "border-box", color: C.text, background: C.tealBg, fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 600, cursor: "pointer" },
+  btnTeal: { display: "block", width: "100%", padding: "15px 0", fontSize: 14, fontWeight: 700, color: C.white, background: C.teal, border: "none", borderRadius: 12, cursor: "pointer", letterSpacing: 1.2, textTransform: "uppercase", boxShadow: "0 4px 12px rgba(13,148,136,0.3)" },
+  successMsgTeal: { color: C.teal, fontSize: 14, fontWeight: 700, marginTop: 12, textAlign: "center" },
+
   loadWrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif" },
   loadLogo: { fontSize: 56, fontWeight: 800, color: C.black, letterSpacing: -3 },
   loginBg: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/grok-56ef8c23-e008-43f3-b316-fdf79b7fe10b.jpg') center/cover no-repeat`, fontFamily: "'DM Sans', system-ui, sans-serif", padding: 20 },
