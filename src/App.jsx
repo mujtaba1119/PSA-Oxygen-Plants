@@ -434,6 +434,7 @@ function PartnerFooter() {
       {/* closing line */}
       <div style={{ borderTop: "1px solid #e4e8ea", padding: "14px 24px", textAlign: "center" }}>
         <span style={{ fontSize: 12, color: C.textLight, fontWeight: 500, letterSpacing: 0.3 }}>PSA Oxygen Plants · Management System</span>
+        <div style={{ fontSize: 12.5, color: C.tealDark, fontWeight: 700, letterSpacing: 0.5, marginTop: 4 }}>oxytrack.pk</div>
       </div>
       <style>{`
         .pf-img { flex-shrink: 1; min-width: 0; }
@@ -1587,7 +1588,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
       {/* Teal gradient hero header */}
       <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "20px 24px 24px", color: "#fff" }}>
         <div style={{ maxWidth: 980, margin: "0 auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
             <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.22)", padding: "4px 12px", borderRadius: 20 }}>Management</span>
             <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
               <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
@@ -1599,7 +1600,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
               </button>
             </div>
           </div>
-          <div style={{ fontSize: 12, letterSpacing: 1.6, opacity: 0.8, fontWeight: 700, textTransform: "uppercase" }}>Project Status</div>
+          <div style={{ fontSize: 17, letterSpacing: 2, opacity: 0.9, fontWeight: 800, textTransform: "uppercase" }}>Project Status</div>
           <div style={{ display: "flex", alignItems: "baseline", marginTop: 10, gap: 10 }}>
             <span style={{ fontSize: 48, fontWeight: 800, lineHeight: 1 }}>{adminFuncCount}</span>
             <span style={{ fontSize: 18, fontWeight: 600, opacity: 0.8 }}>of {ALL_HOSPITALS.length}</span>
@@ -1809,7 +1810,7 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
       <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "20px 24px 24px", color: "#fff" }}>
         <div style={{ maxWidth: 980, margin: "0 auto" }}>
           {/* actions row */}
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 8, marginBottom: 16 }}>
             <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
             <button title="Refresh" aria-label="Refresh" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={handleRefresh}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: refreshing ? 0.5 : 1 }}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -1818,7 +1819,7 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             </button>
           </div>
-          <div style={{ fontSize: 12, letterSpacing: 1.6, opacity: 0.8, fontWeight: 700, textTransform: "uppercase" }}>Project Status</div>
+          <div style={{ fontSize: 17, letterSpacing: 2, opacity: 0.9, fontWeight: 800, textTransform: "uppercase" }}>Project Status</div>
           {/* hero metric */}
           <div style={{ display: "flex", alignItems: "baseline", marginTop: 10, gap: 10 }}>
             <span style={{ fontSize: 48, fontWeight: 800, lineHeight: 1 }}>{funcCount}</span>
