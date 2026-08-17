@@ -47,6 +47,7 @@ const LOGO_GOVT = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plan
 const LOGO_UNDP = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/UNDP.png";
 const LOGO_AMEX = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/Amex.png";
 const LOGO_NOXERIOR = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/Noxerior.png";
+const LOGO_CMU = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/CMU.png";
 
 /* ─── Data ─── */
 const GROUPS = {
@@ -345,8 +346,18 @@ function ComplaintTypeSelect({ value, onChange, style }) {
   );
 }
 
-function AppHeader({ user, children }) {
+function AppHeader({ user, children, minimal }) {
   const displayName = user.role === "hospital" ? user.name + " Hospital" : user.name;
+  if (minimal) {
+    return (
+      <div className="header-reveal top-bar-responsive" style={{ ...styles.topBar, justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", paddingLeft: 16 }}>
+          <div style={styles.topTitle}>PSA Oxygen Plants</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, paddingRight: 16 }}>{children}</div>
+      </div>
+    );
+  }
   return (
     <div className="header-reveal top-bar-responsive" style={styles.topBar}>
       <div className="top-left-responsive" style={styles.topLeft}>
@@ -367,6 +378,21 @@ function AppHeader({ user, children }) {
       </div>
       <div className="top-right-responsive" style={styles.topRight}>{children}</div>
     </div>
+  );
+}
+
+/* Partner logo footer — one line, in order: Global Fund, UNDP, Amex, Noxerior, CMU */
+function PartnerFooter() {
+  return (
+    <footer style={{ borderTop: `1px solid ${C.borderLight}`, background: C.white, padding: "26px 20px", marginTop: 20 }}>
+      <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 34, flexWrap: "wrap" }}>
+        <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 60, objectFit: "contain" }} />
+        <img src={LOGO_UNDP} alt="UNDP" style={{ height: 52, objectFit: "contain" }} />
+        <img src={LOGO_AMEX} alt="Amex" style={{ height: 40, objectFit: "contain" }} />
+        <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 36, objectFit: "contain" }} />
+        <img src={LOGO_CMU} alt="CMU" style={{ height: 52, objectFit: "contain" }} />
+      </div>
+    </footer>
   );
 }
 
@@ -1127,7 +1153,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const handleResolve = async (id) => { const c = complaints.find(x => x.id === id); await requestResolution(id, operatorName.trim() || user.name + " Hospital"); notifyUsers("resolution_request", `Resolution Requested: ${user.name}`, c ? c.title : "", user.name, id, user.id).catch(() => {}); await onRefresh(); };
   return (
     <div style={{ ...styles.shell, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
-      <AppHeader user={user}><NotificationBell user={user} onFocusComplaint={handleFocusComplaint} /><button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button></AppHeader>
+      <AppHeader user={user} minimal={true}><NotificationBell user={user} onFocusComplaint={handleFocusComplaint} /><button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button></AppHeader>
 
       {/* Teal gradient hero header */}
       <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "28px 24px 24px", color: "#fff" }}>
@@ -1197,6 +1223,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
           ))}
         </section>
       </main>
+      <PartnerFooter />
     </div>
   );
 }
