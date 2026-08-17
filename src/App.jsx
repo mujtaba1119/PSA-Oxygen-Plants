@@ -41,13 +41,13 @@ function AnimatedNumber({ value, color }) {
 }
 
 /* ─── Logo URLs ─── */
-const LOGO_FLAG = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/240_F_1475369941_dBG7IPXXeJLHejjX0ZpyqwykTxo8Wc3M-removebg-preview.png";
-const LOGO_GLOBALFUND = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/GF.png";
-const LOGO_GOVT = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/GOvt%20of%20Pakistan%20logo.png";
-const LOGO_UNDP = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/UNDP.png";
-const LOGO_AMEX = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/Amex.png";
-const LOGO_NOXERIOR = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/Noxerior.png";
-const LOGO_CMU = "https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/CMU.png";
+const LOGO_FLAG = "/logos/flag.png";
+const LOGO_GLOBALFUND = "/logos/GF.png";
+const LOGO_GOVT = "/logos/govt.png";
+const LOGO_UNDP = "/logos/UNDP.png";
+const LOGO_AMEX = "/logos/Amex.png";
+const LOGO_NOXERIOR = "/logos/Noxerior.png";
+const LOGO_CMU = "/logos/CMU.png";
 
 /* ─── Data ─── */
 const GROUPS = {
@@ -1748,7 +1748,7 @@ const styles = {
 
   loadWrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif" },
   loadLogo: { fontSize: 56, fontWeight: 800, color: C.black, letterSpacing: -3 },
-  loginBg: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: `linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('https://raw.githubusercontent.com/mujtaba1119/PSA-Oxygen-Plants/main/grok-56ef8c23-e008-43f3-b316-fdf79b7fe10b.jpg') center/cover no-repeat`, fontFamily: "'DM Sans', system-ui, sans-serif", padding: 20 },
+  loginBg: { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(180deg, #062825 0%, #0f766e 80%, #14a89a 100%)", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif', padding: 20 },
   loginCard: { background: C.white, borderRadius: 2, padding: "48px 40px", width: "100%", maxWidth: 420, border: `1px solid ${C.border}` },
   loginBrand: { display: "flex", alignItems: "center", gap: 10, marginBottom: 32 },
   brandMark: { fontSize: 32, fontWeight: 800, color: C.black, letterSpacing: -2 },
