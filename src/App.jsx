@@ -1138,7 +1138,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
           {(canComment || isAdmin) && (
             <div style={styles.commentInputRow}>
               <input style={styles.commentInput} placeholder="Write a comment…" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && post()} />
-              <button style={{ ...styles.commentSendBtn, background: (!text.trim() || posting) ? "#9db8a4" : C.green, cursor: (!text.trim() || posting) ? "not-allowed" : "pointer", boxShadow: (!text.trim() || posting) ? "none" : "0 3px 8px rgba(39,174,96,0.25)" }} onClick={post} disabled={!text.trim() || posting}>{posting ? "…" : "Post"}</button>
+              <button style={{ ...styles.commentSendBtn, background: (!text.trim() || posting) ? "#9db8b4" : C.teal, cursor: (!text.trim() || posting) ? "not-allowed" : "pointer", boxShadow: (!text.trim() || posting) ? "none" : "0 3px 8px rgba(13,148,136,0.25)" }} onClick={post} disabled={!text.trim() || posting}>{posting ? "…" : "Post"}</button>
             </div>
           )}
         </div>
@@ -1903,7 +1903,7 @@ const styles = {
   commentHeader: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   commentInputRow: { display: "flex", gap: 8, marginTop: 12 },
   commentInput: { flex: 1, padding: "11px 14px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", background: C.white, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
-  commentSendBtn: { fontSize: 12, fontWeight: 700, color: C.white, background: C.green, border: "none", borderRadius: 10, padding: "10px 24px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase", boxShadow: "0 3px 8px rgba(39,174,96,0.25)" },
+  commentSendBtn: { fontSize: 12, fontWeight: 700, color: C.white, background: C.teal, border: "none", borderRadius: 10, padding: "10px 24px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase", boxShadow: "0 3px 8px rgba(13,148,136,0.25)" },
   overviewTable: { background: C.white, borderRadius: 14, border: `1px solid ${C.tealLight}`, overflow: "auto", WebkitOverflowScrolling: "touch", boxShadow: "0 4px 14px rgba(15,118,110,0.08)" },
   overviewHeaderRow: { display: "flex", padding: "0", background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", fontWeight: 700, fontSize: 10, color: "#fff", gap: 0, minWidth: 900, letterSpacing: 1.5, textTransform: "uppercase", position: "sticky", top: 0, zIndex: 2 },
   overviewRow: { display: "flex", padding: "0", borderBottom: `1px solid ${C.borderLight}`, gap: 0, alignItems: "stretch", minWidth: 900, transition: "background 0.15s" },
