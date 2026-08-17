@@ -783,12 +783,18 @@ function LoginScreen({ onLogin }) {
         <p style={{ fontSize: 13.5, color: "#777", margin: "0 0 24px", textAlign: "center" }}>Enter your account credentials</p>
 
         <div style={{ position: "relative", marginBottom: 14 }}>
-          <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 15, opacity: 0.5 }}>👤</span>
-          <input style={{ width: "100%", padding: "14px 16px 14px 42px", fontSize: 14, border: `1.5px solid ${C.borderLight}`, borderRadius: 12, outline: "none", boxSizing: "border-box", background: "#fff", color: "#111" }} placeholder="Username" value={id} onChange={e => { setId(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.borderLight} autoComplete="username" />
+          <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <input style={{ width: "100%", padding: "14px 16px 14px 44px", fontSize: 14, border: `1.5px solid ${C.borderLight}`, borderRadius: 12, outline: "none", boxSizing: "border-box", background: "#fff", color: "#111" }} placeholder="Username" value={id} onChange={e => { setId(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.borderLight} autoComplete="username" />
         </div>
         <div style={{ position: "relative", marginBottom: 14 }}>
-          <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 15, opacity: 0.5 }}>🔒</span>
-          <input style={{ width: "100%", padding: "14px 16px 14px 42px", fontSize: 14, border: `1.5px solid ${C.borderLight}`, borderRadius: 12, outline: "none", boxSizing: "border-box", background: "#fff", color: "#111" }} type="password" placeholder="Password" value={pw} onChange={e => { setPw(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.borderLight} autoComplete="current-password" />
+          <svg style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+          <input style={{ width: "100%", padding: "14px 16px 14px 44px", fontSize: 14, border: `1.5px solid ${C.borderLight}`, borderRadius: 12, outline: "none", boxSizing: "border-box", background: "#fff", color: "#111" }} type="password" placeholder="Password" value={pw} onChange={e => { setPw(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.borderLight} autoComplete="current-password" />
         </div>
         {err && <p style={{ color: C.red, fontSize: 13, fontWeight: 600, margin: "0 0 14px", textAlign: "center" }}>{err}</p>}
         <button style={{ width: "100%", padding: "15px 0", fontSize: 14.5, fontWeight: 700, color: "#fff", background: (locked || submitting) ? "#9db8b4" : C.teal, border: "none", borderRadius: 12, cursor: (locked || submitting) ? "not-allowed" : "pointer", boxShadow: "0 4px 12px rgba(13,148,136,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={submit} disabled={locked || submitting}>{submitting ? "Signing in…" : locked ? "Locked" : "Sign in"}{!submitting && !locked && <span style={{ fontSize: 16 }}>→</span>}</button>
