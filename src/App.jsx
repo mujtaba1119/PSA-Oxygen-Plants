@@ -252,7 +252,7 @@ async function notifyUsers(type, title, message, hospital, complaintId, excludeU
 }
 
 /* ─── Notification Bell Component ─── */
-function NotificationBell({ user, onNavigate }) {
+function NotificationBell({ user, onNavigate, onFocusComplaint }) {
   const [notifs, setNotifs] = useState([]);
   const [open, setOpen] = useState(false);
   const companyName = user.company || (user.role === "company" ? user.name : null);
@@ -273,7 +273,12 @@ function NotificationBell({ user, onNavigate }) {
       markNotifRead(n.id).catch(() => {});
     }
     setOpen(false);
-    if (n.hospital && onNavigate) onNavigate(n.hospital);
+    // If a focus handler is provided (hospital view), use it to open + highlight the specific complaint/comment
+    if (n.complaint_id && onFocusComplaint) {
+      onFocusComplaint({ complaintId: n.complaint_id, isComment: n.type === "comment", commentText: n.type === "comment" ? (n.message || "") : "" });
+    } else if (n.hospital && onNavigate) {
+      onNavigate(n.hospital);
+    }
   };
   const dateFmt = { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" };
 
@@ -793,11 +798,12 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
 }
 
 /* ─── Comment Section ─── */
-function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmin }) {
+function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmin, highlightCommentText }) {
   const [comments, setComments] = useState([]); const [text, setText] = useState(""); const [posting, setPosting] = useState(false);
   const [loaded, setLoaded] = useState(false); const [expanded, setExpanded] = useState(false);
   const [editingComment, setEditingComment] = useState(null); const [editText, setEditText] = useState("");
   const [count, setCount] = useState(0);
+  const [highlightId, setHighlightId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -816,6 +822,27 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
     const iv = setInterval(() => { if (!document.hidden) loadComments(); }, 5000);
     return () => clearInterval(iv);
   }, [expanded, loadComments]);
+  // When a comment notification is clicked, auto-expand and highlight the matching comment
+  useEffect(() => {
+    if (highlightCommentText && highlightCommentText.trim()) {
+      setExpanded(true);
+    }
+  }, [highlightCommentText]);
+
+  useEffect(() => {
+    if (!highlightCommentText || !highlightCommentText.trim() || !loaded || comments.length === 0) return;
+    const preview = highlightCommentText.trim();
+    let target = null;
+    for (let i = comments.length - 1; i >= 0; i--) {
+      const content = (comments[i].content || "").trim();
+      if (content.indexOf(preview) === 0 || preview.indexOf(content.slice(0, 80)) === 0) { target = comments[i].id; break; }
+    }
+    if (!target && comments.length > 0) target = comments[comments.length - 1].id;
+    setHighlightId(target);
+    const t = setTimeout(() => setHighlightId(null), 2000);
+    return () => clearTimeout(t);
+  }, [highlightCommentText, loaded, comments.length]);
+
   const post = async () => {
     if (!text.trim() || posting) return; setPosting(true);
     const author = currentUser.role === "admin" ? "Management" : currentUser.role === "hospital" ? currentUser.name + " Hospital" : currentUser.name;
@@ -844,7 +871,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
         <div style={styles.commentBox}>
           {comments.length === 0 && <p style={{ fontSize: 13, color: "#718096", margin: "0 0 8px" }}>No comments yet.</p>}
           {comments.map(c => (
-            <div key={c.id} style={styles.commentItem}>
+            <div key={c.id} style={{ ...styles.commentItem, ...(highlightId === c.id ? { background: C.tealLight, borderRadius: 8, padding: "8px 10px", transition: "background 0.4s" } : { transition: "background 0.4s" }) }}>
               <div style={styles.commentHeader}>
                 <strong style={{ fontSize: 13, color: "#1a2332" }}>{c.author}</strong>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -932,7 +959,7 @@ function AttachmentViewer({ attachments }) {
   );
 }
 
-function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, isAmex, isProvider, onResolve, onRequestResolve, onApprove, onReject, onUnresolve, onDelete, onRefresh }) {
+function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, isAmex, isProvider, onResolve, onRequestResolve, onApprove, onReject, onUnresolve, onDelete, onRefresh, cardHighlight, highlightCommentText }) {
   const [resolving, setResolving] = useState(false); const [resolveDate, setResolveDate] = useState("");
   const [editing, setEditing] = useState(false); const [editTitle, setEditTitle] = useState(complaint.title);
   const [editDesc, setEditDesc] = useState(complaint.description); const [editSaving, setEditSaving] = useState(false);
@@ -956,8 +983,9 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
   const handleEditSave = async () => { if (!editTitle.trim() || !editDesc.trim()) return; setEditSaving(true); await updateComplaintFields(c.id, { title: editTitle.trim(), description: editDesc.trim() }); setEditSaving(false); setEditing(false); await onRefresh(); };
   const dateFmt = { year: "numeric", month: "short", day: "numeric" };
   const accent = c.status === "Resolved" ? C.green : c.status === "Pending Resolution" ? "#e0912f" : C.red;
+  const cardHighlightStyle = cardHighlight ? { boxShadow: `0 0 0 3px ${C.teal}, 0 4px 14px rgba(15,118,110,0.2)`, transition: "box-shadow 0.3s" } : { transition: "box-shadow 0.3s" };
   return (
-    <div style={styles.cardTeal}>
+    <div style={{ ...styles.cardTeal, ...cardHighlightStyle }}>
       {editing ? (
         <div style={{ padding: 18 }}>
           <ComplaintTypeSelect value={editTitle} onChange={e => setEditTitle(e.target.value)} style={{ ...styles.inputTeal, marginBottom: 8 }} />
@@ -1004,7 +1032,7 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
               {isAdmin && <button style={{ fontSize: 12, fontWeight: 500, color: C.black, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 16px", cursor: "pointer" }} onClick={() => setEditing(true)}>Edit</button>}
               {isAdmin && <button style={{ ...styles.deleteBtn, borderRadius: 8 }} onClick={handleDelete}>Delete</button>}
             </div>
-            <CommentSection complaintId={c.id} hospital={c.hospital} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} />
+            <CommentSection complaintId={c.id} hospital={c.hospital} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} highlightCommentText={highlightCommentText} />
           </div>
         </>
       )}
@@ -1028,6 +1056,17 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const [title, setTitle] = useState(""); const [desc, setDesc] = useState("");
   const [files, setFiles] = useState([]);
   const [success, setSuccess] = useState(false); const [submitting, setSubmitting] = useState(false);
+  const [focusInfo, setFocusInfo] = useState(null); // { complaintId, isComment, commentText }
+  const cardRefs = useRef({});
+
+  const handleFocusComplaint = (info) => {
+    setFocusInfo(info);
+    setTimeout(() => {
+      const el = cardRefs.current[info.complaintId];
+      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+    setTimeout(() => setFocusInfo(null), 2500);
+  };
   const mine = complaints.filter(c => c.hospital === user.name).sort((a, b) => {   const aOpen = a.status !== "Resolved" ? 0 : 1;   const bOpen = b.status !== "Resolved" ? 0 : 1;   if (aOpen !== bOpen) return aOpen - bOpen;   return new Date(b.created_at) - new Date(a.created_at); });
   const openCount = mine.filter(c => c.status !== "Resolved").length;
 
@@ -1088,7 +1127,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const handleResolve = async (id) => { const c = complaints.find(x => x.id === id); await requestResolution(id, operatorName.trim() || user.name + " Hospital"); notifyUsers("resolution_request", `Resolution Requested: ${user.name}`, c ? c.title : "", user.name, id, user.id).catch(() => {}); await onRefresh(); };
   return (
     <div style={{ ...styles.shell, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
-      <AppHeader user={user}><NotificationBell user={user} /><button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button></AppHeader>
+      <AppHeader user={user}><NotificationBell user={user} onFocusComplaint={handleFocusComplaint} /><button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button></AppHeader>
 
       {/* Teal gradient hero header */}
       <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "28px 24px 24px", color: "#fff" }}>
@@ -1145,7 +1184,17 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
         <section style={styles.listSection}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}><h2 style={{ ...styles.sectionTitleTeal, margin: 0, borderLeft: "none", paddingLeft: 0 }}>All Tickets ({mine.length})</h2>{openCount > 0 && <span style={{ fontSize: 13, fontWeight: 700, color: C.tealDark, background: C.tealLight, padding: "3px 12px", borderRadius: 12 }}>{openCount} open</span>}</div>
           {mine.length === 0 && <p style={styles.empty}>No tickets raised yet.</p>}
-          {mine.map(c => (<ComplaintCard key={c.id} complaint={c} currentUser={user} canResolve={true} canComment={true} isAdmin={false} isAmex={false} isProvider={false} onResolve={() => {}} onRequestResolve={handleResolve} onApprove={() => {}} onReject={() => {}} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} />))}
+          {mine.map(c => (
+            <div key={c.id} ref={el => { cardRefs.current[c.id] = el; }}>
+              <ComplaintCard
+                complaint={c} currentUser={user} canResolve={true} canComment={true}
+                isAdmin={false} isAmex={false} isProvider={false}
+                onResolve={() => {}} onRequestResolve={handleResolve} onApprove={() => {}} onReject={() => {}} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh}
+                cardHighlight={focusInfo && focusInfo.complaintId === c.id}
+                highlightCommentText={focusInfo && focusInfo.complaintId === c.id && focusInfo.isComment ? focusInfo.commentText : ""}
+              />
+            </div>
+          ))}
         </section>
       </main>
     </div>
