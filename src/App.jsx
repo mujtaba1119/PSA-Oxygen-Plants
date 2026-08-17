@@ -707,15 +707,16 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
   const [expandedRow, setExpandedRow] = useState(null);
 
   return (
-    <>
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
       {shutdownSites.length > 0 && (
         <div className="fade-up" style={{ background: "#fed7d7", border: "1px solid #fc8181", borderRadius: 12, padding: "16px 20px", marginBottom: 12, animationDelay: "0s" }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#e53e3e", marginBottom: 8 }}>🚨 Plant Shut Down — Not Producing Oxygen ({shutdownSites.length})</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {shutdownSites.map(h => (
-              <span key={h} style={{ fontSize: 13, fontWeight: 500, color: "#e53e3e", background: "#fff5f5", padding: "4px 12px", borderRadius: 8, display: "flex", alignItems: "center", gap: 6 }}>
+              <span key={h} style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "#b32020", background: "#fff", border: "1px solid #f5b5b5", padding: "7px 14px", borderRadius: 999, boxShadow: "0 1px 3px rgba(224,62,62,0.12)" }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#e53e3e", flexShrink: 0 }} />
                 {h}
-                {isAdmin && <button style={{ fontSize: 11, color: "#e53e3e", background: "none", border: "1px solid #e53e3e", borderRadius: 4, padding: "1px 6px", cursor: "pointer", marginLeft: 2 }} onClick={() => handleSendShutdownEmail(h)} disabled={sendingShutdown === h}>{sendingShutdown === h ? "…" : "📧"}</button>}
+                {isAdmin && <button style={{ fontSize: 11, color: "#e53e3e", background: "none", border: "1px solid #e53e3e", borderRadius: 6, padding: "1px 6px", cursor: "pointer", marginLeft: 2 }} onClick={() => handleSendShutdownEmail(h)} disabled={sendingShutdown === h}>{sendingShutdown === h ? "…" : "📧"}</button>}
               </span>
             ))}
           </div>
@@ -727,9 +728,14 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
 
       {attentionSites.length > 0 && (
         <div className="fade-up" style={{ marginBottom: 20, animationDelay: "0.4s" }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: C.red, marginBottom: 10, letterSpacing: 1.5, textTransform: "uppercase" }}>⚠ Attention Needed ({attentionSites.length})</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {attentionSites.map(h => <span key={h} style={{ fontSize: 13, fontWeight: 500, color: C.black, background: "#e0e0e0", padding: "4px 12px", borderRadius: 0 }}>{h}</span>)}
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: "#c47f1e", marginBottom: 12, letterSpacing: 1.5, textTransform: "uppercase" }}>Attention Needed ({attentionSites.length})</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {attentionSites.map(h => (
+              <span key={h} style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "#92600c", background: "#fef3e2", border: "1px solid #f7d9a8", padding: "7px 14px", borderRadius: 999, boxShadow: "0 1px 3px rgba(196,127,30,0.12)" }}>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#e0912f", flexShrink: 0 }} />
+                {h}
+              </span>
+            ))}
           </div>
         </div>
       )}
@@ -840,7 +846,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
           );
         })}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -1650,7 +1656,7 @@ const styles = {
   pwCurrent: { fontSize: 13, color: C.textLight },
   pwChangeBtn: { fontSize: 12, fontWeight: 500, color: C.black, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 0, padding: "6px 16px", cursor: "pointer" },
   pwEditRow: { display: "flex", gap: 6, alignItems: "center" },
-  pwInput: { padding: "8px 12px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 0, width: 140, outline: "none", fontFamily: "'DM Sans', system-ui, sans-serif" },
+  pwInput: { padding: "8px 12px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 0, width: 140, outline: "none", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
   pwSaveBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, padding: "8px 16px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
   pwCancelBtn: { fontSize: 13, color: C.textLight, background: "none", border: "none", cursor: "pointer", padding: "6px" },
   commentToggle: { fontSize: 12, fontWeight: 600, color: C.black, background: "none", border: "none", cursor: "pointer", padding: 0, letterSpacing: 0.5, textTransform: "uppercase" },
