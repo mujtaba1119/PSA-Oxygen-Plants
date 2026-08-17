@@ -387,13 +387,17 @@ function AppHeader({ user, children, minimal }) {
 /* Partner logo footer — one line, in order: Global Fund, UNDP, Amex, Noxerior, CMU */
 function PartnerFooter() {
   return (
-    <footer style={{ background: "#ffffff", padding: "34px 20px", borderTop: `2px solid ${C.tealLight}`, boxShadow: "0 -4px 16px rgba(0,0,0,0.05)" }}>
-      <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 46, flexWrap: "wrap" }}>
-        <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 84, objectFit: "contain" }} />
-        <img src={LOGO_UNDP} alt="UNDP" style={{ height: 74, objectFit: "contain" }} />
-        <img src={LOGO_AMEX} alt="Amex" style={{ height: 56, objectFit: "contain" }} />
-        <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 50, objectFit: "contain" }} />
-        <img src={LOGO_CMU} alt="CMU" style={{ height: 74, objectFit: "contain" }} />
+    <footer style={{ background: "#ffffff", boxShadow: "0 -4px 16px rgba(0,0,0,0.05)" }}>
+      {/* gradient accent line */}
+      <div style={{ height: 4, background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
+      <div style={{ padding: "34px 20px" }}>
+        <div style={{ maxWidth: 1000, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 46, flexWrap: "wrap" }}>
+          <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 108, objectFit: "contain" }} />
+          <img src={LOGO_UNDP} alt="UNDP" style={{ height: 74, objectFit: "contain" }} />
+          <img src={LOGO_AMEX} alt="Amex" style={{ height: 56, objectFit: "contain" }} />
+          <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 50, objectFit: "contain" }} />
+          <img src={LOGO_CMU} alt="CMU" style={{ height: 74, objectFit: "contain" }} />
+        </div>
       </div>
     </footer>
   );
