@@ -230,8 +230,10 @@ async function createNotification(userId, type, title, message, complaintId, hos
   await dbWrite({ action: "insert_notifications", rows: [{ user_id: userId, type, title, message, complaint_id: complaintId || null, hospital: hospital || null }] });
 }
 async function notifyUsers(type, title, message, hospital, complaintId, excludeUser) {
-  const providers = { "Novair": ["novair"], "Intexim": ["intexim"], "Z-Corps": ["zcorps"] };
-  const allViewers = ["amex", "undp", "cmu", "admin"];
+  // Providers limited to only their own sites
+  const providers = { "Intexim": ["intexim"], "Z-Corps": ["zcorps"] };
+  // These accounts receive notifications for ALL sites (Novair included per routing rules)
+  const allViewers = ["novair", "amex", "undp", "cmu", "admin"];
   const provider = Object.entries(GROUPS).find(([, list]) => list.includes(hospital))?.[0];
   const targets = [...allViewers];
   if (provider && providers[provider]) targets.push(...providers[provider]);
