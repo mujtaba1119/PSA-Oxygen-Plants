@@ -1316,14 +1316,43 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const filteredCompanyUsers = searchTerm ? companyUsers.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || (u.company || "").toLowerCase().includes(searchTerm.toLowerCase()) || (u.email || "").toLowerCase().includes(searchTerm.toLowerCase())) : companyUsers;
 
 
+  const adminFuncCount = ALL_HOSPITALS.filter(h => isFunctional(h, complaints, siteNotes)).length;
+  const adminResolved = complaints.filter(c => c.status === "Resolved").length;
+
   return (
-    <div style={styles.shell}>
-      <AppHeader user={user}>
-        <NotificationBell user={user} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} /><button style={styles.btnText} onClick={handleRefresh}>{refreshing ? "…" : "REFRESH"}</button>
-        <button style={styles.btnBlack} onClick={onLogout}>SIGN OUT</button>
-      </AppHeader>
+    <div style={{ ...styles.shell, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+      {/* Teal gradient hero header */}
+      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "20px 24px 24px", color: "#fff" }}>
+        <div style={{ maxWidth: 980, margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.22)", padding: "4px 12px", borderRadius: 20 }}>Management</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <NotificationBell user={user} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
+              <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 14px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={handleRefresh}>{refreshing ? "…" : "Refresh"}</button>
+              <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 16px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={onLogout}>Sign Out</button>
+            </div>
+          </div>
+          <div style={{ fontSize: 12, letterSpacing: 1.6, opacity: 0.8, fontWeight: 700, textTransform: "uppercase" }}>Project Status</div>
+          <div style={{ display: "flex", alignItems: "baseline", marginTop: 10, gap: 10 }}>
+            <span style={{ fontSize: 48, fontWeight: 800, lineHeight: 1 }}>{adminFuncCount}</span>
+            <span style={{ fontSize: 18, fontWeight: 600, opacity: 0.8 }}>of {ALL_HOSPITALS.length}</span>
+            <span style={{ fontSize: 15, fontWeight: 600, opacity: 0.9 }}>Plants Functional</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", marginTop: 18, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 16, padding: "14px 8px" }}>
+            <div style={{ flex: 1, textAlign: "center" }}>
+              <div style={{ fontSize: 22, fontWeight: 800 }}>{totalOpen}</div>
+              <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 3 }}>Open Tickets</div>
+            </div>
+            <div style={{ width: 1, height: 34, background: "rgba(255,255,255,0.18)" }} />
+            <div style={{ flex: 1, textAlign: "center" }}>
+              <div style={{ fontSize: 22, fontWeight: 800 }}>{adminResolved}</div>
+              <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 3 }}>Resolved</div>
+            </div>
+          </div>
+        </div>
+      </div>
       <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s" }}>
-        {["overview","complaints","submit","users","emails"].map(t => (<button key={t} className="tab-btn" style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>{t === "overview" ? "Overview" : t === "complaints" ? "Complaints" : t === "submit" ? "Submit" : t === "users" ? "Users" : "Emails"}</button>))}
+        {["overview","complaints","submit","users","emails"].map(t => (<button key={t} className="tab-btn" style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>{t === "overview" ? "Overview" : t === "complaints" ? "Tickets" : t === "submit" ? "Submit" : t === "users" ? "Users" : "Emails"}</button>))}
       </div>
       <main className="main-responsive" style={styles.main}>
         <div key={tab} className="scale-in">
@@ -1473,6 +1502,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         </>)}
         </div>
       </main>
+      <PartnerFooter />
     </div>
   );
 }
@@ -1609,9 +1639,9 @@ const styles = {
   groupHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8, paddingBottom: 12, borderBottom: `2px solid ${C.black}` },
   groupTitle: { fontSize: 16, fontWeight: 600, color: C.black, margin: 0, letterSpacing: 0.5, textTransform: "uppercase" },
   groupBadge: { fontSize: 12, fontWeight: 500, color: C.textMid, background: C.white, borderRadius: 0, padding: "4px 14px", border: `1px solid ${C.borderLight}` },
-  tabBar: { display: "flex", gap: 8, maxWidth: 980, margin: "0 auto", padding: "12px 24px 24px", flexWrap: "wrap", justifyContent: "center" },
-  tabActive: { padding: "10px 22px", fontSize: 12, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
-  tabInactive: { padding: "10px 22px", fontSize: 12, fontWeight: 500, color: C.black, background: "transparent", border: `1px solid ${C.black}`, borderRadius: 0, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
+  tabBar: { display: "flex", gap: 8, maxWidth: 980, margin: "0 auto", padding: "16px 24px 20px", flexWrap: "wrap", justifyContent: "center" },
+  tabActive: { padding: "10px 24px", fontSize: 12, fontWeight: 700, color: C.white, background: C.teal, border: `1px solid ${C.teal}`, borderRadius: 10, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase", boxShadow: "0 3px 8px rgba(13,148,136,0.25)" },
+  tabInactive: { padding: "10px 24px", fontSize: 12, fontWeight: 600, color: C.tealDark, background: C.white, border: `1px solid ${C.tealLight}`, borderRadius: 10, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
   pwCard: { background: C.white, borderRadius: 0, padding: "14px 18px", marginBottom: 8, border: `1px solid ${C.borderLight}` },
   pwRow: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 },
   pwName: { fontSize: 15, fontWeight: 600, color: C.black, marginRight: 8 },
@@ -1630,11 +1660,11 @@ const styles = {
   commentInputRow: { display: "flex", gap: 8, marginTop: 12 },
   commentInput: { flex: 1, padding: "10px 14px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 0, outline: "none", fontFamily: "'DM Sans', system-ui, sans-serif" },
   commentSendBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, padding: "10px 22px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
-  overviewTable: { background: C.white, borderRadius: 12, border: `1px solid ${C.borderLight}`, overflow: "auto", WebkitOverflowScrolling: "touch" },
-  overviewHeaderRow: { display: "flex", padding: "0", background: "#1a1a1a", fontWeight: 600, fontSize: 10, color: "#fff", gap: 0, minWidth: 900, letterSpacing: 1.5, textTransform: "uppercase", position: "sticky", top: 0, zIndex: 2 },
+  overviewTable: { background: C.white, borderRadius: 14, border: `1px solid ${C.tealLight}`, overflow: "auto", WebkitOverflowScrolling: "touch", boxShadow: "0 4px 14px rgba(15,118,110,0.08)" },
+  overviewHeaderRow: { display: "flex", padding: "0", background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", fontWeight: 700, fontSize: 10, color: "#fff", gap: 0, minWidth: 900, letterSpacing: 1.5, textTransform: "uppercase", position: "sticky", top: 0, zIndex: 2 },
   overviewRow: { display: "flex", padding: "0", borderBottom: `1px solid #eee`, gap: 0, alignItems: "stretch", minWidth: 900, transition: "background 0.15s" },
   ovCell: { padding: "14px 16px", borderRight: `1px solid #eee`, fontSize: 13, display: "flex", flexDirection: "column", justifyContent: "center" },
-  ovCellHeader: { padding: "14px 16px", borderRight: "1px solid #333", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" },
+  ovCellHeader: { padding: "14px 16px", borderRight: "1px solid rgba(255,255,255,0.15)", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" },
   ovCellSr: { width: 40, flexShrink: 0, justifyContent: "center", alignItems: "center" },
   ovCellSite: { width: 160, flexShrink: 0 },
   ovCellProvider: { width: 100, flexShrink: 0 },
