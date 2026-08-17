@@ -297,9 +297,12 @@ function NotificationBell({ user, onNavigate, onFocusComplaint, light }) {
 
   return (
     <div ref={bellRef} style={{ position: "relative" }}>
-      <button onClick={handleOpen} style={{ background: light ? "rgba(255,255,255,0.15)" : "none", border: light ? "1px solid rgba(255,255,255,0.25)" : "none", borderRadius: light ? 10 : 0, cursor: "pointer", padding: light ? "7px 11px" : "6px 10px", fontSize: 18, position: "relative", lineHeight: 1 }}>
-        🔔
-        {unread > 0 && <span style={{ position: "absolute", top: light ? -4 : 2, right: light ? -4 : 2, background: "#c0392b", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", border: light ? "2px solid #0d9488" : "none" }}>{unread > 9 ? "9+" : unread}</span>}
+      <button onClick={handleOpen} style={{ background: light ? "rgba(255,255,255,0.15)" : "none", border: light ? "1px solid rgba(255,255,255,0.25)" : "1px solid " + C.border, borderRadius: 10, cursor: "pointer", padding: "8px 10px", position: "relative", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={light ? "#ffffff" : C.tealDark} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+        {unread > 0 && <span style={{ position: "absolute", top: -5, right: -5, background: "#c0392b", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", border: light ? "2px solid #0d9488" : "2px solid #fff" }}>{unread > 9 ? "9+" : unread}</span>}
       </button>
       {open && createPortal(<>
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998, background: "rgba(0,0,0,0.1)" }} onClick={() => setOpen(false)} />
@@ -383,14 +386,15 @@ function AppHeader({ user, children, minimal }) {
 
 /* Partner logo footer — one line, in order: Global Fund, UNDP, Amex, Noxerior, CMU */
 function PartnerFooter() {
+  var tile = { background: "#fff", borderRadius: 12, padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.25)" };
   return (
-    <footer style={{ background: "#0a0a0a", padding: "30px 20px" }}>
-      <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 38, flexWrap: "wrap" }}>
-        <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 62, objectFit: "contain" }} />
-        <img src={LOGO_UNDP} alt="UNDP" style={{ height: 54, objectFit: "contain" }} />
-        <img src={LOGO_AMEX} alt="Amex" style={{ height: 42, objectFit: "contain" }} />
-        <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 38, objectFit: "contain" }} />
-        <img src={LOGO_CMU} alt="CMU" style={{ height: 54, objectFit: "contain" }} />
+    <footer style={{ background: "#0d2b28", padding: "30px 20px" }}>
+      <div style={{ maxWidth: 940, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 18, flexWrap: "wrap" }}>
+        <div style={tile}><img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 48, objectFit: "contain" }} /></div>
+        <div style={tile}><img src={LOGO_UNDP} alt="UNDP" style={{ height: 46, objectFit: "contain" }} /></div>
+        <div style={tile}><img src={LOGO_AMEX} alt="Amex" style={{ height: 34, objectFit: "contain" }} /></div>
+        <div style={tile}><img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 30, objectFit: "contain" }} /></div>
+        <div style={tile}><img src={LOGO_CMU} alt="CMU" style={{ height: 46, objectFit: "contain" }} /></div>
       </div>
     </footer>
   );
@@ -1156,13 +1160,10 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
       {/* Teal gradient hero header — now the very top, with actions integrated */}
       <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "20px 24px 24px", color: "#fff" }}>
         <div style={{ maxWidth: 900, margin: "0 auto" }}>
-          {/* top row: brand + actions */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: 0.3 }}>PSA Oxygen Plants</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <NotificationBell user={user} onFocusComplaint={handleFocusComplaint} light={true} />
-              <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 16px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={onLogout}>Sign Out</button>
-            </div>
+          {/* top row: actions only, right-aligned */}
+          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <NotificationBell user={user} onFocusComplaint={handleFocusComplaint} light={true} />
+            <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 16px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={onLogout}>Sign Out</button>
           </div>
           <div style={{ fontSize: 12, letterSpacing: 1.4, opacity: 0.8, fontWeight: 600, textTransform: "uppercase" }}>PSA Oxygen Plant</div>
           <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4 }}>{user.name}</div>
