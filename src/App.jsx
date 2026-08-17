@@ -336,7 +336,7 @@ function NotificationBell({ user, onNavigate, onFocusComplaint, light, complaint
                   {!n.hospital && !ticketTitle && n.message && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}>{n.message}</p>}
                 </>
               )}
-              <span style={{ fontSize: 10, color: "#999", display: "block", marginTop: 3 }}>{new Date(n.created_at).toLocaleDateString("en-PK", dateFmt)} · {new Date(n.created_at).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}</span>
+              <span style={{ fontSize: 10, color: "#999", display: "block", marginTop: 3 }}>{new Date(n.created_at).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" })} · {new Date(n.created_at).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}</span>
             </div>
             );
           })}
