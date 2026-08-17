@@ -795,20 +795,41 @@ function LoginScreen({ onLogin }) {
       </div>
 
       {/* Partner logos panel — one row with dividers, teal accent line */}
-      <div style={{ width: "100%", maxWidth: 640, marginTop: 26, background: "#fff", borderRadius: 18, overflow: "hidden", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
+      <div className="login-logo-panel" style={{ width: "100%", maxWidth: 640, marginTop: 26, background: "#fff", borderRadius: 18, overflow: "hidden", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
         <div style={{ height: 5, width: "100%", background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 24px", gap: 6 }}>
-          <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 88, objectFit: "contain", flexShrink: 0 }} />
-          <div style={{ width: 1, height: 58, background: "#e0e4e6", flexShrink: 0 }} />
-          <img src={LOGO_UNDP} alt="UNDP" style={{ height: 74, objectFit: "contain", flexShrink: 0 }} />
-          <div style={{ width: 1, height: 58, background: "#e0e4e6", flexShrink: 0 }} />
-          <img src={LOGO_AMEX} alt="Amex" style={{ height: 46, objectFit: "contain", flexShrink: 0 }} />
-          <div style={{ width: 1, height: 58, background: "#e0e4e6", flexShrink: 0 }} />
-          <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 46, objectFit: "contain", flexShrink: 0 }} />
-          <div style={{ width: 1, height: 58, background: "#e0e4e6", flexShrink: 0 }} />
-          <img src={LOGO_CMU} alt="CMU" style={{ height: 74, objectFit: "contain", flexShrink: 0 }} />
+        <div className="login-logo-row" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 20px", gap: 6 }}>
+          <img className="lg-img lg-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 88, objectFit: "contain" }} />
+          <div className="lg-div" style={{ width: 1, height: 58, background: "#e0e4e6", flexShrink: 0 }} />
+          <img className="lg-img lg-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 74, objectFit: "contain" }} />
+          <div className="lg-div" style={{ width: 1, height: 58, background: "#e0e4e6", flexShrink: 0 }} />
+          <img className="lg-img lg-amex" src={LOGO_AMEX} alt="Amex" style={{ height: 46, objectFit: "contain" }} />
+          <div className="lg-div" style={{ width: 1, height: 58, background: "#e0e4e6", flexShrink: 0 }} />
+          <img className="lg-img lg-nox" src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 46, objectFit: "contain" }} />
+          <div className="lg-div" style={{ width: 1, height: 58, background: "#e0e4e6", flexShrink: 0 }} />
+          <img className="lg-img lg-cmu" src={LOGO_CMU} alt="CMU" style={{ height: 74, objectFit: "contain" }} />
         </div>
       </div>
+      <style>{`
+        .lg-img { flex-shrink: 1; min-width: 0; max-width: 100%; }
+        @media (max-width: 640px) {
+          .login-logo-row { padding: 16px 10px !important; gap: 3px !important; }
+          .lg-div { height: 40px !important; }
+          .lg-gf { height: 54px !important; }
+          .lg-undp { height: 46px !important; }
+          .lg-amex { height: 30px !important; }
+          .lg-nox { height: 30px !important; }
+          .lg-cmu { height: 46px !important; }
+        }
+        @media (max-width: 400px) {
+          .login-logo-row { padding: 14px 8px !important; gap: 2px !important; }
+          .lg-div { height: 34px !important; }
+          .lg-gf { height: 44px !important; }
+          .lg-undp { height: 38px !important; }
+          .lg-amex { height: 24px !important; }
+          .lg-nox { height: 24px !important; }
+          .lg-cmu { height: 38px !important; }
+        }
+      `}</style>
     </div>
   );
 }
