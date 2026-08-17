@@ -653,15 +653,49 @@ function LoginScreen({ onLogin }) {
     }
   };
   return (
-    <div style={styles.loginBg}><div className="login-card-responsive" style={styles.loginCard}>
-      <div style={styles.loginBrand}><span style={styles.brandMark}>O₂</span><span style={styles.brandText}>PSA Oxygen Plant</span></div>
-      <h2 style={styles.loginTitle}>Complaint Portal</h2>
-      <p style={styles.loginSub}>Sign in with your credentials</p>
-      <input style={styles.input} placeholder="Username" value={id} onChange={e => { setId(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} autoComplete="username" />
-      <input style={styles.input} type="password" placeholder="Password" value={pw} onChange={e => { setPw(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} autoComplete="current-password" />
-      {err && <p style={styles.err}>{err}</p>}
-      <button style={{ ...styles.btnPrimary, opacity: (locked || submitting) ? 0.5 : 1 }} onClick={submit} disabled={locked || submitting}>{submitting ? "Signing in…" : locked ? "Locked" : "Sign In"}</button>
-    </div></div>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px", background: "linear-gradient(180deg, #062825 0%, #0b3b38 30%, #0f5650 55%, #0f766e 80%, #14a89a 100%)", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+      {/* Title */}
+      <div style={{ textAlign: "center", marginBottom: 26 }}>
+        <div style={{ fontSize: 26, fontWeight: 800, color: "#fff", letterSpacing: 0.3 }}>PSA Oxygen Plants</div>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 8 }}>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#5eead4", display: "inline-block" }} />
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: 500 }}>Management System</span>
+        </div>
+      </div>
+
+      {/* Sign-in card */}
+      <div className="login-card-responsive" style={{ width: "100%", maxWidth: 380, background: "#fff", borderRadius: 20, padding: "32px 28px", boxShadow: "0 20px 50px rgba(0,0,0,0.3)" }}>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: "#111", margin: "0 0 4px", textAlign: "center" }}>Sign in to continue</h2>
+        <p style={{ fontSize: 13.5, color: "#777", margin: "0 0 24px", textAlign: "center" }}>Enter your account credentials</p>
+
+        <div style={{ position: "relative", marginBottom: 14 }}>
+          <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 15, opacity: 0.5 }}>👤</span>
+          <input style={{ width: "100%", padding: "14px 16px 14px 42px", fontSize: 14, border: `1.5px solid ${C.borderLight}`, borderRadius: 12, outline: "none", boxSizing: "border-box", background: "#fff", color: "#111" }} placeholder="Username" value={id} onChange={e => { setId(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.borderLight} autoComplete="username" />
+        </div>
+        <div style={{ position: "relative", marginBottom: 14 }}>
+          <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 15, opacity: 0.5 }}>🔒</span>
+          <input style={{ width: "100%", padding: "14px 16px 14px 42px", fontSize: 14, border: `1.5px solid ${C.borderLight}`, borderRadius: 12, outline: "none", boxSizing: "border-box", background: "#fff", color: "#111" }} type="password" placeholder="Password" value={pw} onChange={e => { setPw(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.borderLight} autoComplete="current-password" />
+        </div>
+        {err && <p style={{ color: C.red, fontSize: 13, fontWeight: 600, margin: "0 0 14px", textAlign: "center" }}>{err}</p>}
+        <button style={{ width: "100%", padding: "15px 0", fontSize: 14.5, fontWeight: 700, color: "#fff", background: (locked || submitting) ? "#9db8b4" : C.teal, border: "none", borderRadius: 12, cursor: (locked || submitting) ? "not-allowed" : "pointer", boxShadow: "0 4px 12px rgba(13,148,136,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={submit} disabled={locked || submitting}>{submitting ? "Signing in…" : locked ? "Locked" : "Sign in"}{!submitting && !locked && <span style={{ fontSize: 16 }}>→</span>}</button>
+      </div>
+
+      {/* Partner logos panel — one row with dividers, teal accent line */}
+      <div style={{ width: "100%", maxWidth: 520, marginTop: 26, background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
+        <div style={{ height: 4, width: "100%", background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 18px", gap: 4 }}>
+          <img src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 62, objectFit: "contain", flexShrink: 0 }} />
+          <div style={{ width: 1, height: 44, background: "#e0e4e6", flexShrink: 0 }} />
+          <img src={LOGO_UNDP} alt="UNDP" style={{ height: 54, objectFit: "contain", flexShrink: 0 }} />
+          <div style={{ width: 1, height: 44, background: "#e0e4e6", flexShrink: 0 }} />
+          <img src={LOGO_AMEX} alt="Amex" style={{ height: 34, objectFit: "contain", flexShrink: 0 }} />
+          <div style={{ width: 1, height: 44, background: "#e0e4e6", flexShrink: 0 }} />
+          <img src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 34, objectFit: "contain", flexShrink: 0 }} />
+          <div style={{ width: 1, height: 44, background: "#e0e4e6", flexShrink: 0 }} />
+          <img src={LOGO_CMU} alt="CMU" style={{ height: 54, objectFit: "contain", flexShrink: 0 }} />
+        </div>
+      </div>
+    </div>
   );
 }
 
