@@ -165,9 +165,9 @@ export default async function handler(req, res) {
     // ─────────── COMMENTS ───────────
     if (action === "insert_comment") {
       const { complaint_id, author, author_role, content } = body;
-      if (!complaint_id || !author || !content) return json(res, 400, { error: "Missing fields" });
+      if (!complaint_id || !content) return json(res, 400, { error: "Missing fields" });
       const { data, error } = await admin.from("comments").insert([{
-        complaint_id, author, author_role: author_role || null, content,
+        complaint_id, author: author || "", author_role: author_role || null, content,
       }]).select();
       if (error) return json(res, 400, { error: error.message });
       return json(res, 200, { comment: data[0] });
