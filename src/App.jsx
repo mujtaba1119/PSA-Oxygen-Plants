@@ -485,6 +485,8 @@ function PartnerFooter() {
         .pf-img { flex-shrink: 1; min-width: 0; }
         .tab-download-btn { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); }
         @media (max-width: 640px) {
+          .refresh-label { display: none !important; }
+          .refresh-btn { padding: 8px 10px !important; gap: 0 !important; }
           .tab-download-btn { position: static !important; transform: none !important; width: 100%; margin-top: 10px; text-align: center; }
           .pf-row { gap: 8px !important; }
           .pf-div { height: 40px !important; }
@@ -1641,8 +1643,9 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
             <div style={{ fontSize: 17, letterSpacing: 2, opacity: 0.9, fontWeight: 800, textTransform: "uppercase" }}>Project Status</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
-              <button title="Refresh" aria-label="Refresh" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={handleRefresh}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: refreshing ? 0.5 : 1 }}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              <button className="refresh-btn" title="Refresh" aria-label="Refresh" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 12.5, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }} onClick={handleRefresh}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: refreshing ? 0.5 : 1 }}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                <span className="refresh-label">Refresh</span>
               </button>
               <button title="Sign Out" aria-label="Sign Out" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={onLogout}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -1862,8 +1865,9 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
             <div style={{ fontSize: 17, letterSpacing: 2, opacity: 0.9, fontWeight: 800, textTransform: "uppercase" }}>Project Status</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
-              <button title="Refresh" aria-label="Refresh" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={handleRefresh}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: refreshing ? 0.5 : 1 }}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              <button className="refresh-btn" title="Refresh" aria-label="Refresh" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 12.5, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }} onClick={handleRefresh}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: refreshing ? 0.5 : 1 }}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                <span className="refresh-label">Refresh</span>
               </button>
               <button title="Sign Out" aria-label="Sign Out" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={onLogout}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
