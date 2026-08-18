@@ -1286,7 +1286,8 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
   const [editing, setEditing] = useState(false); const [editTitle, setEditTitle] = useState(complaint.title);
   const [editDesc, setEditDesc] = useState(complaint.description); const [editSaving, setEditSaving] = useState(false);
   const [rejecting, setRejecting] = useState(false); const [rejectReason, setRejectReason] = useState("");
-  const [expanded, setExpanded] = useState(false);
+  // Open (unresolved) tickets start expanded; resolved tickets start collapsed until clicked
+  const [expanded, setExpanded] = useState(complaint.status !== "Resolved");
   const c = complaint;
 
   // Auto-expand when this card is focused from a notification
