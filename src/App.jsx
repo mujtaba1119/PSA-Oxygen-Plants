@@ -1588,6 +1588,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const [adminSubmitting, setAdminSubmitting] = useState(false); const [adminSuccess, setAdminSuccess] = useState(false);
   const [newUserId, setNewUserId] = useState(""); const [newUserName, setNewUserName] = useState(""); const [newUserRole, setNewUserRole] = useState("company"); const [newUserPw, setNewUserPw] = useState(""); const [newUserCompany, setNewUserCompany] = useState("Amex"); const [newUserEmail, setNewUserEmail] = useState(""); const [addingUser, setAddingUser] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [adminFiles, setAdminFiles] = useState([]);
   const [pendingFocus, setPendingFocus] = useState(null);
   const handleNotifFocus = (info) => {
     setTab("complaints");
@@ -1615,7 +1616,50 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   };
   const handleAddEmail = async () => { if (!newEmail.trim() || emailSaving) return; setEmailSaving(true); await addEmail(emailGroup, newEmail.trim()); setNewEmail(""); setEmailSaving(false); await onRefresh(); };
   const handleDeleteEmail = async (id) => { await deleteEmailRecord(id); await onRefresh(); };
-  const submitAdminComplaint = async () => { if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return; setAdminSubmitting(true); const r = await insertComplaint(adminHospital, adminTitle.trim(), adminDesc.trim(), adminDate || null, null); setAdminSubmitting(false); if (r) { setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); } };
+  const adminCompressImage = (file) => new Promise((resolve) => {
+    if (!file.type.startsWith("image/")) { resolve(file); return; }
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = e => { img.src = e.target.result; };
+    img.onload = () => {
+      const maxDim = 1600;
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round(height * maxDim / width); width = maxDim; }
+        else { width = Math.round(width * maxDim / height); height = maxDim; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width; canvas.height = height;
+      canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+      canvas.toBlob(blob => {
+        resolve(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }));
+      }, "image/jpeg", 0.75);
+    };
+    reader.readAsDataURL(file);
+  });
+
+  const adminDoUpload = async (complaintId, fileList) => {
+    for (const rawFile of fileList) {
+      try {
+        const file = await adminCompressImage(rawFile);
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(",")[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const res = await fetch("/api/attachment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ complaintId, fileName: file.name, contentType: file.type, base64Data })
+        });
+        const data = await res.json();
+        if (!res.ok) console.error("Upload error:", data.error);
+      } catch (e) { console.error("Upload failed:", e); }
+    }
+  };
+
+  const submitAdminComplaint = async () => { if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return; setAdminSubmitting(true); const savedFiles = [...adminFiles]; const r = await insertComplaint(adminHospital, adminTitle.trim(), adminDesc.trim(), adminDate || null, null); if (r) { if (savedFiles.length > 0) await adminDoUpload(r.id, savedFiles); notifyUsers("new_complaint", `New Complaint: ${adminHospital}`, adminTitle.trim(), adminHospital, r.id, user.id).catch(() => {}); setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminFiles([]); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); } setAdminSubmitting(false); };
   const handleAddUser = async () => {
     if (!newUserName.trim() || !newUserPw.trim() || addingUser) return;
     if (newUserPw.trim().length < 8) { alert("Password must be at least 8 characters"); return; }
@@ -1688,7 +1732,57 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} onViewSite={(h) => { setTab("complaints"); setSelected(h); }} />}
         {tab === "complaints" && !selected && (<GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} />)}
         {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} isAmex={false} isProvider={false} onBack={() => setSelected(null)} onResolve={handleResolve} onRequestResolve={handleRequestResolve} onApprove={handleApprove} onReject={handleReject} onUnresolve={handleUnresolve} onDelete={handleDelete} onRefresh={onRefresh} focusInfo={pendingFocus} />)}
-        {tab === "submit" && (<section style={styles.formSection}><h2 style={styles.sectionTitle}>Submit Complaint on Behalf of Hospital</h2><select style={{ ...styles.input, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h} — {getProvider(h)}</option>)}</select><ComplaintTypeSelect value={adminTitle} onChange={e => setAdminTitle(e.target.value)} style={styles.input} /><textarea style={{ ...styles.input, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} /><div style={{ marginBottom: 12 }}><label style={{ fontSize: 13, color: "#4a5568", marginBottom: 4, display: "block" }}>Date (leave empty for today)</label><input style={styles.input} type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} /></div><button style={{ ...styles.btnPrimary, opacity: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? 0.5 : 1 }} onClick={submitAdminComplaint}>{adminSubmitting ? "Submitting…" : "Submit Complaint"}</button>{adminSuccess && <p style={styles.successMsg}>Complaint submitted for {adminHospital}.</p>}</section>)}
+        {tab === "submit" && (
+          <section style={{ maxWidth: 640, margin: "0 auto", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+            <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.tealLight}`, boxShadow: "0 4px 16px rgba(15,118,110,0.08)", overflow: "hidden" }}>
+              <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "18px 22px" }}>
+                <div style={{ fontSize: 11, letterSpacing: 1.4, opacity: 0.85, fontWeight: 700, textTransform: "uppercase", color: "#fff" }}>New Ticket</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", marginTop: 2 }}>Submit on Behalf of a Site</div>
+              </div>
+              <div style={{ padding: 22 }}>
+                <label style={styles.fieldLabel}>Site</label>
+                <select style={{ ...styles.tealInput, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h} — {getProvider(h)}</option>)}</select>
+
+                <label style={styles.fieldLabel}>Issue Type</label>
+                <ComplaintTypeSelect value={adminTitle} onChange={e => setAdminTitle(e.target.value)} style={styles.tealInput} />
+
+                <label style={styles.fieldLabel}>Description</label>
+                <textarea style={{ ...styles.tealInput, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} />
+
+                <label style={styles.fieldLabel}>Date (leave empty for today)</label>
+                <input style={styles.tealInput} type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} />
+
+                <label style={styles.fieldLabel}>Attachments (optional)</label>
+                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", border: `1.5px dashed ${C.teal}`, borderRadius: 12, background: C.tealBg, color: C.tealDark, fontSize: 13.5, fontWeight: 600, cursor: "pointer", marginBottom: 12 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.tealDark} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Add photos or PDF
+                  <input type="file" accept="image/*,application/pdf" multiple style={{ display: "none" }} onChange={e => setAdminFiles(prev => [...prev, ...Array.from(e.target.files)])} />
+                </label>
+                {adminFiles.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+                    {adminFiles.map((f, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: "6px 10px", fontSize: 12, color: C.tealDark }}>
+                        <span style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                        <span style={{ cursor: "pointer", fontWeight: 700, color: C.red }} onClick={() => setAdminFiles(prev => prev.filter((_, idx) => idx !== i))}>✕</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button style={{ width: "100%", padding: "14px 0", fontSize: 14, fontWeight: 700, color: "#fff", background: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? "#9db8b4" : C.teal, border: "none", borderRadius: 12, cursor: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? "not-allowed" : "pointer", letterSpacing: 0.5, textTransform: "uppercase", boxShadow: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? "none" : "0 4px 12px rgba(13,148,136,0.3)" }} onClick={submitAdminComplaint} disabled={!adminTitle.trim() || !adminDesc.trim() || adminSubmitting}>{adminSubmitting ? "Submitting…" : "Submit Ticket"}</button>
+
+                {adminSuccess && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14, padding: "14px 16px", background: "#e6f7ee", border: "1px solid #a7e3c4", borderRadius: 12 }}>
+                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#27ae60", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "#166534" }}>Ticket submitted for {adminHospital}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
         {tab === "users" && (<>
           {/* Add User Form */}
           <div style={styles.formSection}>
@@ -1710,7 +1804,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 
           {/* Admin account */}
           <div style={{ marginBottom: 24 }}>
-            <div style={{ ...styles.groupHeader, borderBottom: `2px solid ${C.black}`, marginBottom: 10, paddingBottom: 8 }}>
+            <div style={{ ...styles.groupHeader, borderBottom: `1px solid ${C.tealLight}`, marginBottom: 10, paddingBottom: 8 }}>
               <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, letterSpacing: 0.5, textTransform: "uppercase" }}>Admin</h3>
             </div>
             {companyUsers.filter(u => u.role === "admin").map(u => (
@@ -1735,7 +1829,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
             if (!masterUser && indivUsers.length === 0) return null;
             return (
               <div key={company} style={{ marginBottom: 24 }}>
-                <div style={{ ...styles.groupHeader, borderBottom: `2px solid ${C.black}`, marginBottom: 10, paddingBottom: 8 }}>
+                <div style={{ ...styles.groupHeader, borderBottom: `1px solid ${C.tealLight}`, marginBottom: 10, paddingBottom: 8 }}>
                   <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, letterSpacing: 0.5, textTransform: "uppercase" }}>{company} <span style={{ fontSize: 10, fontWeight: 400, color: C.textLight, letterSpacing: 1 }}>— COMPANY</span></h3>
                   <span style={{ fontSize: 11, color: C.textLight }}>{(masterUser ? 1 : 0) + indivUsers.length} account(s)</span>
                 </div>
@@ -1778,7 +1872,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
             if (!masterUser && indivUsers.length === 0) return null;
             return (
               <div key={company} style={{ marginBottom: 24 }}>
-                <div style={{ ...styles.groupHeader, borderBottom: `2px solid ${C.black}`, marginBottom: 10, paddingBottom: 8 }}>
+                <div style={{ ...styles.groupHeader, borderBottom: `1px solid ${C.tealLight}`, marginBottom: 10, paddingBottom: 8 }}>
                   <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, letterSpacing: 0.5, textTransform: "uppercase" }}>{company} <span style={{ fontSize: 10, fontWeight: 400, color: C.textLight, letterSpacing: 1 }}>— VIEWER</span></h3>
                   <span style={{ fontSize: 11, color: C.textLight }}>{(masterUser ? 1 : 0) + indivUsers.length} account(s)</span>
                 </div>
@@ -1814,7 +1908,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 
           {/* Hospital accounts by provider */}
           {Object.entries(GROUPS).map(([provider, hospitals]) => (<div key={provider} style={{ marginTop: 24 }}>
-            <div style={{ ...styles.groupHeader, borderBottom: `2px solid ${C.black}`, marginBottom: 10, paddingBottom: 8 }}><h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, letterSpacing: 0.5, textTransform: "uppercase" }}>{provider} — Hospitals</h3></div>
+            <div style={{ ...styles.groupHeader, borderBottom: `1px solid ${C.tealLight}`, marginBottom: 10, paddingBottom: 8 }}><h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, letterSpacing: 0.5, textTransform: "uppercase" }}>{provider} — Hospitals</h3></div>
             {hospitalUsers.filter(u => hospitals.some(h => h.toLowerCase().replace(/\s+/g, "") === u.id.toLowerCase().replace(/\s+/g, ""))).map(u => (<div key={u.id} style={{ ...styles.pwCard, marginBottom: 4 }}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong></div><div style={styles.pwRight}>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} type="password" placeholder="New password (min 8)" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Password</button>)}<button style={{ fontSize: 11, color: C.red, background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button></div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}
           </div>))}
         </>)}
@@ -1943,7 +2037,7 @@ const styles = {
   brandText: { fontSize: 14, fontWeight: 400, color: C.textMid, letterSpacing: 1, textTransform: "uppercase" },
   loginTitle: { fontSize: 28, fontWeight: 300, color: C.black, margin: "0 0 4px", letterSpacing: -0.5 },
   loginSub: { fontSize: 14, color: C.textLight, margin: "0 0 28px" },
-  input: { display: "block", width: "100%", padding: "14px 16px", fontSize: 14, border: `1px solid ${C.border}`, borderRadius: 0, marginBottom: 14, outline: "none", boxSizing: "border-box", color: C.text, background: C.white, fontFamily: "'DM Sans', system-ui, sans-serif" },
+  input: { display: "block", width: "100%", padding: "12px 14px", fontSize: 14, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, marginBottom: 14, outline: "none", boxSizing: "border-box", color: C.text, background: C.white, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
   btnPrimary: { display: "block", width: "100%", padding: "14px 0", fontSize: 14, fontWeight: 600, color: C.white, background: C.black, border: "none", borderRadius: 0, cursor: "pointer", letterSpacing: 1.5, textTransform: "uppercase" },
   err: { color: C.red, fontSize: 13, margin: "0 0 10px", textAlign: "center", fontWeight: 500 },
   shell: { minHeight: "100vh", background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif" },
@@ -1957,9 +2051,9 @@ const styles = {
   btnText: { fontSize: 11, fontWeight: 600, color: C.black, background: "transparent", border: "none", borderRadius: 0, padding: "8px 12px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase", whiteSpace: "nowrap" },
   btnOutline: { fontSize: 11, fontWeight: 500, color: C.black, background: "transparent", border: `1px solid ${C.black}`, borderRadius: 0, padding: "7px 18px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
   main: { maxWidth: 980, margin: "0 auto", padding: "24px 24px" },
-  formSection: { background: C.white, borderRadius: 0, padding: 32, marginBottom: 28, border: `1px solid ${C.borderLight}` },
+  formSection: { background: C.white, borderRadius: 16, padding: 28, marginBottom: 28, border: `1px solid ${C.tealLight}`, boxShadow: "0 4px 16px rgba(15,118,110,0.06)", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
   listSection: { marginBottom: 28 },
-  sectionTitle: { fontSize: 18, fontWeight: 600, color: C.black, margin: "0 0 20px", letterSpacing: -0.3 },
+  sectionTitle: { fontSize: 17, fontWeight: 800, color: C.tealDark, margin: "0 0 20px", letterSpacing: 0.3, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
   card: { background: C.white, borderRadius: 0, padding: "20px 24px", marginBottom: 12, border: `1px solid ${C.borderLight}` },
   cardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8, flexWrap: "wrap" },
   cardTitle: { fontSize: 15, fontWeight: 600, color: C.black },
@@ -1987,15 +2081,17 @@ const styles = {
   tabActive: { padding: "10px 24px", fontSize: 12, fontWeight: 700, color: C.white, background: C.teal, border: `1px solid ${C.teal}`, borderRadius: 10, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase", boxShadow: "0 3px 8px rgba(13,148,136,0.25)" },
   tabInactive: { padding: "10px 24px", fontSize: 12, fontWeight: 600, color: C.tealDark, background: C.white, border: `1px solid ${C.tealLight}`, borderRadius: 10, cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" },
   tabActionBtn: { padding: "10px 20px", fontSize: 12, fontWeight: 700, color: C.tealDark, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, cursor: "pointer", letterSpacing: 0.8, textTransform: "uppercase" },
-  pwCard: { background: C.white, borderRadius: 0, padding: "14px 18px", marginBottom: 8, border: `1px solid ${C.borderLight}` },
+  fieldLabel: { display: "block", fontSize: 12, fontWeight: 700, color: C.tealDark, marginBottom: 6, marginTop: 4, textTransform: "uppercase", letterSpacing: 0.5 },
+  tealInput: { width: "100%", padding: "12px 14px", fontSize: 14, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", boxSizing: "border-box", marginBottom: 14, background: "#fff", color: "#111", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
+  pwCard: { background: C.white, borderRadius: 12, padding: "14px 18px", marginBottom: 8, border: `1px solid ${C.tealLight}`, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
   pwRow: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 },
   pwName: { fontSize: 15, fontWeight: 600, color: C.black, marginRight: 8 },
-  pwRole: { fontSize: 10, fontWeight: 600, color: C.white, background: C.black, borderRadius: 0, padding: "3px 10px", letterSpacing: 1, textTransform: "uppercase" },
+  pwRole: { fontSize: 10, fontWeight: 700, color: C.white, background: C.teal, borderRadius: 20, padding: "3px 10px", letterSpacing: 1, textTransform: "uppercase" },
   pwRight: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" },
   pwCurrent: { fontSize: 13, color: C.textLight },
-  pwChangeBtn: { fontSize: 12, fontWeight: 500, color: C.black, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 0, padding: "6px 16px", cursor: "pointer" },
+  pwChangeBtn: { fontSize: 12, fontWeight: 700, color: C.tealDark, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 8, padding: "6px 16px", cursor: "pointer", textTransform: "uppercase", letterSpacing: 0.3 },
   pwEditRow: { display: "flex", gap: 6, alignItems: "center" },
-  pwInput: { padding: "8px 12px", fontSize: 13, border: `1px solid ${C.border}`, borderRadius: 0, width: 140, outline: "none", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
+  pwInput: { padding: "9px 12px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 9, width: 140, outline: "none", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
   pwSaveBtn: { fontSize: 12, fontWeight: 700, color: C.white, background: C.teal, border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
   pwCancelBtn: { fontSize: 13, color: C.textLight, background: "none", border: "none", cursor: "pointer", padding: "6px" },
   commentToggle: { fontSize: 12, fontWeight: 700, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: 0, letterSpacing: 0.5, textTransform: "uppercase", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
