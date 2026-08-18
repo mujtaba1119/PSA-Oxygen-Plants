@@ -484,10 +484,14 @@ function PartnerFooter() {
       <style>{`
         .pf-img { flex-shrink: 1; min-width: 0; }
         .refresh-icon { display: none; }
+        .refresh-icon-desktop { display: inline; }
         .refresh-label { display: inline; line-height: 1.4; }
+        @keyframes refresh-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .spinning { animation: refresh-spin 0.7s linear infinite; transform-origin: center; }
         .tab-download-btn { position: absolute; right: 24px; top: 50%; transform: translateY(-50%); }
         @media (max-width: 640px) {
           .refresh-icon { display: inline !important; }
+          .refresh-icon-desktop { display: none !important; }
           .refresh-label { display: none !important; }
           .refresh-btn { padding: 8px 10px !important; gap: 0 !important; }
           .tab-download-btn { position: static !important; transform: none !important; width: 100%; margin-top: 10px; text-align: center; }
@@ -1648,8 +1652,9 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
               <button className="refresh-btn" title="Refresh" aria-label="Refresh" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 12.5, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }} onClick={handleRefresh}>
-                <svg className="refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: refreshing ? 0.5 : 1 }}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                <span className="refresh-label">Refresh</span>
+                <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                <span className="refresh-label" style={{ display: refreshing ? "none" : undefined }}>Refresh</span>
+                {refreshing && <svg className="refresh-icon-desktop spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
               </button>
               <button title="Sign Out" aria-label="Sign Out" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={onLogout}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -1870,8 +1875,9 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
               <button className="refresh-btn" title="Refresh" aria-label="Refresh" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 12.5, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }} onClick={handleRefresh}>
-                <svg className="refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: refreshing ? 0.5 : 1 }}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                <span className="refresh-label">Refresh</span>
+                <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                <span className="refresh-label" style={{ display: refreshing ? "none" : undefined }}>Refresh</span>
+                {refreshing && <svg className="refresh-icon-desktop spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
               </button>
               <button title="Sign Out" aria-label="Sign Out" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={onLogout}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
