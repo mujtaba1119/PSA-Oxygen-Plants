@@ -1737,11 +1737,11 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
             <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.tealLight}`, boxShadow: "0 4px 16px rgba(15,118,110,0.08)", overflow: "hidden" }}>
               <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "18px 22px" }}>
                 <div style={{ fontSize: 11, letterSpacing: 1.4, opacity: 0.85, fontWeight: 700, textTransform: "uppercase", color: "#fff" }}>New Ticket</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", marginTop: 2 }}>Submit on Behalf of a Site</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", marginTop: 2 }}>Submit on Behalf of a Hospital</div>
               </div>
               <div style={{ padding: 22 }}>
-                <label style={styles.fieldLabel}>Site</label>
-                <select style={{ ...styles.tealInput, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h} — {getProvider(h)}</option>)}</select>
+                <label style={styles.fieldLabel}>Hospital</label>
+                <select style={{ ...styles.tealInput, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h}</option>)}</select>
 
                 <label style={styles.fieldLabel}>Issue Type</label>
                 <ComplaintTypeSelect value={adminTitle} onChange={e => setAdminTitle(e.target.value)} style={styles.tealInput} />
