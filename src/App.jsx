@@ -60,6 +60,36 @@ const getProvider = h => Object.entries(GROUPS).find(([, list]) => list.includes
 const DISPLAY_NAMES = { "Timergara": "Lower Dir - Timergara", "Malakand": "Batkhela - Malakand", "Neelum": "Neelum - AJK", "Jhelum": "Jhelum - AJK", "Haveli": "Haveli - AJK", "Ghizer": "Gahkuch - Ghizer", "Khaplu": "Khaplu - Ghanche", "Quetta SZ": "Quetta Sheikh Zayed", "Pangjur": "Panjgur", "Bhimber": "Bhimber" };
 const displayName = h => DISPLAY_NAMES[h] || h;
 
+// Internal-only site abbreviations for ticket numbering (never shown as labels, only in ticket IDs)
+const SITE_CODES = {
+  "Rawalpindi": "RA", "Kohat": "KO", "Swat": "SW", "Timergara": "TI", "Malakand": "ML",
+  "Bannu": "BA", "Neelum": "NE", "Jhelum": "JH", "Haveli": "HA", "Nagar": "NG",
+  "Ghizer": "GH", "Astore": "AS", "Khaplu": "KH", "Islamabad": "IS",
+  "Bhakkar": "BH", "Sahiwal": "SA", "Toba Tek Singh": "TT", "Sargodha": "SG",
+  "Rahim Yar Khan": "RY", "Jhang": "JG", "Faisalabad": "FA", "Bhimber": "BM", "Multan": "MU",
+  "Larkana": "LA", "Jamshoro": "JA", "Quetta SZ": "QS", "DM Jamali": "DM", "Khuzdar": "KZ",
+  "Sibbi": "SI", "Nawabshah": "NA", "Zhob": "ZH", "Quetta Sandeman": "QN", "Loralai": "LO",
+  "Pangjur": "PA", "Kharan": "KR", "Karachi": "KA"
+};
+
+// Compute the ticket number (e.g. "RA3") for a given complaint, derived from its site's
+// tickets sorted by creation order. This naturally renumbers/fills gaps when a ticket is deleted.
+function getTicketNumber(complaint, allComplaints) {
+  if (!complaint || !complaint.hospital) return "";
+  const code = SITE_CODES[complaint.hospital];
+  if (!code) return "";
+  const siteTickets = allComplaints
+    .filter(c => c.hospital === complaint.hospital)
+    .sort((a, b) => {
+      const dt = new Date(a.created_at) - new Date(b.created_at);
+      if (dt !== 0) return dt;
+      return String(a.id).localeCompare(String(b.id)); // stable tiebreak
+    });
+  const idx = siteTickets.findIndex(c => c.id === complaint.id);
+  return idx === -1 ? "" : `${code}${idx + 1}`;
+}
+
+
 const COMPLAINT_TYPES = [
   "Compressor Issue","Dryer Issue","Booster Filling System Issue","Purity Issue",
   "Electrical/Power Issue","Monitoring/CSS Issue","Backup Manifold Issue","Other Issue"
@@ -329,9 +359,14 @@ function NotificationBell({ user, onNavigate, onFocusComplaint, light, complaint
             const ticketTitle = complaintTitleFor(n);
             const cleanTitle = n.title ? n.title.split(":")[0].trim() : n.title;
             const isHospitalUser = user.role === "hospital";
+            const foundComplaint = n.complaint_id && Array.isArray(complaints) ? complaints.find(c => c.id === n.complaint_id) : null;
+            const tkNum = foundComplaint ? getTicketNumber(foundComplaint, complaints) : "";
             return (
             <div key={n.id} onClick={() => handleClick(n)} style={{ padding: "10px 16px", borderBottom: "1px solid #f5f5f5", background: n.is_read ? "#fff" : "#d4f3ee", borderLeft: n.is_read ? "3px solid transparent" : `3px solid ${C.teal}`, cursor: n.complaint_id || n.hospital ? "pointer" : "default" }}>
-              <strong style={{ fontSize: 12, color: "#111" }}>{cleanTitle}</strong>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                {tkNum && <span style={{ fontSize: 10.5, fontWeight: 800, color: C.tealDark, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 5, padding: "1px 6px", letterSpacing: 0.4 }}>{tkNum}</span>}
+                <strong style={{ fontSize: 12, color: "#111" }}>{cleanTitle}</strong>
+              </div>
               {isHospitalUser ? (
                 ticketTitle ? <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}><span style={{ color: C.teal, fontWeight: 700 }}>Ticket: </span>{ticketTitle}</p>
                 : (n.message && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}>{n.message}</p>)
@@ -1234,7 +1269,7 @@ function AttachmentViewer({ attachments }) {
   );
 }
 
-function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, isAmex, isProvider, onResolve, onRequestResolve, onApprove, onReject, onUnresolve, onDelete, onRefresh, cardHighlight, highlightCommentText }) {
+function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, isAmex, isProvider, onResolve, onRequestResolve, onApprove, onReject, onUnresolve, onDelete, onRefresh, cardHighlight, highlightCommentText, ticketNumber }) {
   const [resolving, setResolving] = useState(false); const [resolveDate, setResolveDate] = useState("");
   const [editing, setEditing] = useState(false); const [editTitle, setEditTitle] = useState(complaint.title);
   const [editDesc, setEditDesc] = useState(complaint.description); const [editSaving, setEditSaving] = useState(false);
@@ -1276,6 +1311,7 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
           <div onClick={() => setExpanded(!expanded)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.tealBg, padding: "14px 16px", borderBottom: expanded ? `1px solid ${C.tealLight}` : "none", cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
               <span style={{ width: 9, height: 9, borderRadius: "50%", background: accent, flexShrink: 0 }} />
+              {ticketNumber && <span style={{ fontSize: 12, fontWeight: 800, color: C.tealDark, background: C.white, border: `1px solid ${C.tealLight}`, borderRadius: 7, padding: "2px 8px", flexShrink: 0, letterSpacing: 0.5 }}>{ticketNumber}</span>}
               <strong style={{ fontSize: 16, fontWeight: 700, color: C.black, whiteSpace: expanded ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</strong>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
@@ -1345,7 +1381,7 @@ function ComplaintListView({ hospital, complaints, currentUser, canResolve, canC
     {hc.length === 0 && <p style={styles.empty}>No complaints from this hospital.</p>}
     {hc.map(c => (
       <div key={c.id} ref={el => { cardRefs.current[c.id] = el; }}>
-        <ComplaintCard complaint={c} currentUser={currentUser} canResolve={canResolve} canComment={canComment} isAdmin={isAdmin} isAmex={isAmex} isProvider={isProvider} onResolve={onResolve} onRequestResolve={onRequestResolve} onApprove={onApprove} onReject={onReject} onUnresolve={onUnresolve} onDelete={onDelete} onRefresh={onRefresh}
+        <ComplaintCard complaint={c} ticketNumber={getTicketNumber(c, complaints)} currentUser={currentUser} canResolve={canResolve} canComment={canComment} isAdmin={isAdmin} isAmex={isAmex} isProvider={isProvider} onResolve={onResolve} onRequestResolve={onRequestResolve} onApprove={onApprove} onReject={onReject} onUnresolve={onUnresolve} onDelete={onDelete} onRefresh={onRefresh}
           cardHighlight={localFocus && localFocus.complaintId === c.id}
           highlightCommentText={localFocus && localFocus.complaintId === c.id && localFocus.isComment ? localFocus.commentText : ""}
         />
@@ -1508,7 +1544,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
           {mine.map(c => (
             <div key={c.id} ref={el => { cardRefs.current[c.id] = el; }}>
               <ComplaintCard
-                complaint={c} currentUser={user} canResolve={true} canComment={true}
+                complaint={c} ticketNumber={getTicketNumber(c, complaints)} currentUser={user} canResolve={true} canComment={true}
                 isAdmin={false} isAmex={false} isProvider={false}
                 onResolve={() => {}} onRequestResolve={handleResolve} onApprove={() => {}} onReject={() => {}} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh}
                 cardHighlight={focusInfo && focusInfo.complaintId === c.id}
@@ -1588,9 +1624,12 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
       {/* Teal gradient hero header */}
       <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "20px 24px 24px", color: "#fff" }}>
         <div style={{ maxWidth: 980, margin: "0 auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ marginTop: 4, marginBottom: 4 }}>
             <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.22)", padding: "4px 12px", borderRadius: 20 }}>Management</span>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 12 }}>
+            <div style={{ fontSize: 17, letterSpacing: 2, opacity: 0.9, fontWeight: 800, textTransform: "uppercase" }}>Project Status</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
               <button title="Refresh" aria-label="Refresh" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={handleRefresh}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: refreshing ? 0.5 : 1 }}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -1600,7 +1639,6 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
               </button>
             </div>
           </div>
-          <div style={{ fontSize: 17, letterSpacing: 2, opacity: 0.9, fontWeight: 800, textTransform: "uppercase" }}>Project Status</div>
           <div style={{ display: "flex", alignItems: "baseline", marginTop: 10, gap: 10 }}>
             <span style={{ fontSize: 48, fontWeight: 800, lineHeight: 1 }}>{adminFuncCount}</span>
             <span style={{ fontSize: 18, fontWeight: 600, opacity: 0.8 }}>of {ALL_HOSPITALS.length}</span>
@@ -1809,17 +1847,19 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
       {/* Teal gradient hero header */}
       <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "20px 24px 24px", color: "#fff" }}>
         <div style={{ maxWidth: 980, margin: "0 auto" }}>
-          {/* actions row */}
-          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8, marginTop: 8, marginBottom: 16 }}>
-            <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
-            <button title="Refresh" aria-label="Refresh" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={handleRefresh}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: refreshing ? 0.5 : 1 }}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            </button>
-            <button title="Sign Out" aria-label="Sign Out" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={onLogout}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            </button>
+          {/* header row: title left, actions right */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div style={{ fontSize: 17, letterSpacing: 2, opacity: 0.9, fontWeight: 800, textTransform: "uppercase" }}>Project Status</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
+              <button title="Refresh" aria-label="Refresh" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={handleRefresh}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: refreshing ? 0.5 : 1 }}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              </button>
+              <button title="Sign Out" aria-label="Sign Out" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={onLogout}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              </button>
+            </div>
           </div>
-          <div style={{ fontSize: 17, letterSpacing: 2, opacity: 0.9, fontWeight: 800, textTransform: "uppercase" }}>Project Status</div>
           {/* hero metric */}
           <div style={{ display: "flex", alignItems: "baseline", marginTop: 10, gap: 10 }}>
             <span style={{ fontSize: 48, fontWeight: 800, lineHeight: 1 }}>{funcCount}</span>
