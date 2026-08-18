@@ -363,21 +363,31 @@ function NotificationBell({ user, onNavigate, onFocusComplaint, light, complaint
             const tkNum = foundComplaint ? getTicketNumber(foundComplaint, complaints) : "";
             return (
             <div key={n.id} onClick={() => handleClick(n)} style={{ padding: "10px 16px", borderBottom: "1px solid #f5f5f5", background: n.is_read ? "#fff" : "#d4f3ee", borderLeft: n.is_read ? "3px solid transparent" : `3px solid ${C.teal}`, cursor: n.complaint_id || n.hospital ? "pointer" : "default" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                {tkNum && <span style={{ fontSize: 10.5, fontWeight: 800, color: C.tealDark, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 5, padding: "1px 6px", letterSpacing: 0.4 }}>{tkNum}</span>}
-                <strong style={{ fontSize: 12, color: "#111" }}>{cleanTitle}</strong>
-              </div>
+              {/* Line 1: type */}
+              <strong style={{ fontSize: 12.5, color: "#111" }}>{cleanTitle}</strong>
               {isHospitalUser ? (
-                ticketTitle ? <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}><span style={{ color: C.teal, fontWeight: 700 }}>Ticket: </span>{ticketTitle}</p>
-                : (n.message && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}>{n.message}</p>)
+                /* Hospital: Ticket ID + title */
+                (tkNum || ticketTitle) ? (
+                  <p style={{ fontSize: 12, color: "#555", margin: "3px 0 0", lineHeight: 1.4 }}>
+                    {tkNum && <span style={{ color: C.tealDark, fontWeight: 700 }}>Ticket ID: {tkNum}  </span>}
+                    {ticketTitle}
+                  </p>
+                ) : (n.message && <p style={{ fontSize: 12, color: "#555", margin: "3px 0 0", lineHeight: 1.4 }}>{n.message}</p>)
               ) : (
+                /* Company/admin: Site name, then Ticket ID + title */
                 <>
-                  {n.hospital && <p style={{ fontSize: 12, color: "#111", fontWeight: 700, margin: "2px 0 0", lineHeight: 1.4 }}>{n.hospital}</p>}
-                  {ticketTitle && <p style={{ fontSize: 12, color: "#555", margin: "1px 0 0", lineHeight: 1.4 }}>{ticketTitle}</p>}
-                  {!n.hospital && !ticketTitle && n.message && <p style={{ fontSize: 12, color: "#555", margin: "2px 0 0", lineHeight: 1.4 }}>{n.message}</p>}
+                  {n.hospital && <p style={{ fontSize: 12.5, color: "#111", fontWeight: 700, margin: "3px 0 0", lineHeight: 1.4 }}>{n.hospital}</p>}
+                  {(tkNum || ticketTitle) && (
+                    <p style={{ fontSize: 12, color: "#555", margin: "1px 0 0", lineHeight: 1.4 }}>
+                      {tkNum && <span style={{ color: C.tealDark, fontWeight: 700 }}>Ticket ID: {tkNum}  </span>}
+                      {ticketTitle}
+                    </p>
+                  )}
+                  {!n.hospital && !ticketTitle && n.message && <p style={{ fontSize: 12, color: "#555", margin: "3px 0 0", lineHeight: 1.4 }}>{n.message}</p>}
                 </>
               )}
-              <span style={{ fontSize: 10, color: "#999", display: "block", marginTop: 3 }}>{new Date(n.created_at).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" })} · {new Date(n.created_at).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}</span>
+              {/* Date and time */}
+              <span style={{ fontSize: 10, color: "#999", display: "block", marginTop: 4 }}>{new Date(n.created_at).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" })} · {new Date(n.created_at).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit" })}</span>
             </div>
             );
           })}
@@ -1311,7 +1321,7 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
           <div onClick={() => setExpanded(!expanded)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.tealBg, padding: "14px 16px", borderBottom: expanded ? `1px solid ${C.tealLight}` : "none", cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
               <span style={{ width: 9, height: 9, borderRadius: "50%", background: accent, flexShrink: 0 }} />
-              {ticketNumber && <span style={{ fontSize: 12, fontWeight: 800, color: C.tealDark, background: C.white, border: `1px solid ${C.tealLight}`, borderRadius: 7, padding: "2px 8px", flexShrink: 0, letterSpacing: 0.5 }}>{ticketNumber}</span>}
+              {ticketNumber && <span style={{ fontSize: 12, fontWeight: 700, color: C.tealDark, background: C.white, border: `1px solid ${C.tealLight}`, borderRadius: 7, padding: "2px 9px", flexShrink: 0, letterSpacing: 0.3 }}>Ticket ID: {ticketNumber}</span>}
               <strong style={{ fontSize: 16, fontWeight: 700, color: C.black, whiteSpace: expanded ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</strong>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
