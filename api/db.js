@@ -201,12 +201,17 @@ export default async function handler(req, res) {
       const { user_id, token, platform } = body;
       if (!user_id || !token) return json(res, 400, { error: "Missing user_id or token" });
       // Upsert: one row per token; if the token exists, update its user_id (device re-login)
-      const { data: existing } = await admin.from("push_tokens").select("id").eq("token", token).maybeSingle();
+      const { data: existing, error: selErr } = await admin.from("push_tokens").select("id").eq("token", token).maybeSingle();
+      if (selErr) return json(res, 400, { error: "select failed: " + selErr.message });
+      let writeErr;
       if (existing) {
-        await admin.from("push_tokens").update({ user_id, platform: platform || null }).eq("token", token);
+        const { error } = await admin.from("push_tokens").update({ user_id, platform: platform || null }).eq("token", token);
+        writeErr = error;
       } else {
-        await admin.from("push_tokens").insert([{ user_id, token, platform: platform || null }]);
+        const { error } = await admin.from("push_tokens").insert([{ user_id, token, platform: platform || null }]);
+        writeErr = error;
       }
+      if (writeErr) return json(res, 400, { error: "write failed: " + writeErr.message });
       return json(res, 200, { success: true });
     }
 
