@@ -87,14 +87,7 @@ export default async function handler(req, res) {
   const action = body.action;
 
   try {
-    // ─── TEMPORARY DIAGNOSTIC: reveal which database the backend uses ───
-    if (action === "whichdb") {
-      const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "NONE";
-      // Only show the project ref (safe), not keys
-      return json(res, 200, { supabase_url: url });
-    }
-
-    // ─────────── COMPLAINTS ───────────
+// ─────────── COMPLAINTS ───────────
     if (action === "insert_complaint") {
       const { hospital, title, description, submitted_by, created_at } = body;
       if (!hospital || !title || !description) return json(res, 400, { error: "Missing fields" });
