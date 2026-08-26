@@ -95,6 +95,47 @@ const COMPLAINT_TYPES = [
   "Electrical/Power Issue","Monitoring/CSS Issue","Backup Manifold Issue","Other Issue"
 ];
 
+/* ─── Point 1: structured ticket workflow ───
+   Statuses actually stored: "Open", "Resolved", "Verified".
+   "In Progress" is never written to the DB — it's derived below from
+   status "Open" + a visit_date that has arrived, so no cron job is needed. */
+const getCompanyName = u => u.company || u.name;
+const isAmexUser = u => getCompanyName(u) === "Amex";
+const isProviderUser = u => ["Novair", "Intexim", "Z-Corps"].includes(getCompanyName(u));
+const isManagerUser = u => u.role === "company" && u.company_role === "manager";
+
+function statusLabel(status) { return status === "Verified" ? "Resolved & Verified" : status; }
+
+function getEffectiveStatus(c) {
+  if (c.status === "Open" && c.visit_date) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const visit = new Date(c.visit_date); visit.setHours(0, 0, 0, 0);
+    if (visit <= today) return "In Progress";
+  }
+  return c.status;
+}
+
+// Only a manager belonging to the site's own service-provider company (or admin) can assign staff
+function canAssignTicket(user, hospital) {
+  if (user.role === "admin") return true;
+  return isManagerUser(user) && isProviderUser(user) && getProvider(hospital) === getCompanyName(user);
+}
+// Must already be assigned before a visit can be logged
+function canLogVisitTicket(user, hospital, c) {
+  return canAssignTicket(user, hospital) && !!c.assigned_to;
+}
+// Hospital or the assigned provider can mark resolved, once a visit has actually happened
+function canMarkResolvedTicket(user, hospital, c) {
+  if (user.role === "admin") return true;
+  if (getEffectiveStatus(c) !== "In Progress") return false;
+  if (user.role === "hospital") return true;
+  return isProviderUser(user) && getProvider(hospital) === getCompanyName(user);
+}
+// Only "Resolved" or "Verified" count as no-longer-open; "Open" and (derived) "In Progress" are open.
+function isClosedStatus(status) { return status === "Resolved" || status === "Verified"; }
+// Only Amex (or admin) verifies or rejects a resolved ticket
+function canVerifyTicket(user) { return user.role === "admin" || isAmexUser(user); }
+
 /* ─── Supabase helpers ─── */
 async function fetchComplaints() {
   const { data, error } = await supabase.from("complaints").select("*").order("created_at", { ascending: false });
@@ -146,6 +187,26 @@ async function unresolveComplaint(id) {
   const data = await dbWrite({ action: "unresolve_complaint", id });
   return !data.error;
 }
+async function assignComplaint(id, assignedTo, assignedBy) {
+  const data = await dbWrite({ action: "assign_complaint", id, assigned_to: assignedTo, assigned_by: assignedBy || null });
+  return !data.error;
+}
+async function logVisit(id, visitDate, loggedBy) {
+  const data = await dbWrite({ action: "log_visit", id, visit_date: visitDate, logged_by: loggedBy || null });
+  return !data.error;
+}
+async function markResolved(id, resolvedBy) {
+  const data = await dbWrite({ action: "mark_resolved", id, resolved_by: resolvedBy || null });
+  return !data.error;
+}
+async function verifyComplaint(id, verifiedBy) {
+  const data = await dbWrite({ action: "verify_complaint", id, verified_by: verifiedBy || null });
+  return !data.error;
+}
+async function rejectVerification(id) {
+  const data = await dbWrite({ action: "reject_verification", id });
+  return !data.error;
+}
 async function deleteComplaint(id) {
   const data = await dbWrite({ action: "delete_complaint", id });
   return !data.error;
@@ -171,9 +232,9 @@ async function updatePassword(userId, newPassword) {
     return true;
   } catch { return false; }
 }
-async function createUser(id, name, role, password, company, email) {
+async function createUser(id, name, role, password, company, email, companyRole) {
   try {
-    const res = await fetch("/api/manage-user", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "create", id, name, role, password, company: company || undefined, email: email || undefined }) });
+    const res = await fetch("/api/manage-user", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "create", id, name, role, password, company: company || undefined, email: email || undefined, company_role: companyRole || undefined }) });
     const data = await res.json();
     if (!res.ok) { alert("Error: " + data.error); return null; }
     return data.user;
@@ -531,7 +592,7 @@ function getSiteDisplayStatus(hospital, complaints, siteNotes) {
   const base = getSiteBaseStatus(hospital, siteNotes);
   if (base === "Shut Down") return "Shut Down";
   const target = (hospital || "").toLowerCase().trim();
-  const hasOpen = complaints.some(c => (c.hospital || "").toLowerCase().trim() === target && c.status !== "Resolved");
+  const hasOpen = complaints.some(c => (c.hospital || "").toLowerCase().trim() === target && !isClosedStatus(c.status));
   if (hasOpen) return "Issues";
   if (base === "Non Functional") return "Non Functional";
   return "Fully Functional";
@@ -650,7 +711,7 @@ function AppInner() {
   if (!dataReady) return <LoadingScreen />;
   if (user.role === "hospital") return <HospitalDashboard user={user} complaints={complaints} onRefresh={reload} onLogout={handleLogout} />;
   if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} siteNotes={siteNotes} onRefresh={reload} onLogout={handleLogout} />;
-  return <CompanyDashboard user={user} complaints={complaints} siteNotes={siteNotes} onRefresh={reload} onLogout={handleLogout} />;
+  return <CompanyDashboard user={user} users={users} complaints={complaints} siteNotes={siteNotes} onRefresh={reload} onLogout={handleLogout} />;
 }
 
 /* ─── Security: Password Hashing ─── */
@@ -934,9 +995,24 @@ function LoginScreen({ onLogin }) {
 }
 
 function StatusBadge({ status }) {
-  const r = status === "Resolved";
-  const p = status === "Pending Resolution";
-  return <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 12, color: r ? "#276749" : p ? "#7c5e10" : "#9c4221", background: r ? "#c6f6d5" : p ? "#fef3c7" : "#feebc8" }}>{status}</span>;
+  const styleMap = {
+    "Open": { color: "#9c4221", background: "#feebc8" },
+    "In Progress": { color: "#7c5e10", background: "#fef3c7" },
+    "Resolved": { color: "#1a5276", background: "#d6eaf8" },
+    "Verified": { color: "#276749", background: "#c6f6d5" },
+  };
+  const s = styleMap[status] || styleMap["Open"];
+  return <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 12, color: s.color, background: s.background }}>{statusLabel(status)}</span>;
+}
+
+/* "Assigned to: X" — shown at every stage once a staff member has been assigned */
+function AssignedTag({ complaint }) {
+  if (!complaint.assigned_to) return null;
+  return (
+    <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 12, color: "#1a2332", background: "#e7ecf3", border: "1px solid #d4dce8" }}>
+      Assigned to: {complaint.assigned_to}
+    </span>
+  );
 }
 
 /* ─── Overview Tab ─── */
@@ -948,7 +1024,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
 
   const getNotesMap = h => { try { const raw = siteNotes.find(s => s.hospital === h)?.equipment_note || ""; const parsed = JSON.parse(raw); return typeof parsed === "object" && parsed !== null ? parsed : { _legacy: raw }; } catch { const raw = siteNotes.find(s => s.hospital === h)?.equipment_note || ""; return raw ? { _legacy: raw } : {}; } };
   const getNoteForComplaint = (h, cid) => { const m = getNotesMap(h); return m[cid] || m._legacy || ""; };
-  const openComplaints = h => complaints.filter(c => c.hospital === h && c.status !== "Resolved");
+  const openComplaints = h => complaints.filter(c => c.hospital === h && !isClosedStatus(c.status));
   const allOpen = hospitals.reduce((sum, h) => sum + openComplaints(h).length, 0);
   const funcCount = hospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
   const nonFuncCount = hospitals.length - funcCount;
@@ -1233,9 +1309,9 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
 
 function GroupedHospitalList({ groups, complaints, onSelect }) {
   const countFor = h => complaints.filter(c => c.hospital === h).length;
-  const openCountFor = h => complaints.filter(c => c.hospital === h && c.status !== "Resolved").length;
+  const openCountFor = h => complaints.filter(c => c.hospital === h && !isClosedStatus(c.status)).length;
   const groupCountFor = hs => complaints.filter(c => hs.includes(c.hospital)).length;
-  const groupOpenFor = hs => complaints.filter(c => hs.includes(c.hospital) && c.status !== "Resolved").length;
+  const groupOpenFor = hs => complaints.filter(c => hs.includes(c.hospital) && !isClosedStatus(c.status)).length;
   return (<div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>{Object.entries(groups).map(([p, hs]) => (
     <div key={p} style={styles.groupSection}>
       <div className="group-header-responsive" style={styles.groupHeader}><h3 style={styles.groupTitle}><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: C.teal, marginRight: 8, verticalAlign: "middle" }} />{p}</h3><div style={{ display: "flex", gap: 8 }}><span style={styles.groupBadge}>{groupCountFor(hs)} total</span>{groupOpenFor(hs) > 0 && <span style={{ ...styles.groupBadge, color: "#c47f1e", background: "#fef3e2", border: "1px solid #f7d9a8" }}>{groupOpenFor(hs)} open</span>}</div></div>
@@ -1289,35 +1365,35 @@ function AttachmentViewer({ attachments }) {
   );
 }
 
-function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin, isAmex, isProvider, onResolve, onRequestResolve, onApprove, onReject, onUnresolve, onDelete, onRefresh, cardHighlight, highlightCommentText, ticketNumber }) {
-  const [resolving, setResolving] = useState(false); const [resolveDate, setResolveDate] = useState("");
+function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, onLogVisit, onMarkResolved, onVerify, onRejectVerify, onDelete, onRefresh, staffOptions, cardHighlight, highlightCommentText, ticketNumber }) {
+  const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false); const [editTitle, setEditTitle] = useState(complaint.title);
   const [editDesc, setEditDesc] = useState(complaint.description); const [editSaving, setEditSaving] = useState(false);
-  const [rejecting, setRejecting] = useState(false); const [rejectReason, setRejectReason] = useState("");
-  // Open (unresolved) tickets start expanded; resolved tickets start collapsed until clicked
-  const [expanded, setExpanded] = useState(complaint.status !== "Resolved");
+  const [assigneePick, setAssigneePick] = useState("");
+  const [visitDatePick, setVisitDatePick] = useState("");
   const c = complaint;
+  const effStatus = getEffectiveStatus(c);
+  // Open (unresolved/unverified) tickets start expanded; fully closed tickets start collapsed until clicked
+  const [expanded, setExpanded] = useState(effStatus !== "Verified");
+
+  const canAssign = canAssignTicket(currentUser, c.hospital) && !c.assigned_to && effStatus === "Open";
+  const canLogVisit = canLogVisitTicket(currentUser, c.hospital, c) && effStatus === "Open" && !c.visit_date;
+  const canMarkResolved = canMarkResolvedTicket(currentUser, c.hospital, c);
+  const canVerify = canVerifyTicket(currentUser) && c.status === "Resolved";
 
   // Auto-expand when this card is focused from a notification
   useEffect(() => { if (cardHighlight || (highlightCommentText && highlightCommentText.trim())) setExpanded(true); }, [cardHighlight, highlightCommentText]);
-  const handleResolve = async () => {
-    setResolving(true);
-    if (isAdmin || isAmex) { await onResolve(c.id, resolveDate || null); }
-    else { await onRequestResolve(c.id); }
-    setResolving(false);
-  };
-  const handleApprove = async () => { setResolving(true); await onApprove(c.id); setResolving(false); };
-  const handleReject = async () => {
-    if (!rejectReason.trim()) return;
-    setResolving(true);
-    await onReject(c.id, rejectReason.trim());
-    setRejecting(false); setRejectReason(""); setResolving(false);
-  };
-  const handleUnresolve = async () => { await onUnresolve(c.id); await onRefresh(); };
+
+  const handleAssign = async () => { if (!assigneePick) return; setBusy(true); await onAssign(c.id, assigneePick); setAssigneePick(""); setBusy(false); };
+  const handleLogVisit = async () => { if (!visitDatePick) return; setBusy(true); await onLogVisit(c.id, visitDatePick); setVisitDatePick(""); setBusy(false); };
+  const handleMarkResolved = async () => { setBusy(true); await onMarkResolved(c.id); setBusy(false); };
+  const handleVerify = async () => { setBusy(true); await onVerify(c.id); setBusy(false); };
+  const handleRejectVerify = async () => { if (!window.confirm("Reject this resolution? The ticket will go back to Open and will need to be reassigned.")) return; setBusy(true); await onRejectVerify(c.id); setBusy(false); };
   const handleDelete = async () => { if (window.confirm("Delete this complaint permanently?")) { await onDelete(c.id); await onRefresh(); } };
   const handleEditSave = async () => { if (!editTitle.trim() || !editDesc.trim()) return; setEditSaving(true); await updateComplaintFields(c.id, { title: editTitle.trim(), description: editDesc.trim() }); setEditSaving(false); setEditing(false); await onRefresh(); };
   const dateFmt = { year: "numeric", month: "short", day: "numeric" };
-  const accent = c.status === "Resolved" ? C.green : c.status === "Pending Resolution" ? "#e0912f" : C.red;
+  const accentMap = { "Open": C.red, "In Progress": "#e0912f", "Resolved": "#2874a6", "Verified": C.green };
+  const accent = accentMap[effStatus] || C.red;
   const cardHighlightStyle = cardHighlight ? { boxShadow: `0 0 0 3px ${C.teal}, 0 4px 14px rgba(15,118,110,0.2)`, transition: "box-shadow 0.3s" } : { transition: "box-shadow 0.3s" };
   return (
     <div style={{ ...styles.cardTeal, ...cardHighlightStyle }}>
@@ -1336,7 +1412,7 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
               <strong style={{ fontSize: 16, fontWeight: 700, color: C.black, whiteSpace: expanded ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</strong>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-              <StatusBadge status={c.status} />
+              <StatusBadge status={effStatus} />
               <span style={{ fontSize: 16, color: C.tealDark, transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>⌄</span>
             </div>
           </div>
@@ -1344,31 +1420,39 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
           <div style={{ padding: 16 }}>
             <p style={styles.cardDesc}>{c.description}</p>
             {c.submitted_by && <p style={{ fontSize: 12.5, color: C.tealDark, fontWeight: 600, marginTop: 10 }}>👤 {c.submitted_by}</p>}
+            {c.assigned_to && <div style={{ marginTop: 10 }}><AssignedTag complaint={c} /></div>}
             <div style={{ marginTop: 12, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 11 }}>
               <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Report Date: </span><span style={{ color: C.black, fontWeight: 700 }}>{new Date(c.created_at).toLocaleDateString("en-PK", dateFmt)}</span></div>
-              {c.status === "Resolved" && c.resolved_at && <div style={{ fontSize: 12.5, marginTop: 5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Resolved Date: </span><span style={{ color: "#276749", fontWeight: 700 }}>{new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
-              {c.status === "Pending Resolution" && c.resolution_requested_at && <div style={{ fontSize: 12.5, marginTop: 5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Requested: </span><span style={{ color: "#c47f1e", fontWeight: 700 }}>{new Date(c.resolution_requested_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
+              {c.visit_date && <div style={{ fontSize: 12.5, marginTop: 5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>{effStatus === "Open" ? "Visit Scheduled: " : "Visit Date: "}</span><span style={{ color: "#c47f1e", fontWeight: 700 }}>{new Date(c.visit_date).toLocaleDateString("en-PK", dateFmt)}</span></div>}
+              {(c.status === "Resolved" || c.status === "Verified") && c.resolved_at && <div style={{ fontSize: 12.5, marginTop: 5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Resolved Date: </span><span style={{ color: "#276749", fontWeight: 700 }}>{new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
+              {c.status === "Verified" && c.verified_at && <div style={{ fontSize: 12.5, marginTop: 5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Verified Date: </span><span style={{ color: "#276749", fontWeight: 700 }}>{new Date(c.verified_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
             </div>
             <AttachmentViewer attachments={c.attachments} />
             <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
-              {c.status === "Open" && canResolve && (
-                <>{isAdmin && <input type="date" style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={resolveDate} onChange={e => setResolveDate(e.target.value)} />}<button style={styles.btnTealSmall} onClick={handleResolve} disabled={resolving}>{resolving ? "…" : "✓ Close Ticket"}</button></>
-              )}
-              {c.status === "Pending Resolution" && (isAdmin || isAmex) && (
+              {canAssign && (
                 <>
-                  <button style={{ ...styles.btnTealSmall, background: "#27ae60", boxShadow: "none" }} onClick={handleApprove} disabled={resolving}>{resolving ? "…" : "✓ Approve"}</button>
-                  {!rejecting ? (
-                    <button style={{ ...styles.btnTealSmall, background: "#c0392b", boxShadow: "none" }} onClick={() => setRejecting(true)}>✕ Reject</button>
-                  ) : (
-                    <div style={{ display: "flex", gap: 6, alignItems: "center", flex: 1 }}>
-                      <input style={{ ...styles.pwInput, flex: 1, fontSize: 12 }} placeholder="Reason for rejection..." value={rejectReason} onChange={e => setRejectReason(e.target.value)} onKeyDown={e => e.key === "Enter" && handleReject()} />
-                      <button style={{ ...styles.pwSaveBtn, fontSize: 11 }} onClick={handleReject}>Send</button>
-                      <button style={styles.pwCancelBtn} onClick={() => { setRejecting(false); setRejectReason(""); }}>✕</button>
-                    </div>
-                  )}
+                  <select style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={assigneePick} onChange={e => setAssigneePick(e.target.value)}>
+                    <option value="">Assign staff…</option>
+                    {staffOptions.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                  </select>
+                  <button style={styles.btnTealSmall} onClick={handleAssign} disabled={busy || !assigneePick}>{busy ? "…" : "Assign"}</button>
                 </>
               )}
-              {isAdmin && c.status === "Resolved" && (<button style={{ fontSize: 12, fontWeight: 600, color: "#9c4221", background: "#feebc8", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" }} onClick={handleUnresolve}>Unresolve</button>)}
+              {canLogVisit && (
+                <>
+                  <input type="date" style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={visitDatePick} onChange={e => setVisitDatePick(e.target.value)} />
+                  <button style={styles.btnTealSmall} onClick={handleLogVisit} disabled={busy || !visitDatePick}>{busy ? "…" : "Log Visit"}</button>
+                </>
+              )}
+              {canMarkResolved && (
+                <button style={styles.btnTealSmall} onClick={handleMarkResolved} disabled={busy}>{busy ? "…" : "✓ Mark Resolved"}</button>
+              )}
+              {canVerify && (
+                <>
+                  <button style={{ ...styles.btnTealSmall, background: "#27ae60", boxShadow: "none" }} onClick={handleVerify} disabled={busy}>{busy ? "…" : "✓ Verify"}</button>
+                  <button style={{ ...styles.btnTealSmall, background: "#c0392b", boxShadow: "none" }} onClick={handleRejectVerify} disabled={busy}>✕ Reject</button>
+                </>
+              )}
               {isAdmin && <button style={{ fontSize: 12, fontWeight: 500, color: C.black, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 16px", cursor: "pointer" }} onClick={() => setEditing(true)}>Edit</button>}
               {isAdmin && <button style={{ ...styles.deleteBtn, borderRadius: 8 }} onClick={handleDelete}>Delete</button>}
             </div>
@@ -1381,8 +1465,8 @@ function ComplaintCard({ complaint, currentUser, canResolve, canComment, isAdmin
   );
 }
 
-function ComplaintListView({ hospital, complaints, currentUser, canResolve, canComment, isAdmin, isAmex, isProvider, onBack, onResolve, onRequestResolve, onApprove, onReject, onUnresolve, onDelete, onRefresh, focusInfo }) {
-  const hc = complaints.filter(c => c.hospital === hospital).sort((a, b) => {   const aOpen = a.status !== "Resolved" ? 0 : 1;   const bOpen = b.status !== "Resolved" ? 0 : 1;   if (aOpen !== bOpen) return aOpen - bOpen;   return new Date(b.created_at) - new Date(a.created_at); });
+function ComplaintListView({ hospital, complaints, currentUser, canComment, isAdmin, onBack, onAssign, onLogVisit, onMarkResolved, onVerify, onRejectVerify, onDelete, onRefresh, staffOptions, focusInfo }) {
+  const hc = complaints.filter(c => c.hospital === hospital).sort((a, b) => {   const aOpen = a.status !== "Verified" ? 0 : 1;   const bOpen = b.status !== "Verified" ? 0 : 1;   if (aOpen !== bOpen) return aOpen - bOpen;   return new Date(b.created_at) - new Date(a.created_at); });
   const cardRefs = useRef({});
   const [localFocus, setLocalFocus] = useState(null);
   useEffect(() => {
@@ -1402,7 +1486,7 @@ function ComplaintListView({ hospital, complaints, currentUser, canResolve, canC
     {hc.length === 0 && <p style={styles.empty}>No complaints from this hospital.</p>}
     {hc.map(c => (
       <div key={c.id} ref={el => { cardRefs.current[c.id] = el; }}>
-        <ComplaintCard complaint={c} ticketNumber={getTicketNumber(c, complaints)} currentUser={currentUser} canResolve={canResolve} canComment={canComment} isAdmin={isAdmin} isAmex={isAmex} isProvider={isProvider} onResolve={onResolve} onRequestResolve={onRequestResolve} onApprove={onApprove} onReject={onReject} onUnresolve={onUnresolve} onDelete={onDelete} onRefresh={onRefresh}
+        <ComplaintCard complaint={c} ticketNumber={getTicketNumber(c, complaints)} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} onAssign={onAssign} onLogVisit={onLogVisit} onMarkResolved={onMarkResolved} onVerify={onVerify} onRejectVerify={onRejectVerify} onDelete={onDelete} onRefresh={onRefresh} staffOptions={(staffOptions || []).filter(s => s.company === getProvider(hospital))}
           cardHighlight={localFocus && localFocus.complaintId === c.id}
           highlightCommentText={localFocus && localFocus.complaintId === c.id && localFocus.isComment ? localFocus.commentText : ""}
         />
@@ -1428,8 +1512,8 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
     }, 100);
     setTimeout(() => setFocusInfo(null), 2500);
   };
-  const mine = complaints.filter(c => c.hospital === user.name).sort((a, b) => {   const aOpen = a.status !== "Resolved" ? 0 : 1;   const bOpen = b.status !== "Resolved" ? 0 : 1;   if (aOpen !== bOpen) return aOpen - bOpen;   return new Date(b.created_at) - new Date(a.created_at); });
-  const openCount = mine.filter(c => c.status !== "Resolved").length;
+  const mine = complaints.filter(c => c.hospital === user.name).sort((a, b) => {   const aOpen = isClosedStatus(a.status) ? 1 : 0;   const bOpen = isClosedStatus(b.status) ? 1 : 0;   if (aOpen !== bOpen) return aOpen - bOpen;   return new Date(b.created_at) - new Date(a.created_at); });
+  const openCount = mine.filter(c => !isClosedStatus(c.status)).length;
 
   const compressImage = (file) => new Promise((resolve) => {
     if (!file.type.startsWith("image/")) { resolve(file); return; }
@@ -1485,7 +1569,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
       alert("Failed to submit complaint. Please try again.");
     }
   };
-  const handleResolve = async (id) => { const c = complaints.find(x => x.id === id); await requestResolution(id, operatorName.trim() || user.name + " Hospital"); notifyUsers("resolution_request", `Resolution Requested: ${user.name}`, c ? c.title : "", user.name, id, user.id).catch(() => {}); await onRefresh(); };
+  const handleMarkResolved = async (id) => { const c = complaints.find(x => x.id === id); await markResolved(id, operatorName.trim() || user.name + " Hospital"); if (c) { createNotification("amex", "resolved", `Ready for Verification: ${user.name}`, c.title, id, user.name).catch(() => {}); notifyUsers("resolved", `Ready for Verification: ${user.name}`, c.title, user.name, id, user.id).catch(() => {}); } await onRefresh(); };
   return (
     <div style={{ ...styles.shell, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
       {/* Teal gradient hero header — now the very top, with actions integrated */}
@@ -1565,9 +1649,9 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
           {mine.map(c => (
             <div key={c.id} ref={el => { cardRefs.current[c.id] = el; }}>
               <ComplaintCard
-                complaint={c} ticketNumber={getTicketNumber(c, complaints)} currentUser={user} canResolve={true} canComment={true}
-                isAdmin={false} isAmex={false} isProvider={false}
-                onResolve={() => {}} onRequestResolve={handleResolve} onApprove={() => {}} onReject={() => {}} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh}
+                complaint={c} ticketNumber={getTicketNumber(c, complaints)} currentUser={user} canComment={true}
+                isAdmin={false}
+                onAssign={() => {}} onLogVisit={() => {}} onMarkResolved={handleMarkResolved} onVerify={() => {}} onRejectVerify={() => {}} onDelete={() => {}} onRefresh={onRefresh} staffOptions={[]}
                 cardHighlight={focusInfo && focusInfo.complaintId === c.id}
                 highlightCommentText={focusInfo && focusInfo.complaintId === c.id && focusInfo.isComment ? focusInfo.commentText : ""}
               />
@@ -1587,7 +1671,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
   const [adminHospital, setAdminHospital] = useState(ALL_HOSPITALS[0]); const [adminTitle, setAdminTitle] = useState(""); const [adminDesc, setAdminDesc] = useState(""); const [adminDate, setAdminDate] = useState("");
   const [adminSubmitting, setAdminSubmitting] = useState(false); const [adminSuccess, setAdminSuccess] = useState(false);
-  const [newUserId, setNewUserId] = useState(""); const [newUserName, setNewUserName] = useState(""); const [newUserRole, setNewUserRole] = useState("company"); const [newUserPw, setNewUserPw] = useState(""); const [newUserCompany, setNewUserCompany] = useState("Amex"); const [newUserEmail, setNewUserEmail] = useState(""); const [addingUser, setAddingUser] = useState(false);
+  const [newUserId, setNewUserId] = useState(""); const [newUserName, setNewUserName] = useState(""); const [newUserRole, setNewUserRole] = useState("company"); const [newUserPw, setNewUserPw] = useState(""); const [newUserCompany, setNewUserCompany] = useState("Amex"); const [newUserCompanyRole, setNewUserCompanyRole] = useState("staff"); const [newUserEmail, setNewUserEmail] = useState(""); const [addingUser, setAddingUser] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [adminFiles, setAdminFiles] = useState([]);
   const [pendingFocus, setPendingFocus] = useState(null);
@@ -1598,14 +1682,15 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   };
 
 
-  const totalComplaints = complaints.length; const totalOpen = complaints.filter(c => c.status !== "Resolved").length;
+  const totalComplaints = complaints.length; const totalOpen = complaints.filter(c => !isClosedStatus(c.status)).length;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
-  const handleResolve = async (id, date) => { await resolveComplaint(id, date, null); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
-  const handleRequestResolve = async (id) => { await requestResolution(id, ""); await onRefresh(); };
-  const handleApprove = async (id) => { await approveResolution(id, null); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
-  const handleReject = async (id, reason) => { await rejectResolution(id); await insertComment(id, "", "admin", `Resolution rejected: ${reason}`); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, `${c.title} — ${reason}`, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, `${c.title} — ${reason}`, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
-  const handleUnresolve = async (id) => { await unresolveComplaint(id); await onRefresh(); };
+  const handleAssign = async (id, assignedTo) => { await assignComplaint(id, assignedTo, user.name); const c = complaints.find(x => x.id === id); if (c) notifyUsers("assigned", `Ticket Assigned: ${c.hospital}`, `${c.title} — assigned to ${assignedTo}`, c.hospital, id, "admin").catch(() => {}); await onRefresh(); };
+  const handleLogVisit = async (id, visitDate) => { await logVisit(id, visitDate, user.name); await onRefresh(); };
+  const handleMarkResolved = async (id) => { await markResolved(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification("amex", "resolved", `Ready for Verification: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Ready for Verification: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
+  const handleVerify = async (id) => { await verifyComplaint(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
+  const handleRejectVerify = async (id) => { await rejectVerification(id); await insertComment(id, "", "admin", "Verification rejected — ticket reopened."); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
   const handleDelete = async (id) => { await deleteComplaint(id); await onRefresh(); };
+  const staffOptions = users.filter(u => u.role === "company" && u.company_role === "staff");
   const handlePasswordChange = async (userId) => {
     if (!newPw.trim() || saving) return;
     if (newPw.trim().length < 8) { alert("Password must be at least 8 characters"); return; }
@@ -1666,7 +1751,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
     if (newUserPw.trim().length < 8) { alert("Password must be at least 8 characters"); return; }
     setAddingUser(true);
     const autoId = newUserName.trim().toLowerCase().replace(/\s+/g, "");
-    const created = await createUser(autoId, newUserName.trim(), "company", newUserPw.trim(), newUserCompany, newUserEmail.trim() || null);
+    const created = await createUser(autoId, newUserName.trim(), "company", newUserPw.trim(), newUserCompany, newUserEmail.trim() || null, newUserCompanyRole);
     setAddingUser(false);
     if (!created) return;
     setNewUserName(""); setNewUserId(""); setNewUserPw(""); setNewUserEmail(""); await onRefresh();
@@ -1682,7 +1767,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 
 
   const adminFuncCount = ALL_HOSPITALS.filter(h => isFunctional(h, complaints, siteNotes)).length;
-  const adminResolved = complaints.filter(c => c.status === "Resolved").length;
+  const adminResolved = complaints.filter(c => isClosedStatus(c.status)).length;
 
   return (
     <div style={{ ...styles.shell, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
@@ -1732,7 +1817,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         <div key={tab} className="scale-in">
         {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} onViewSite={(h) => { setTab("complaints"); setSelected(h); }} />}
         {tab === "complaints" && !selected && (<GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} />)}
-        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={true} canComment={true} isAdmin={true} isAmex={false} isProvider={false} onBack={() => setSelected(null)} onResolve={handleResolve} onRequestResolve={handleRequestResolve} onApprove={handleApprove} onReject={handleReject} onUnresolve={handleUnresolve} onDelete={handleDelete} onRefresh={onRefresh} focusInfo={pendingFocus} />)}
+        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canComment={true} isAdmin={true} onBack={() => setSelected(null)} onAssign={handleAssign} onLogVisit={handleLogVisit} onMarkResolved={handleMarkResolved} onVerify={handleVerify} onRejectVerify={handleRejectVerify} onDelete={handleDelete} onRefresh={onRefresh} staffOptions={staffOptions} focusInfo={pendingFocus} />)}
         {tab === "submit" && (
           <section style={{ maxWidth: 640, margin: "0 auto", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
             <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.tealLight}`, boxShadow: "0 4px 16px rgba(15,118,110,0.08)", overflow: "hidden" }}>
@@ -1791,6 +1876,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
               <div style={{ flex: 1, minWidth: 140 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Full Name</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Full Name" value={newUserName} onChange={e => { setNewUserName(e.target.value); setNewUserId(e.target.value.trim().toLowerCase().replace(/\s+/g, "")); }} /></div>
               <div style={{ minWidth: 120 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Organization</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserCompany} onChange={e => setNewUserCompany(e.target.value)}>{companyGroups.map(g => <option key={g} value={g}>{g}</option>)}</select></div>
+              <div style={{ minWidth: 110 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Account Type</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserCompanyRole} onChange={e => setNewUserCompanyRole(e.target.value)}><option value="staff">Staff</option><option value="manager">Manager</option></select></div>
               <div style={{ flex: 1, minWidth: 140 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Email (optional)</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} type="email" placeholder="email@company.com" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} /></div>
               <div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Password</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} type="password" placeholder="Min 8 chars" value={newUserPw} onChange={e => setNewUserPw(e.target.value)} /></div>
               <button style={styles.pwSaveBtn} onClick={handleAddUser}>{addingUser ? "…" : "Add"}</button>
@@ -1850,6 +1936,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
                     <div style={styles.pwRow}>
                       <div style={{ flex: 1 }}>
                         <strong style={styles.pwName}>{u.name}</strong>
+                        {u.company_role && <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: u.company_role === "manager" ? "#0f766e" : C.textLight, background: u.company_role === "manager" ? "#ccfbf1" : "#f0f0f0", borderRadius: 8, padding: "2px 8px", marginLeft: 8 }}>{u.company_role}</span>}
                         {u.email && <span style={{ fontSize: 11, color: C.textLight, marginLeft: 8 }}>{u.email}</span>}
                       </div>
                       <div style={styles.pwRight}>
@@ -1893,6 +1980,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
                     <div style={styles.pwRow}>
                       <div style={{ flex: 1 }}>
                         <strong style={styles.pwName}>{u.name}</strong>
+                        {u.company_role && <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: u.company_role === "manager" ? "#0f766e" : C.textLight, background: u.company_role === "manager" ? "#ccfbf1" : "#f0f0f0", borderRadius: 8, padding: "2px 8px", marginLeft: 8 }}>{u.company_role}</span>}
                         {u.email && <span style={{ fontSize: 11, color: C.textLight, marginLeft: 8 }}>{u.email}</span>}
                       </div>
                       <div style={styles.pwRight}>
@@ -1932,7 +2020,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 }
 
 /* ─── Company Dashboard ─── */
-function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) {
+function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLogout }) {
   const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const [pendingFocus, setPendingFocus] = useState(null);
   const handleNotifFocus = (info) => {
@@ -1947,17 +2035,19 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
   const myGroups = {}; if (seesAll) { Object.assign(myGroups, GROUPS); } else if (GROUPS[companyName]) { myGroups[companyName] = GROUPS[companyName]; } else { Object.assign(myGroups, GROUPS); }
   const myHospitals = Object.values(myGroups).flat();
   const myComplaints = complaints.filter(c => myHospitals.includes(c.hospital));
-  const totalComplaints = myComplaints.length; const totalOpen = myComplaints.filter(c => c.status !== "Resolved").length;
+  const totalComplaints = myComplaints.length; const totalOpen = myComplaints.filter(c => !isClosedStatus(c.status)).length;
   const canCommentOnHospital = (hospital) => { if (["Novair", "Amex"].includes(companyName)) return true; if (isProvider && getProvider(hospital) === companyName) return true; return false; };
-  const canResolveHospital = isAmex || isProvider;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
-  const handleResolve = async (id) => { if (isAmex) { await resolveComplaint(id, null, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved: ${c.hospital}`, c.title, c.hospital, id, "amex").catch(() => {}); } } else { await requestResolution(id, user.name); const c = complaints.find(x => x.id === id); if (c) notifyUsers("resolution_request", `Resolution Requested: ${c.hospital}`, c.title, c.hospital, id, user.id).catch(() => {}); } await onRefresh(); };
-  const handleRequestResolve = async (id) => { await requestResolution(id, user.name); const c = complaints.find(x => x.id === id); if (c) notifyUsers("resolution_request", `Resolution Requested: ${c.hospital}`, c.title, c.hospital, id, user.id).catch(() => {}); await onRefresh(); };
-  const handleApprove = async (id) => { await approveResolution(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved: ${c.hospital}`, c.title, c.hospital, id, (user.company || user.name || "").toLowerCase().replace(/[\s-]+/g, "")).catch(() => {}); } await onRefresh(); };
-  const handleReject = async (id, reason) => { await rejectResolution(id); await insertComment(id, user.name, "company", `Resolution rejected: ${reason}`); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, `${c.title} — ${reason}`, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, `${c.title} — ${reason}`, c.hospital, id, (user.company || user.name || "").toLowerCase().replace(/[\s-]+/g, "")).catch(() => {}); } await onRefresh(); };
+  const notifyTarget = (user.company || user.name || "").toLowerCase().replace(/[\s-]+/g, "");
+  const handleAssign = async (id, assignedTo) => { await assignComplaint(id, assignedTo, user.name); const c = complaints.find(x => x.id === id); if (c) notifyUsers("assigned", `Ticket Assigned: ${c.hospital}`, `${c.title} — assigned to ${assignedTo}`, c.hospital, id, notifyTarget).catch(() => {}); await onRefresh(); };
+  const handleLogVisit = async (id, visitDate) => { await logVisit(id, visitDate, user.name); await onRefresh(); };
+  const handleMarkResolved = async (id) => { await markResolved(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification("amex", "resolved", `Ready for Verification: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Ready for Verification: ${c.hospital}`, c.title, c.hospital, id, notifyTarget).catch(() => {}); } await onRefresh(); };
+  const handleVerify = async (id) => { await verifyComplaint(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, c.hospital, id, notifyTarget).catch(() => {}); } await onRefresh(); };
+  const handleRejectVerify = async (id) => { await rejectVerification(id); await insertComment(id, user.name, "company", "Verification rejected — ticket reopened."); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, c.title, c.hospital, id, notifyTarget).catch(() => {}); } await onRefresh(); };
+  const staffOptions = (users || []).filter(u => u.role === "company" && u.company_role === "staff");
   // For the hero + stats
   const funcCount = myHospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
-  const resolvedCount = myComplaints.filter(c => c.status === "Resolved").length;
+  const resolvedCount = myComplaints.filter(c => isClosedStatus(c.status)).length;
 
   return (
     <div style={{ ...styles.shell, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
@@ -2009,7 +2099,7 @@ function CompanyDashboard({ user, complaints, siteNotes, onRefresh, onLogout }) 
         <div key={tab} className="scale-in">
         {tab === "overview" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} onViewSite={(h) => { setTab("complaints"); setSelected(h); }} />}
         {tab === "complaints" && !selected && (<GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} />)}
-        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canResolve={canResolveHospital} canComment={canCommentOnHospital(selected)} isAdmin={false} isAmex={isAmex} isProvider={isProvider} onBack={() => setSelected(null)} onResolve={handleResolve} onRequestResolve={handleRequestResolve} onApprove={handleApprove} onReject={handleReject} onUnresolve={() => {}} onDelete={() => {}} onRefresh={onRefresh} focusInfo={pendingFocus} />)}
+        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onAssign={handleAssign} onLogVisit={handleLogVisit} onMarkResolved={handleMarkResolved} onVerify={handleVerify} onRejectVerify={handleRejectVerify} onDelete={() => {}} onRefresh={onRefresh} staffOptions={staffOptions} focusInfo={pendingFocus} />)}
         </div>
       </main>
       <PartnerFooter />
