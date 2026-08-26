@@ -171,8 +171,14 @@ export default async function handler(req, res) {
     if (action === "assign_complaint") {
       const { id, assigned_to, assigned_by } = body;
       if (!id || !assigned_to) return json(res, 400, { error: "Missing id or assigned_to" });
+      // A ticket can have multiple assignees — merge the new name(s) into the existing list rather
+      // than overwriting it, so a manager can assign additional people over time.
+      const { data: current } = await admin.from("complaints").select("assigned_to").eq("id", id).maybeSingle();
+      const existing = Array.isArray(current?.assigned_to) ? current.assigned_to : (current?.assigned_to ? [current.assigned_to] : []);
+      const incoming = Array.isArray(assigned_to) ? assigned_to : [assigned_to];
+      const merged = [...new Set([...existing, ...incoming].filter(Boolean))];
       const { error } = await admin.from("complaints").update({
-        assigned_to, assigned_by: assigned_by || null, assigned_at: new Date().toISOString(),
+        assigned_to: merged, assigned_by: assigned_by || null, assigned_at: new Date().toISOString(),
       }).eq("id", id);
       if (error) return json(res, 400, { error: error.message });
       return json(res, 200, { success: true });
