@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "./supabase";
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, GeoJSON, Popup } from "react-leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 /* ─── Write helper: routes all DB writes through the service-role API ─── */
@@ -1128,9 +1129,35 @@ function AssignedTag({ complaint, isAdmin, onRemove }) {
 }
 
 /* ─── Overview Tab ─── */
+// Modern teardrop pin icon for the map, colored per site status
+function makePinIcon(color) {
+  const svg = `<svg width="30" height="40" viewBox="0 0 30 40" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));">
+    <path d="M15 0C6.7 0 0 6.7 0 15c0 11 15 25 15 25s15-14 15-25C30 6.7 23.3 0 15 0z" fill="${color}"/>
+    <circle cx="15" cy="15" r="6.5" fill="#fff"/>
+  </svg>`;
+  return L.divIcon({
+    html: svg,
+    className: "",
+    iconSize: [30, 40],
+    iconAnchor: [15, 40],
+    popupAnchor: [0, -36],
+  });
+}
+
 /* ─── Homepage: map + program pulse, shown to every non-hospital account.
    Overview (the older site-list view) remains available as its own separate tab. ─── */
 function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
+  const [pkBoundary, setPkBoundary] = useState(null);
+  useEffect(() => {
+    fetch("https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json")
+      .then(r => r.json())
+      .then(data => {
+        const pk = (data.features || []).find(f => (f.properties?.name || "").toLowerCase() === "pakistan");
+        if (pk) setPkBoundary(pk);
+      })
+      .catch(() => {}); // map still works fine without the boundary overlay if this fails
+  }, []);
+
   const funcCount = hospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
   const shutdownSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Shut Down");
   const issueSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Issues");
@@ -1202,17 +1229,32 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
         <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.border}`, height: 380 }}>
           <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
-            <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+              subdomains="abcd"
+              maxZoom={19}
+            />
+            {pkBoundary && (
+              <GeoJSON data={pkBoundary} style={{ color: "#0f766e", weight: 2, fillOpacity: 0, dashArray: "4 3" }} />
+            )}
             {mappedSites.map(h => (
-              <CircleMarker key={h} center={SITE_COORDS[h]} radius={9} pathOptions={{ color: pinColor(h), fillColor: pinColor(h), fillOpacity: 0.9, weight: 2 }}>
+              <Marker key={h} position={SITE_COORDS[h]} icon={makePinIcon(pinColor(h))}>
                 <Popup>
-                  <div style={{ fontSize: 13 }}>
-                    <strong>{h}</strong><br />
-                    {getSiteDisplayStatus(h, complaints, siteNotes)}<br />
-                    <button style={{ marginTop: 6, fontSize: 12, cursor: "pointer" }} onClick={() => onViewSite(h)}>View site →</button>
+                  <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", minWidth: 170 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#1a2332", marginBottom: 6 }}>{h}</div>
+                    <span style={{ display: "inline-block", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 10, color: "#fff", background: pinColor(h) }}>
+                      {getSiteDisplayStatus(h, complaints, siteNotes)}
+                    </span>
+                    <button
+                      onClick={() => onViewSite(h)}
+                      style={{ display: "block", width: "100%", marginTop: 10, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "#0f766e", border: "none", borderRadius: 7, padding: "7px 10px", cursor: "pointer" }}
+                    >
+                      View site →
+                    </button>
                   </div>
                 </Popup>
-              </CircleMarker>
+              </Marker>
             ))}
           </MapContainer>
         </div>
