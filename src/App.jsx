@@ -161,6 +161,15 @@ function canMarkResolvedTicket(user, hospital, c) {
 }
 // Only "Resolved" or "Verified" count as no-longer-open; "Open"/"Assigned"/"In Progress" are open.
 function isClosedStatus(status) { return status === "Resolved" || status === "Verified"; }
+// Global ticket sort order: Open, then Assigned, then In Progress, then Resolved, then Verified —
+// irrespective of when each ticket was opened. Within the same status, most recent first.
+const STATUS_SORT_ORDER = { "Open": 0, "Assigned": 1, "In Progress": 2, "Resolved": 3, "Verified": 4 };
+function compareTicketsForDisplay(a, b) {
+  const ra = STATUS_SORT_ORDER[getEffectiveStatus(a)] ?? 0;
+  const rb = STATUS_SORT_ORDER[getEffectiveStatus(b)] ?? 0;
+  if (ra !== rb) return ra - rb;
+  return new Date(b.created_at) - new Date(a.created_at);
+}
 // Only Amex (or admin) verifies or rejects a resolved ticket
 function canVerifyTicket(user) { return user.role === "admin" || isAmexUser(user); }
 
@@ -1563,7 +1572,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
 }
 
 function ComplaintListView({ hospital, complaints, currentUser, canComment, isAdmin, onBack, onAssign, onLogVisit, onMarkResolved, onVerify, onRejectVerify, onDelete, onRefresh, staffOptions, focusInfo }) {
-  const hc = complaints.filter(c => c.hospital === hospital).sort((a, b) => {   const aOpen = a.status !== "Verified" ? 0 : 1;   const bOpen = b.status !== "Verified" ? 0 : 1;   if (aOpen !== bOpen) return aOpen - bOpen;   return new Date(b.created_at) - new Date(a.created_at); });
+  const hc = complaints.filter(c => c.hospital === hospital).sort(compareTicketsForDisplay);
   const cardRefs = useRef({});
   const [localFocus, setLocalFocus] = useState(null);
   useEffect(() => {
@@ -1609,7 +1618,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
     }, 100);
     setTimeout(() => setFocusInfo(null), 2500);
   };
-  const mine = complaints.filter(c => c.hospital === user.name).sort((a, b) => {   const aOpen = isClosedStatus(a.status) ? 1 : 0;   const bOpen = isClosedStatus(b.status) ? 1 : 0;   if (aOpen !== bOpen) return aOpen - bOpen;   return new Date(b.created_at) - new Date(a.created_at); });
+  const mine = complaints.filter(c => c.hospital === user.name).sort(compareTicketsForDisplay);
   const openCount = mine.filter(c => !isClosedStatus(c.status)).length;
 
   const compressImage = (file) => new Promise((resolve) => {
