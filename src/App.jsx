@@ -1065,13 +1065,15 @@ function StatusBadge({ status }) {
 }
 
 /* "Assigned to: X, Y" — shown at every stage once one or more staff members have been assigned */
-function AssignedTag({ complaint, isAdmin, onRemove }) {
+function AssignedTag({ complaint, isAdmin, onRemove, staffOptions }) {
   const names = assigneeNames(complaint);
   if (!names.length) return null;
+  const companyFor = (n) => (staffOptions || []).find(s => s.name === n)?.company;
+  const label = (n) => { const co = companyFor(n); return co ? `${n} — ${co}` : n; };
   if (!isAdmin) {
     return (
       <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 12, color: "#1a2332", background: "#e7ecf3", border: "1px solid #d4dce8" }}>
-        Assigned to: {names.join(", ")}
+        Assigned to: {names.map(label).join(", ")}
       </span>
     );
   }
@@ -1080,7 +1082,7 @@ function AssignedTag({ complaint, isAdmin, onRemove }) {
       Assigned to:
       {names.map(n => (
         <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "#fff", border: "1px solid #d4dce8", borderRadius: 10, padding: "1px 4px 1px 8px" }}>
-          {n}
+          {label(n)}
           <button title="Undo this assignment" onClick={() => onRemove(n)} style={{ border: "none", background: "none", cursor: "pointer", color: "#c0392b", fontWeight: 700, fontSize: 11, padding: "0 3px" }}>✕</button>
         </span>
       ))}
@@ -1501,7 +1503,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
           <div style={{ padding: 16 }}>
             <p style={styles.cardDesc}>{c.description}</p>
             {c.submitted_by && <p style={{ fontSize: 12.5, color: C.tealDark, fontWeight: 600, marginTop: 10 }}>👤 {c.submitted_by}</p>}
-            {hasAssignees(c) && <div style={{ marginTop: 10 }}><AssignedTag complaint={c} isAdmin={isAdmin} onRemove={handleRemoveAssignee} /></div>}
+            {hasAssignees(c) && <div style={{ marginTop: 10 }}><AssignedTag complaint={c} isAdmin={isAdmin} onRemove={handleRemoveAssignee} staffOptions={staffOptions} /></div>}
             <div style={{ marginTop: 12, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 11, display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
               <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Ticket Opened: </span><span style={{ color: C.black, fontWeight: 700 }}>{new Date(c.created_at).toLocaleDateString("en-PK", dateFmt)}</span></div>
               {c.assigned_at && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Assignment Date: </span><span style={{ color: "#5b3a9c", fontWeight: 700 }}>{new Date(c.assigned_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
@@ -1527,7 +1529,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                   {availableStaff.map(s => (
                     <label key={s.id} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, cursor: "pointer" }}>
                       <input type="checkbox" checked={assigneePicks.includes(s.name)} onChange={() => toggleAssignee(s.name)} />
-                      {s.name} <span style={{ color: C.textLight, fontSize: 11 }}>({s.company_role === "technician" ? "Technician" : "Engineer"})</span>
+                      {s.name} <span style={{ color: C.textLight, fontSize: 11 }}>— {s.company} ({s.company_role === "technician" ? "Technician" : s.company_role === "manager" ? "Manager" : "Engineer"})</span>
                     </label>
                   ))}
                 </div>
@@ -1796,7 +1798,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const handleVerify = async (id) => { await verifyComplaint(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
   const handleRejectVerify = async (id) => { await rejectVerification(id); await insertComment(id, "", "admin", "Verification rejected — ticket reopened."); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
   const handleDelete = async (id) => { await deleteComplaint(id); await onRefresh(); };
-  const staffOptions = users.filter(u => u.role === "company" && (u.company_role === "engineer" || u.company_role === "technician"));
+  const staffOptions = users.filter(u => u.role === "company" && (u.company_role === "engineer" || u.company_role === "technician" || u.company_role === "manager"));
   const handlePasswordChange = async (userId) => {
     if (!newPw.trim() || saving) return;
     if (newPw.trim().length < 8) { alert("Password must be at least 8 characters"); return; }
@@ -2150,7 +2152,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
   const handleMarkResolved = async (id) => { await markResolved(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification("amex", "resolved", `Ready for Verification: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Ready for Verification: ${c.hospital}`, c.title, c.hospital, id, notifyTarget).catch(() => {}); } await onRefresh(); };
   const handleVerify = async (id) => { await verifyComplaint(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, c.hospital, id, notifyTarget).catch(() => {}); } await onRefresh(); };
   const handleRejectVerify = async (id) => { await rejectVerification(id); await insertComment(id, user.name, "company", "Verification rejected — ticket reopened."); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, c.title, c.hospital, id, notifyTarget).catch(() => {}); } await onRefresh(); };
-  const staffOptions = (users || []).filter(u => u.role === "company" && (u.company_role === "engineer" || u.company_role === "technician"));
+  const staffOptions = (users || []).filter(u => u.role === "company" && (u.company_role === "engineer" || u.company_role === "technician" || u.company_role === "manager"));
   // For the hero + stats
   const funcCount = myHospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
   const resolvedCount = myComplaints.filter(c => isClosedStatus(c.status)).length;
