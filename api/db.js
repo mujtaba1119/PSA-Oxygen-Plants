@@ -187,8 +187,13 @@ export default async function handler(req, res) {
     if (action === "log_visit") {
       const { id, visit_date, logged_by } = body;
       if (!id || !visit_date) return json(res, 400, { error: "Missing id or visit_date" });
+      // A ticket can be visited more than once — merge the new date into the existing list
+      // rather than overwriting it, so a manager can log follow-up visits.
+      const { data: current } = await admin.from("complaints").select("visit_date").eq("id", id).maybeSingle();
+      const existing = Array.isArray(current?.visit_date) ? current.visit_date : (current?.visit_date ? [current.visit_date] : []);
+      const merged = [...new Set([...existing, visit_date])];
       const { error } = await admin.from("complaints").update({
-        visit_date, visit_logged_by: logged_by || null, visit_logged_at: new Date().toISOString(),
+        visit_date: merged, visit_logged_by: logged_by || null, visit_logged_at: new Date().toISOString(),
       }).eq("id", id);
       if (error) return json(res, 400, { error: error.message });
       return json(res, 200, { success: true });
