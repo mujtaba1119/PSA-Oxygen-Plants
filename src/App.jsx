@@ -1230,8 +1230,9 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
         <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.border}`, height: 380 }}>
           <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
             <TileLayer
-              attribution='Wikimedia maps | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              subdomains="abc"
               maxZoom={19}
             />
             {pkBoundary && (
