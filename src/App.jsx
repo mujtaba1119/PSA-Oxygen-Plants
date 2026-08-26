@@ -235,6 +235,27 @@ async function rejectVerification(id) {
   const data = await dbWrite({ action: "reject_verification", id });
   return !data.error;
 }
+// ─── Admin undo actions ───
+async function removeAssignee(id, name) {
+  const data = await dbWrite({ action: "remove_assignee", id, name });
+  return !data.error;
+}
+async function removeVisit(id, visitDate) {
+  const data = await dbWrite({ action: "remove_visit", id, visit_date: visitDate });
+  return !data.error;
+}
+async function undoResolve(id) {
+  const data = await dbWrite({ action: "undo_resolve", id });
+  return !data.error;
+}
+async function undoVerify(id) {
+  const data = await dbWrite({ action: "undo_verify", id });
+  return !data.error;
+}
+async function undoReject(id) {
+  const data = await dbWrite({ action: "undo_reject", id });
+  return !data.error;
+}
 async function deleteComplaint(id) {
   const data = await dbWrite({ action: "delete_complaint", id });
   return !data.error;
@@ -1035,12 +1056,25 @@ function StatusBadge({ status }) {
 }
 
 /* "Assigned to: X, Y" — shown at every stage once one or more staff members have been assigned */
-function AssignedTag({ complaint }) {
+function AssignedTag({ complaint, isAdmin, onRemove }) {
   const names = assigneeNames(complaint);
   if (!names.length) return null;
+  if (!isAdmin) {
+    return (
+      <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 12, color: "#1a2332", background: "#e7ecf3", border: "1px solid #d4dce8" }}>
+        Assigned to: {names.join(", ")}
+      </span>
+    );
+  }
   return (
-    <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 12, color: "#1a2332", background: "#e7ecf3", border: "1px solid #d4dce8" }}>
-      Assigned to: {names.join(", ")}
+    <span style={{ display: "inline-flex", alignItems: "center", flexWrap: "wrap", gap: 4, fontSize: 11, fontWeight: 600, padding: "3px 8px 3px 10px", borderRadius: 12, color: "#1a2332", background: "#e7ecf3", border: "1px solid #d4dce8" }}>
+      Assigned to:
+      {names.map(n => (
+        <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "#fff", border: "1px solid #d4dce8", borderRadius: 10, padding: "1px 4px 1px 8px" }}>
+          {n}
+          <button title="Undo this assignment" onClick={() => onRemove(n)} style={{ border: "none", background: "none", cursor: "pointer", color: "#c0392b", fontWeight: 700, fontSize: 11, padding: "0 3px" }}>✕</button>
+        </span>
+      ))}
     </span>
   );
 }
@@ -1422,6 +1456,11 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const handleMarkResolved = async () => { setBusy(true); await onMarkResolved(c.id); setBusy(false); };
   const handleVerify = async () => { setBusy(true); await onVerify(c.id); setBusy(false); };
   const handleRejectVerify = async () => { if (!window.confirm("Reject this resolution? The ticket will go back to Open and will need to be reassigned.")) return; setBusy(true); await onRejectVerify(c.id); setBusy(false); };
+  const handleRemoveAssignee = async (name) => { if (!window.confirm(`Remove ${name} from this ticket?`)) return; setBusy(true); await removeAssignee(c.id, name); setBusy(false); await onRefresh(); };
+  const handleRemoveVisit = async (d) => { if (!window.confirm("Remove this logged visit?")) return; setBusy(true); await removeVisit(c.id, d); setBusy(false); await onRefresh(); };
+  const handleUndoResolve = async () => { if (!window.confirm("Undo resolving this ticket? It will go back to In Progress.")) return; setBusy(true); await undoResolve(c.id); setBusy(false); await onRefresh(); };
+  const handleUndoVerify = async () => { if (!window.confirm("Undo verification? The ticket will go back to Resolved.")) return; setBusy(true); await undoVerify(c.id); setBusy(false); await onRefresh(); };
+  const handleUndoReject = async () => { if (!window.confirm("Undo the last rejection? This restores the ticket to the state it was in right before it was rejected.")) return; setBusy(true); await undoReject(c.id); setBusy(false); await onRefresh(); };
   const handleDelete = async () => { if (window.confirm("Delete this complaint permanently?")) { await onDelete(c.id); await onRefresh(); } };
   const handleEditSave = async () => { if (!editTitle.trim() || !editDesc.trim()) return; setEditSaving(true); await updateComplaintFields(c.id, { title: editTitle.trim(), description: editDesc.trim() }); setEditSaving(false); setEditing(false); await onRefresh(); };
   const dateFmt = { year: "numeric", month: "short", day: "numeric" };
@@ -1453,11 +1492,21 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
           <div style={{ padding: 16 }}>
             <p style={styles.cardDesc}>{c.description}</p>
             {c.submitted_by && <p style={{ fontSize: 12.5, color: C.tealDark, fontWeight: 600, marginTop: 10 }}>👤 {c.submitted_by}</p>}
-            {hasAssignees(c) && <div style={{ marginTop: 10 }}><AssignedTag complaint={c} /></div>}
+            {hasAssignees(c) && <div style={{ marginTop: 10 }}><AssignedTag complaint={c} isAdmin={isAdmin} onRemove={handleRemoveAssignee} /></div>}
             <div style={{ marginTop: 12, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 11, display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
               <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Ticket Opened: </span><span style={{ color: C.black, fontWeight: 700 }}>{new Date(c.created_at).toLocaleDateString("en-PK", dateFmt)}</span></div>
               {c.assigned_at && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Assignment Date: </span><span style={{ color: "#5b3a9c", fontWeight: 700 }}>{new Date(c.assigned_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
-              {hasVisits(c) && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>{effStatus === "In Progress" ? (visitDates(c).length > 1 ? "Visit Dates: " : "Visit Date: ") : "Visit Scheduled: "}</span><span style={{ color: "#c47f1e", fontWeight: 700 }}>{visitDates(c).map(d => new Date(d).toLocaleDateString("en-PK", dateFmt)).join(", ")}</span></div>}
+              {hasVisits(c) && (
+                <div style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                  <span style={{ color: C.textMid, fontWeight: 600 }}>{effStatus === "In Progress" ? (visitDates(c).length > 1 ? "Visit Dates: " : "Visit Date: ") : "Visit Scheduled: "}</span>
+                  {visitDates(c).map((d, i) => (
+                    <span key={d} style={{ color: "#c47f1e", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                      {i > 0 && <span style={{ color: C.textMid, fontWeight: 400 }}>,</span>}{new Date(d).toLocaleDateString("en-PK", dateFmt)}
+                      {isAdmin && <button title="Undo this visit" onClick={() => handleRemoveVisit(d)} style={{ border: "none", background: "none", cursor: "pointer", color: "#c0392b", fontWeight: 700, fontSize: 11, padding: "0 2px" }}>✕</button>}
+                    </span>
+                  ))}
+                </div>
+              )}
               {(c.status === "Resolved" || c.status === "Verified") && c.resolved_at && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Resolved Date: </span><span style={{ color: "#276749", fontWeight: 700 }}>{new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
               {c.status === "Verified" && c.verified_at && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Verified Date: </span><span style={{ color: "#276749", fontWeight: 700 }}>{new Date(c.verified_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
             </div>
@@ -1491,6 +1540,15 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                   <button style={{ ...styles.btnTealSmall, background: "#27ae60", boxShadow: "none" }} onClick={handleVerify} disabled={busy}>{busy ? "…" : "✓ Verify"}</button>
                   <button style={{ ...styles.btnTealSmall, background: "#c0392b", boxShadow: "none" }} onClick={handleRejectVerify} disabled={busy}>✕ Reject</button>
                 </>
+              )}
+              {isAdmin && c.status === "Resolved" && (
+                <button style={{ fontSize: 12, fontWeight: 600, color: "#9c4221", background: "#feebc8", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer" }} onClick={handleUndoResolve} disabled={busy}>↺ Undo Resolve</button>
+              )}
+              {isAdmin && c.status === "Verified" && (
+                <button style={{ fontSize: 12, fontWeight: 600, color: "#1a5276", background: "#d6eaf8", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer" }} onClick={handleUndoVerify} disabled={busy}>↺ Undo Verify</button>
+              )}
+              {isAdmin && c.pre_reject_snapshot && (
+                <button style={{ fontSize: 12, fontWeight: 600, color: "#5b3a9c", background: "#ede4fb", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer" }} onClick={handleUndoReject} disabled={busy}>↺ Undo Last Rejection</button>
               )}
               {isAdmin && <button style={{ fontSize: 12, fontWeight: 500, color: C.black, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 16px", cursor: "pointer" }} onClick={() => setEditing(true)}>Edit</button>}
               {isAdmin && <button style={{ ...styles.deleteBtn, borderRadius: 8 }} onClick={handleDelete}>Delete</button>}
