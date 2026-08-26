@@ -221,15 +221,94 @@ export default async function handler(req, res) {
 
     // Amex rejects a resolution -> ticket goes all the way back to Open,
     // assignment/visit/resolution data is cleared so the manager must reassign from scratch.
+    // Before wiping, the full pre-rejection state is snapshotted so admin can undo this specific
+    // action later (see "undo_reject" below).
     if (action === "reject_verification") {
       const { id } = body;
       if (!id) return json(res, 400, { error: "Missing id" });
+      const { data: current } = await admin.from("complaints").select(
+        "assigned_to, assigned_by, assigned_at, visit_date, visit_logged_by, visit_logged_at, resolved_by, resolved_at, verified_by, verified_at"
+      ).eq("id", id).maybeSingle();
       const { error } = await admin.from("complaints").update({
         status: "Open",
         assigned_to: null, assigned_by: null, assigned_at: null,
         visit_date: null, visit_logged_by: null, visit_logged_at: null,
         resolved_by: null, resolved_at: null,
         verified_by: null, verified_at: null,
+        pre_reject_snapshot: current || null,
+      }).eq("id", id);
+      if (error) return json(res, 400, { error: error.message });
+      return json(res, 200, { success: true });
+    }
+
+    // ─────────── ADMIN UNDO ACTIONS (Point 1 follow-up) ───────────
+
+    // Remove one person from the assignee list (does not touch anything else)
+    if (action === "remove_assignee") {
+      const { id, name } = body;
+      if (!id || !name) return json(res, 400, { error: "Missing id or name" });
+      const { data: current } = await admin.from("complaints").select("assigned_to").eq("id", id).maybeSingle();
+      const existing = Array.isArray(current?.assigned_to) ? current.assigned_to : (current?.assigned_to ? [current.assigned_to] : []);
+      const updated = existing.filter((n) => n !== name);
+      const { error } = await admin.from("complaints").update({ assigned_to: updated.length ? updated : null }).eq("id", id);
+      if (error) return json(res, 400, { error: error.message });
+      return json(res, 200, { success: true });
+    }
+
+    // Remove one logged visit date (does not touch anything else)
+    if (action === "remove_visit") {
+      const { id, visit_date } = body;
+      if (!id || !visit_date) return json(res, 400, { error: "Missing id or visit_date" });
+      const { data: current } = await admin.from("complaints").select("visit_date").eq("id", id).maybeSingle();
+      const existing = Array.isArray(current?.visit_date) ? current.visit_date : (current?.visit_date ? [current.visit_date] : []);
+      const updated = existing.filter((d) => d !== visit_date);
+      const { error } = await admin.from("complaints").update({ visit_date: updated.length ? updated : null }).eq("id", id);
+      if (error) return json(res, 400, { error: error.message });
+      return json(res, 200, { success: true });
+    }
+
+    // Step "Resolved" back to Open (assignment + visit data are untouched, so the derived
+    // status correctly falls back to "In Progress" or "Assigned" rather than raw "Open")
+    if (action === "undo_resolve") {
+      const { id } = body;
+      if (!id) return json(res, 400, { error: "Missing id" });
+      const { error } = await admin.from("complaints").update({
+        status: "Open", resolved_by: null, resolved_at: null,
+      }).eq("id", id);
+      if (error) return json(res, 400, { error: error.message });
+      return json(res, 200, { success: true });
+    }
+
+    // Step "Verified" back to Resolved
+    if (action === "undo_verify") {
+      const { id } = body;
+      if (!id) return json(res, 400, { error: "Missing id" });
+      const { error } = await admin.from("complaints").update({
+        status: "Resolved", verified_by: null, verified_at: null,
+      }).eq("id", id);
+      if (error) return json(res, 400, { error: error.message });
+      return json(res, 200, { success: true });
+    }
+
+    // Restore the state a ticket was in immediately before its last rejection
+    // (only available while that snapshot still exists — see reject_verification above)
+    if (action === "undo_reject") {
+      const { id } = body;
+      if (!id) return json(res, 400, { error: "Missing id" });
+      const { data: current, error: fetchErr } = await admin.from("complaints").select("pre_reject_snapshot").eq("id", id).maybeSingle();
+      if (fetchErr) return json(res, 400, { error: fetchErr.message });
+      const snap = current?.pre_reject_snapshot;
+      if (!snap) return json(res, 400, { error: "No rejection to undo" });
+      // Restoring implies the ticket was Resolved (possibly Verified) right before rejection —
+      // resolved_at presence tells us which; if verified_at was also set, restore to Verified.
+      const restoredStatus = snap.verified_at ? "Verified" : (snap.resolved_at ? "Resolved" : "Open");
+      const { error } = await admin.from("complaints").update({
+        status: restoredStatus,
+        assigned_to: snap.assigned_to || null, assigned_by: snap.assigned_by || null, assigned_at: snap.assigned_at || null,
+        visit_date: snap.visit_date || null, visit_logged_by: snap.visit_logged_by || null, visit_logged_at: snap.visit_logged_at || null,
+        resolved_by: snap.resolved_by || null, resolved_at: snap.resolved_at || null,
+        verified_by: snap.verified_by || null, verified_at: snap.verified_at || null,
+        pre_reject_snapshot: null,
       }).eq("id", id);
       if (error) return json(res, 400, { error: error.message });
       return json(res, 200, { success: true });
