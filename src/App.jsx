@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "./supabase";
-import { MapContainer, TileLayer, Marker, GeoJSON, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, GeoJSON, Popup, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -1230,9 +1230,8 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
         <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.border}`, height: 380 }}>
           <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-              subdomains="abcd"
+              attribution='Wikimedia maps | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png"
               maxZoom={19}
             />
             {pkBoundary && (
@@ -1240,6 +1239,9 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
             )}
             {mappedSites.map(h => (
               <Marker key={h} position={SITE_COORDS[h]} icon={makePinIcon(pinColor(h))}>
+                <Tooltip direction="top" offset={[0, -34]} opacity={1}>
+                  <span style={{ fontWeight: 600 }}>{h}</span>
+                </Tooltip>
                 <Popup>
                   <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", minWidth: 170 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: "#1a2332", marginBottom: 6 }}>{h}</div>
