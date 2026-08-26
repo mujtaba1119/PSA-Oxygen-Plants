@@ -59,7 +59,7 @@ export default async function handler(req, res) {
       if (company) row.company = company;
       if (email) row.email = email.trim();
       // Manager/staff designation, used by the ticket-assignment workflow (Point 1).
-      // Only meaningful for role "company" — a manager can assign staff and log site visits.
+      // Only meaningful for role "company" — a manager can assign an engineer or technician and log site visits.
       if (role === "company" && company_role) row.company_role = company_role;
 
       const { data, error } = await admin.from("users").insert([row]).select("id, name, role, company, email");
