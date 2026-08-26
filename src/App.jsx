@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "./supabase";
+import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 
 /* ─── Write helper: routes all DB writes through the service-role API ─── */
 async function dbWrite(payload) {
@@ -89,6 +91,43 @@ function getTicketNumber(complaint, allComplaints) {
   return idx === -1 ? "" : `${code}${idx + 1}`;
 }
 
+
+// Site coordinates for the homepage map, keyed by the EXACT site name used in GROUPS above
+// (not the fuller facility names they were given as — e.g. GROUPS uses "Kharan", not "DHQ Kharan").
+// 28 of 36 sites collected so far — the rest simply won't show a pin until added.
+const SITE_COORDS = {
+  // Novair
+  "Swat": [34.758225, 72.358705],
+  "Timergara": [34.829583, 71.845083],
+  "Malakand": [34.611468, 71.961025],
+  "Bannu": [33.015528, 70.708639],
+  "Neelum": [34.587936, 73.913451],
+  "Jhelum": [34.175732, 73.729491],
+  "Haveli": [33.884000, 74.108583],
+  "Nagar": [36.243205, 74.363185],
+  "Ghizer": [36.184048, 73.766230],
+  "Astore": [35.346944, 74.856111],
+  "Khaplu": [35.153222, 76.344028],
+  "Islamabad": [33.703597, 73.053875],
+  // Intexim
+  "Bhakkar": [31.626586, 71.088862],
+  "Sahiwal": [30.683182, 73.100251],
+  "Toba Tek Singh": [30.952000, 72.495583],
+  "Sargodha": [32.081682, 72.663702],
+  "Rahim Yar Khan": [28.418035, 70.315110],
+  "Jhang": [31.262636, 72.334968],
+  "Bhimber": [32.969555, 74.053143],
+  // Z-Corps
+  "Quetta SZ": [30.083664, 66.961242],
+  "DM Jamali": [28.542028, 68.210056],
+  "Khuzdar": [27.810111, 66.610167],
+  "Sibbi": [29.552000, 67.892028],
+  "Zhob": [31.342000, 69.443583],
+  "Quetta Sandeman": [30.193833, 67.009083],
+  "Loralai": [30.380083, 68.600056],
+  "Pangjur": [26.970325, 64.095459],
+  "Kharan": [28.589111, 65.429528],
+};
 
 const COMPLAINT_TYPES = [
   "Compressor Issue","Dryer Issue","Booster Filling System Issue","Purity Issue",
@@ -1065,15 +1104,13 @@ function StatusBadge({ status }) {
 }
 
 /* "Assigned to: X, Y" — shown at every stage once one or more staff members have been assigned */
-function AssignedTag({ complaint, isAdmin, onRemove, staffOptions }) {
+function AssignedTag({ complaint, isAdmin, onRemove }) {
   const names = assigneeNames(complaint);
   if (!names.length) return null;
-  const companyFor = (n) => (staffOptions || []).find(s => s.name === n)?.company;
-  const label = (n) => { const co = companyFor(n); return co ? `${n} — ${co}` : n; };
   if (!isAdmin) {
     return (
       <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 12, color: "#1a2332", background: "#e7ecf3", border: "1px solid #d4dce8" }}>
-        Assigned to: {names.map(label).join(", ")}
+        Assigned to: {names.join(", ")}
       </span>
     );
   }
@@ -1082,7 +1119,7 @@ function AssignedTag({ complaint, isAdmin, onRemove, staffOptions }) {
       Assigned to:
       {names.map(n => (
         <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "#fff", border: "1px solid #d4dce8", borderRadius: 10, padding: "1px 4px 1px 8px" }}>
-          {label(n)}
+          {n}
           <button title="Undo this assignment" onClick={() => onRemove(n)} style={{ border: "none", background: "none", cursor: "pointer", color: "#c0392b", fontWeight: 700, fontSize: 11, padding: "0 3px" }}>✕</button>
         </span>
       ))}
@@ -1091,6 +1128,149 @@ function AssignedTag({ complaint, isAdmin, onRemove, staffOptions }) {
 }
 
 /* ─── Overview Tab ─── */
+/* ─── Homepage: map + program pulse, shown to every non-hospital account.
+   Overview (the older site-list view) remains available as its own separate tab. ─── */
+function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
+  const funcCount = hospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
+  const shutdownSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Shut Down");
+  const issueSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Issues");
+
+  const scoped = complaints.filter(c => hospitals.includes(c.hospital));
+  const stageCounts = { "Open": 0, "Assigned": 0, "In Progress": 0, "Resolved": 0, "Verified": 0 };
+  scoped.forEach(c => { const s = getEffectiveStatus(c); if (stageCounts[s] !== undefined) stageCounts[s]++; });
+
+  const oneWeekAgo = new Date(); oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const resolvedThisWeek = scoped
+    .filter(c => isClosedStatus(c.status) && c.resolved_at && new Date(c.resolved_at) >= oneWeekAgo)
+    .sort((a, b) => new Date(b.resolved_at) - new Date(a.resolved_at))
+    .slice(0, 5);
+
+  const attentionSites = [...shutdownSites, ...issueSites].slice(0, 6);
+
+  // Pin colors: green = fully functional, amber = running but has an open issue,
+  // grey = non-functional (no active ticket, but flagged), red = shut down.
+  const pinColor = (h) => {
+    const s = getSiteDisplayStatus(h, complaints, siteNotes);
+    if (s === "Shut Down") return "#e03131";
+    if (s === "Issues") return "#f08c00";
+    if (s === "Non Functional") return "#868e96";
+    return "#2f9e44";
+  };
+  const mappedSites = hospitals.filter(h => SITE_COORDS[h]);
+
+  const providerEntries = Object.entries(groups || {}).filter(([, sites]) => sites.some(s => hospitals.includes(s)));
+  const showProviderBreakdown = providerEntries.length > 1;
+
+  return (
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16 }}>
+        <div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: C.black }}>OxyTrack network</div>
+          <div style={{ fontSize: 13, color: C.textMid }}>{funcCount} of {hospitals.length} sites fully functional</div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 12, marginBottom: 20 }}>
+        <div style={{ background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 14 }}>
+          <div style={{ fontSize: 12, color: C.textMid, marginBottom: 4 }}>Total sites</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: C.black }}>{hospitals.length}</div>
+        </div>
+        <div style={{ background: "#eafaf1", border: "1px solid #b7e4c7", borderRadius: 10, padding: 14 }}>
+          <div style={{ fontSize: 12, color: "#276749", marginBottom: 4 }}>Functional</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#276749" }}>{funcCount}</div>
+        </div>
+        <div style={{ background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 10, padding: 14 }}>
+          <div style={{ fontSize: 12, color: "#7c5e10", marginBottom: 4 }}>Issues</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#7c5e10" }}>{issueSites.length}</div>
+        </div>
+        <div style={{ background: "#feebc8", border: "1px solid #fc8181", borderRadius: 10, padding: 14 }}>
+          <div style={{ fontSize: 12, color: "#9c4221", marginBottom: 4 }}>Shut down</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#9c4221" }}>{shutdownSites.length}</div>
+        </div>
+      </div>
+
+      <div style={{ fontSize: 15, fontWeight: 700, color: C.black, marginBottom: 8 }}>Tickets by stage</div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        {Object.entries(stageCounts).map(([stage, count]) => (
+          <div key={stage} style={{ flex: 1, minWidth: 80, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 10, textAlign: "center" }}>
+            <div style={{ fontSize: 17, fontWeight: 700, color: C.black }}>{count}</div>
+            <div style={{ fontSize: 10.5, color: C.textMid }}>{statusLabel(stage)}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
+        <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.border}`, height: 380 }}>
+          <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
+            <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            {mappedSites.map(h => (
+              <CircleMarker key={h} center={SITE_COORDS[h]} radius={9} pathOptions={{ color: pinColor(h), fillColor: pinColor(h), fillOpacity: 0.9, weight: 2 }}>
+                <Popup>
+                  <div style={{ fontSize: 13 }}>
+                    <strong>{h}</strong><br />
+                    {getSiteDisplayStatus(h, complaints, siteNotes)}<br />
+                    <button style={{ marginTop: 6, fontSize: 12, cursor: "pointer" }} onClick={() => onViewSite(h)}>View site →</button>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            ))}
+          </MapContainer>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {attentionSites.length > 0 && (
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.black, marginBottom: 6 }}>Needs attention</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {attentionSites.map(h => {
+                  const s = getSiteDisplayStatus(h, complaints, siteNotes);
+                  const isDown = s === "Shut Down";
+                  return (
+                    <div key={h} onClick={() => onViewSite(h)} style={{ cursor: "pointer", background: isDown ? "#feebc8" : "#fef3c7", borderRadius: 8, padding: "8px 10px" }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: isDown ? "#9c4221" : "#7c5e10" }}>{h}</div>
+                      <div style={{ fontSize: 11, color: isDown ? "#9c4221" : "#7c5e10" }}>{s}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {resolvedThisWeek.length > 0 && (
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.black, marginBottom: 6, marginTop: 4 }}>Resolved this week</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {resolvedThisWeek.map(c => (
+                  <div key={c.id} onClick={() => onViewSite(c.hospital)} style={{ cursor: "pointer", fontSize: 12.5, color: C.black }}>
+                    {c.title} <span style={{ color: C.textMid }}>— {c.hospital}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {showProviderBreakdown && (
+        <div style={{ marginTop: 20 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: C.black, marginBottom: 8 }}>By service provider</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {providerEntries.map(([provider, sites]) => {
+              const providerSites = sites.filter(s => hospitals.includes(s));
+              const openCount = complaints.filter(c => providerSites.includes(c.hospital) && !isClosedStatus(c.status)).length;
+              return (
+                <div key={provider} style={{ display: "flex", justifyContent: "space-between", background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 8, padding: "8px 12px" }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: C.black }}>{provider}</span>
+                  <span style={{ fontSize: 12, color: C.textMid }}>{providerSites.length} sites · {openCount} open tickets</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, onRefresh, onViewSite }) {
   const [editingNote, setEditingNote] = useState(null);
   const [noteText, setNoteText] = useState(""); const [saving, setSaving] = useState(false);
@@ -1503,7 +1683,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
           <div style={{ padding: 16 }}>
             <p style={styles.cardDesc}>{c.description}</p>
             {c.submitted_by && <p style={{ fontSize: 12.5, color: C.tealDark, fontWeight: 600, marginTop: 10 }}>👤 {c.submitted_by}</p>}
-            {hasAssignees(c) && <div style={{ marginTop: 10 }}><AssignedTag complaint={c} isAdmin={isAdmin} onRemove={handleRemoveAssignee} staffOptions={staffOptions} /></div>}
+            {hasAssignees(c) && <div style={{ marginTop: 10 }}><AssignedTag complaint={c} isAdmin={isAdmin} onRemove={handleRemoveAssignee} /></div>}
             <div style={{ marginTop: 12, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 11, display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
               <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Ticket Opened: </span><span style={{ color: C.black, fontWeight: 700 }}>{new Date(c.created_at).toLocaleDateString("en-PK", dateFmt)}</span></div>
               {c.assigned_at && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Assignment Date: </span><span style={{ color: "#5b3a9c", fontWeight: 700 }}>{new Date(c.assigned_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
@@ -1529,7 +1709,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                   {availableStaff.map(s => (
                     <label key={s.id} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, cursor: "pointer" }}>
                       <input type="checkbox" checked={assigneePicks.includes(s.name)} onChange={() => toggleAssignee(s.name)} />
-                      {s.name} <span style={{ color: C.textLight, fontSize: 11 }}>— {s.company} ({s.company_role === "technician" ? "Technician" : s.company_role === "manager" ? "Manager" : "Engineer"})</span>
+                      {s.name} <span style={{ color: C.textLight, fontSize: 11 }}>({s.company_role === "technician" ? "Technician" : s.company_role === "manager" ? "Manager" : "Engineer"})</span>
                     </label>
                   ))}
                 </div>
@@ -1774,7 +1954,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
 
 /* ─── Admin Dashboard ─── */
 function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRefresh, onLogout }) {
-  const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
+  const [tab, setTab] = useState("home"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const [editingUser, setEditingUser] = useState(null); const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
   const [adminHospital, setAdminHospital] = useState(ALL_HOSPITALS[0]); const [adminTitle, setAdminTitle] = useState(""); const [adminDesc, setAdminDesc] = useState(""); const [adminDate, setAdminDate] = useState("");
@@ -1918,11 +2098,12 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         </div>
       </div>
       <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s", position: "relative" }}>
-        {["overview","complaints","submit","users","emails"].map(t => (<button key={t} className="tab-btn" style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>{t === "overview" ? "Overview" : t === "complaints" ? "Tickets" : t === "submit" ? "Submit" : t === "users" ? "Users" : "Emails"}</button>))}
+        {["home","overview","complaints","submit","users","emails"].map(t => (<button key={t} className="tab-btn" style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>{t === "home" ? "Home" : t === "overview" ? "Overview" : t === "complaints" ? "Tickets" : t === "submit" ? "Submit" : t === "users" ? "Users" : "Emails"}</button>))}
         {tab === "complaints" && !selected && <button className="tab-download-btn" style={styles.tabActionBtn} onClick={() => downloadCSV(complaints, "All Tickets Data")}>↓ Download Data</button>}
       </div>
       <main className="main-responsive" style={styles.main}>
         <div key={tab} className="scale-in">
+        {tab === "home" && <HomeTab hospitals={ALL_HOSPITALS} groups={GROUPS} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("complaints"); setSelected(h); }} />}
         {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} onViewSite={(h) => { setTab("complaints"); setSelected(h); }} />}
         {tab === "complaints" && !selected && (<GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} />)}
         {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canComment={true} isAdmin={true} onBack={() => setSelected(null)} onAssign={handleAssign} onLogVisit={handleLogVisit} onMarkResolved={handleMarkResolved} onVerify={handleVerify} onRejectVerify={handleRejectVerify} onDelete={handleDelete} onRefresh={onRefresh} staffOptions={staffOptions} focusInfo={pendingFocus} />)}
@@ -2044,6 +2225,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
                     <div style={styles.pwRow}>
                       <div style={{ flex: 1 }}>
                         <strong style={styles.pwName}>{u.name}</strong>
+                        {u.company && <span style={{ fontSize: 11.5, color: C.textMid, marginLeft: 4 }}>— {u.company}</span>}
                         {u.company_role && <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: u.company_role === "manager" ? "#0f766e" : C.textLight, background: u.company_role === "manager" ? "#ccfbf1" : "#f0f0f0", borderRadius: 8, padding: "2px 8px", marginLeft: 8 }}>{u.company_role}</span>}
                         {u.email && <span style={{ fontSize: 11, color: C.textLight, marginLeft: 8 }}>{u.email}</span>}
                       </div>
@@ -2088,6 +2270,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
                     <div style={styles.pwRow}>
                       <div style={{ flex: 1 }}>
                         <strong style={styles.pwName}>{u.name}</strong>
+                        {u.company && <span style={{ fontSize: 11.5, color: C.textMid, marginLeft: 4 }}>— {u.company}</span>}
                         {u.company_role && <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: u.company_role === "manager" ? "#0f766e" : C.textLight, background: u.company_role === "manager" ? "#ccfbf1" : "#f0f0f0", borderRadius: 8, padding: "2px 8px", marginLeft: 8 }}>{u.company_role}</span>}
                         {u.email && <span style={{ fontSize: 11, color: C.textLight, marginLeft: 8 }}>{u.email}</span>}
                       </div>
@@ -2129,7 +2312,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 
 /* ─── Company Dashboard ─── */
 function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLogout }) {
-  const [tab, setTab] = useState("overview"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
+  const [tab, setTab] = useState("home"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const [pendingFocus, setPendingFocus] = useState(null);
   const handleNotifFocus = (info) => {
     setTab("complaints");
@@ -2199,12 +2382,14 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
       </div>
 
       <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s", position: "relative" }}>
+        <button className="tab-btn" style={tab === "home" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("home"); setSelected(null); }}>Home</button>
         <button className="tab-btn" style={tab === "overview" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("overview"); setSelected(null); }}>Overview</button>
         <button className="tab-btn" style={tab === "complaints" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("complaints"); setSelected(null); }}>Tickets</button>
         {tab === "complaints" && !selected && <button className="tab-download-btn" style={styles.tabActionBtn} onClick={() => downloadCSV(myComplaints, "All Tickets Data")}>↓ Download Data</button>}
       </div>
       <main className="main-responsive" style={styles.main}>
         <div key={tab} className="scale-in">
+        {tab === "home" && <HomeTab hospitals={myHospitals} groups={myGroups} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("complaints"); setSelected(h); }} />}
         {tab === "overview" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} onViewSite={(h) => { setTab("complaints"); setSelected(h); }} />}
         {tab === "complaints" && !selected && (<GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} />)}
         {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onAssign={handleAssign} onLogVisit={handleLogVisit} onMarkResolved={handleMarkResolved} onVerify={handleVerify} onRejectVerify={handleRejectVerify} onDelete={() => {}} onRefresh={onRefresh} staffOptions={staffOptions} focusInfo={pendingFocus} />)}
