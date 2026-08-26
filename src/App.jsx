@@ -115,11 +115,19 @@ function assigneeNames(c) {
 }
 function hasAssignees(c) { return assigneeNames(c).length > 0; }
 
+// visit_date is stored as an array of dates (a ticket can be visited more than once)
+function visitDates(c) {
+  if (Array.isArray(c.visit_date)) return c.visit_date.filter(Boolean);
+  return c.visit_date ? [c.visit_date] : [];
+}
+function hasVisits(c) { return visitDates(c).length > 0; }
+
 function visitHasArrived(c) {
-  if (!c.visit_date) return false;
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const visit = new Date(c.visit_date); visit.setHours(0, 0, 0, 0);
-  return visit <= today;
+  return visitDates(c).some(d => {
+    const visit = new Date(d); visit.setHours(0, 0, 0, 0);
+    return visit <= today;
+  });
 }
 
 function getEffectiveStatus(c) {
@@ -1391,7 +1399,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false); const [editTitle, setEditTitle] = useState(complaint.title);
   const [editDesc, setEditDesc] = useState(complaint.description); const [editSaving, setEditSaving] = useState(false);
-  const [assigneePick, setAssigneePick] = useState("");
+  const [assigneePicks, setAssigneePicks] = useState([]);
   const [visitDatePick, setVisitDatePick] = useState("");
   const c = complaint;
   const effStatus = getEffectiveStatus(c);
@@ -1399,7 +1407,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const [expanded, setExpanded] = useState(effStatus !== "Verified");
 
   const canAssign = canAssignTicket(currentUser, c.hospital, c);
-  const canLogVisit = canLogVisitTicket(currentUser, c.hospital, c) && !c.visit_date;
+  const canLogVisit = canLogVisitTicket(currentUser, c.hospital, c);
   const canMarkResolved = canMarkResolvedTicket(currentUser, c.hospital, c);
   const canVerify = canVerifyTicket(currentUser) && c.status === "Resolved";
   const alreadyAssigned = assigneeNames(c);
@@ -1408,7 +1416,8 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   // Auto-expand when this card is focused from a notification
   useEffect(() => { if (cardHighlight || (highlightCommentText && highlightCommentText.trim())) setExpanded(true); }, [cardHighlight, highlightCommentText]);
 
-  const handleAssign = async () => { if (!assigneePick) return; setBusy(true); await onAssign(c.id, assigneePick); setAssigneePick(""); setBusy(false); };
+  const toggleAssignee = (name) => setAssigneePicks(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
+  const handleAssign = async () => { if (!assigneePicks.length) return; setBusy(true); await onAssign(c.id, assigneePicks); setAssigneePicks([]); setBusy(false); };
   const handleLogVisit = async () => { if (!visitDatePick) return; setBusy(true); await onLogVisit(c.id, visitDatePick); setVisitDatePick(""); setBusy(false); };
   const handleMarkResolved = async () => { setBusy(true); await onMarkResolved(c.id); setBusy(false); };
   const handleVerify = async () => { setBusy(true); await onVerify(c.id); setBusy(false); };
@@ -1448,25 +1457,30 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
             <div style={{ marginTop: 12, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 11, display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
               <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Ticket Opened: </span><span style={{ color: C.black, fontWeight: 700 }}>{new Date(c.created_at).toLocaleDateString("en-PK", dateFmt)}</span></div>
               {c.assigned_at && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Assignment Date: </span><span style={{ color: "#5b3a9c", fontWeight: 700 }}>{new Date(c.assigned_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
-              {c.visit_date && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>{effStatus === "In Progress" ? "Visit Date: " : "Visit Scheduled: "}</span><span style={{ color: "#c47f1e", fontWeight: 700 }}>{new Date(c.visit_date).toLocaleDateString("en-PK", dateFmt)}</span></div>}
+              {hasVisits(c) && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>{effStatus === "In Progress" ? (visitDates(c).length > 1 ? "Visit Dates: " : "Visit Date: ") : "Visit Scheduled: "}</span><span style={{ color: "#c47f1e", fontWeight: 700 }}>{visitDates(c).map(d => new Date(d).toLocaleDateString("en-PK", dateFmt)).join(", ")}</span></div>}
               {(c.status === "Resolved" || c.status === "Verified") && c.resolved_at && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Resolved Date: </span><span style={{ color: "#276749", fontWeight: 700 }}>{new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
               {c.status === "Verified" && c.verified_at && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Verified Date: </span><span style={{ color: "#276749", fontWeight: 700 }}>{new Date(c.verified_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
             </div>
             <AttachmentViewer attachments={c.attachments} />
+            {canAssign && availableStaff.length > 0 && (
+              <div style={{ marginTop: 14, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 10, background: "#fbfefe" }}>
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: C.textMid, marginBottom: 8 }}>{alreadyAssigned.length ? "Assign additional staff" : "Assign staff"}</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 8 }}>
+                  {availableStaff.map(s => (
+                    <label key={s.id} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, cursor: "pointer" }}>
+                      <input type="checkbox" checked={assigneePicks.includes(s.name)} onChange={() => toggleAssignee(s.name)} />
+                      {s.name} <span style={{ color: C.textLight, fontSize: 11 }}>({s.company_role === "technician" ? "Technician" : "Engineer"})</span>
+                    </label>
+                  ))}
+                </div>
+                <button style={styles.btnTealSmall} onClick={handleAssign} disabled={busy || assigneePicks.length === 0}>{busy ? "…" : assigneePicks.length ? `Assign (${assigneePicks.length})` : "Assign"}</button>
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
-              {canAssign && availableStaff.length > 0 && (
-                <>
-                  <select style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={assigneePick} onChange={e => setAssigneePick(e.target.value)}>
-                    <option value="">{alreadyAssigned.length ? "Assign another…" : "Assign staff…"}</option>
-                    {availableStaff.map(s => <option key={s.id} value={s.name}>{s.name} ({s.company_role === "technician" ? "Technician" : "Engineer"})</option>)}
-                  </select>
-                  <button style={styles.btnTealSmall} onClick={handleAssign} disabled={busy || !assigneePick}>{busy ? "…" : "Assign"}</button>
-                </>
-              )}
               {canLogVisit && (
                 <>
                   <input type="date" style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={visitDatePick} onChange={e => setVisitDatePick(e.target.value)} />
-                  <button style={styles.btnTealSmall} onClick={handleLogVisit} disabled={busy || !visitDatePick}>{busy ? "…" : "Log Visit"}</button>
+                  <button style={styles.btnTealSmall} onClick={handleLogVisit} disabled={busy || !visitDatePick}>{busy ? "…" : hasVisits(c) ? "Log Another Visit" : "Log Visit"}</button>
                 </>
               )}
               {canMarkResolved && (
