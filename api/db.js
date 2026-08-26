@@ -250,7 +250,12 @@ export default async function handler(req, res) {
       const { data: current } = await admin.from("complaints").select("assigned_to").eq("id", id).maybeSingle();
       const existing = Array.isArray(current?.assigned_to) ? current.assigned_to : (current?.assigned_to ? [current.assigned_to] : []);
       const updated = existing.filter((n) => n !== name);
-      const { error } = await admin.from("complaints").update({ assigned_to: updated.length ? updated : null }).eq("id", id);
+      // If that was the last assignee, also clear assigned_by/assigned_at so the ticket
+      // fully reverts to "Open" rather than showing a stale assignment date with nobody assigned.
+      const update = updated.length
+        ? { assigned_to: updated }
+        : { assigned_to: null, assigned_by: null, assigned_at: null };
+      const { error } = await admin.from("complaints").update(update).eq("id", id);
       if (error) return json(res, 400, { error: error.message });
       return json(res, 200, { success: true });
     }
@@ -262,7 +267,12 @@ export default async function handler(req, res) {
       const { data: current } = await admin.from("complaints").select("visit_date").eq("id", id).maybeSingle();
       const existing = Array.isArray(current?.visit_date) ? current.visit_date : (current?.visit_date ? [current.visit_date] : []);
       const updated = existing.filter((d) => d !== visit_date);
-      const { error } = await admin.from("complaints").update({ visit_date: updated.length ? updated : null }).eq("id", id);
+      // If that was the last visit, also clear visit_logged_by/visit_logged_at for the same
+      // reason as remove_assignee above — no stale metadata left behind.
+      const update = updated.length
+        ? { visit_date: updated }
+        : { visit_date: null, visit_logged_by: null, visit_logged_at: null };
+      const { error } = await admin.from("complaints").update(update).eq("id", id);
       if (error) return json(res, 400, { error: error.message });
       return json(res, 200, { success: true });
     }
