@@ -97,8 +97,10 @@ const COMPLAINT_TYPES = [
 
 /* ─── Point 1: structured ticket workflow ───
    Statuses actually stored: "Open", "Resolved", "Verified".
-   "In Progress" is never written to the DB — it's derived below from
-   status "Open" + a visit_date that has arrived, so no cron job is needed. */
+   "Assigned" and "In Progress" are never written to the DB — they're both derived
+   from status "Open" plus assignment/visit data, so no cron job is needed:
+     Open (no assignee) -> Assigned (has assignee, visit not yet arrived)
+     -> In Progress (visit date has arrived) -> Resolved -> Verified          */
 const getCompanyName = u => u.company || u.name;
 const isAmexUser = u => getCompanyName(u) === "Amex";
 const isProviderUser = u => ["Novair", "Intexim", "Z-Corps"].includes(getCompanyName(u));
@@ -106,23 +108,41 @@ const isManagerUser = u => u.role === "company" && u.company_role === "manager";
 
 function statusLabel(status) { return status === "Verified" ? "Resolved & Verified" : status; }
 
+// assigned_to is stored as an array of names (a ticket can have multiple assignees)
+function assigneeNames(c) {
+  if (Array.isArray(c.assigned_to)) return c.assigned_to.filter(Boolean);
+  return c.assigned_to ? [c.assigned_to] : [];
+}
+function hasAssignees(c) { return assigneeNames(c).length > 0; }
+
+function visitHasArrived(c) {
+  if (!c.visit_date) return false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const visit = new Date(c.visit_date); visit.setHours(0, 0, 0, 0);
+  return visit <= today;
+}
+
 function getEffectiveStatus(c) {
-  if (c.status === "Open" && c.visit_date) {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const visit = new Date(c.visit_date); visit.setHours(0, 0, 0, 0);
-    if (visit <= today) return "In Progress";
+  if (c.status === "Open") {
+    if (visitHasArrived(c)) return "In Progress";
+    if (hasAssignees(c)) return "Assigned";
+    return "Open";
   }
   return c.status;
 }
 
-// Only a manager belonging to the site's own service-provider company (or admin) can assign staff
-function canAssignTicket(user, hospital) {
+// Only a manager belonging to the site's own service-provider company (or admin) can assign staff.
+// Assignment can happen repeatedly (to add more people) as long as the ticket is still in the raw
+// "Open" bucket — deliberately checks raw status, not the derived display label, so it keeps working
+// once the label has already flipped to "Assigned".
+function canAssignTicket(user, hospital, c) {
+  if (c.status !== "Open") return false;
   if (user.role === "admin") return true;
   return isManagerUser(user) && isProviderUser(user) && getProvider(hospital) === getCompanyName(user);
 }
-// Must already be assigned before a visit can be logged
+// Must have at least one assignee before a visit can be logged
 function canLogVisitTicket(user, hospital, c) {
-  return canAssignTicket(user, hospital) && !!c.assigned_to;
+  return canAssignTicket(user, hospital, c) && hasAssignees(c);
 }
 // Hospital or the assigned provider can mark resolved, once a visit has actually happened
 function canMarkResolvedTicket(user, hospital, c) {
@@ -131,7 +151,7 @@ function canMarkResolvedTicket(user, hospital, c) {
   if (user.role === "hospital") return true;
   return isProviderUser(user) && getProvider(hospital) === getCompanyName(user);
 }
-// Only "Resolved" or "Verified" count as no-longer-open; "Open" and (derived) "In Progress" are open.
+// Only "Resolved" or "Verified" count as no-longer-open; "Open"/"Assigned"/"In Progress" are open.
 function isClosedStatus(status) { return status === "Resolved" || status === "Verified"; }
 // Only Amex (or admin) verifies or rejects a resolved ticket
 function canVerifyTicket(user) { return user.role === "admin" || isAmexUser(user); }
@@ -997,6 +1017,7 @@ function LoginScreen({ onLogin }) {
 function StatusBadge({ status }) {
   const styleMap = {
     "Open": { color: "#9c4221", background: "#feebc8" },
+    "Assigned": { color: "#5b3a9c", background: "#ede4fb" },
     "In Progress": { color: "#7c5e10", background: "#fef3c7" },
     "Resolved": { color: "#1a5276", background: "#d6eaf8" },
     "Verified": { color: "#276749", background: "#c6f6d5" },
@@ -1005,12 +1026,13 @@ function StatusBadge({ status }) {
   return <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 12, color: s.color, background: s.background }}>{statusLabel(status)}</span>;
 }
 
-/* "Assigned to: X" — shown at every stage once a staff member has been assigned */
+/* "Assigned to: X, Y" — shown at every stage once one or more staff members have been assigned */
 function AssignedTag({ complaint }) {
-  if (!complaint.assigned_to) return null;
+  const names = assigneeNames(complaint);
+  if (!names.length) return null;
   return (
     <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 12, color: "#1a2332", background: "#e7ecf3", border: "1px solid #d4dce8" }}>
-      Assigned to: {complaint.assigned_to}
+      Assigned to: {names.join(", ")}
     </span>
   );
 }
@@ -1376,10 +1398,12 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   // Open (unresolved/unverified) tickets start expanded; fully closed tickets start collapsed until clicked
   const [expanded, setExpanded] = useState(effStatus !== "Verified");
 
-  const canAssign = canAssignTicket(currentUser, c.hospital) && !c.assigned_to && effStatus === "Open";
-  const canLogVisit = canLogVisitTicket(currentUser, c.hospital, c) && effStatus === "Open" && !c.visit_date;
+  const canAssign = canAssignTicket(currentUser, c.hospital, c);
+  const canLogVisit = canLogVisitTicket(currentUser, c.hospital, c) && !c.visit_date;
   const canMarkResolved = canMarkResolvedTicket(currentUser, c.hospital, c);
   const canVerify = canVerifyTicket(currentUser) && c.status === "Resolved";
+  const alreadyAssigned = assigneeNames(c);
+  const availableStaff = staffOptions.filter(s => !alreadyAssigned.includes(s.name));
 
   // Auto-expand when this card is focused from a notification
   useEffect(() => { if (cardHighlight || (highlightCommentText && highlightCommentText.trim())) setExpanded(true); }, [cardHighlight, highlightCommentText]);
@@ -1420,20 +1444,21 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
           <div style={{ padding: 16 }}>
             <p style={styles.cardDesc}>{c.description}</p>
             {c.submitted_by && <p style={{ fontSize: 12.5, color: C.tealDark, fontWeight: 600, marginTop: 10 }}>👤 {c.submitted_by}</p>}
-            {c.assigned_to && <div style={{ marginTop: 10 }}><AssignedTag complaint={c} /></div>}
-            <div style={{ marginTop: 12, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 11 }}>
-              <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Report Date: </span><span style={{ color: C.black, fontWeight: 700 }}>{new Date(c.created_at).toLocaleDateString("en-PK", dateFmt)}</span></div>
-              {c.visit_date && <div style={{ fontSize: 12.5, marginTop: 5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>{effStatus === "Open" ? "Visit Scheduled: " : "Visit Date: "}</span><span style={{ color: "#c47f1e", fontWeight: 700 }}>{new Date(c.visit_date).toLocaleDateString("en-PK", dateFmt)}</span></div>}
-              {(c.status === "Resolved" || c.status === "Verified") && c.resolved_at && <div style={{ fontSize: 12.5, marginTop: 5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Resolved Date: </span><span style={{ color: "#276749", fontWeight: 700 }}>{new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
-              {c.status === "Verified" && c.verified_at && <div style={{ fontSize: 12.5, marginTop: 5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Verified Date: </span><span style={{ color: "#276749", fontWeight: 700 }}>{new Date(c.verified_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
+            {hasAssignees(c) && <div style={{ marginTop: 10 }}><AssignedTag complaint={c} /></div>}
+            <div style={{ marginTop: 12, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 11, display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
+              <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Ticket Opened: </span><span style={{ color: C.black, fontWeight: 700 }}>{new Date(c.created_at).toLocaleDateString("en-PK", dateFmt)}</span></div>
+              {c.assigned_at && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Assignment Date: </span><span style={{ color: "#5b3a9c", fontWeight: 700 }}>{new Date(c.assigned_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
+              {c.visit_date && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>{effStatus === "In Progress" ? "Visit Date: " : "Visit Scheduled: "}</span><span style={{ color: "#c47f1e", fontWeight: 700 }}>{new Date(c.visit_date).toLocaleDateString("en-PK", dateFmt)}</span></div>}
+              {(c.status === "Resolved" || c.status === "Verified") && c.resolved_at && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Resolved Date: </span><span style={{ color: "#276749", fontWeight: 700 }}>{new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
+              {c.status === "Verified" && c.verified_at && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Verified Date: </span><span style={{ color: "#276749", fontWeight: 700 }}>{new Date(c.verified_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
             </div>
             <AttachmentViewer attachments={c.attachments} />
             <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
-              {canAssign && (
+              {canAssign && availableStaff.length > 0 && (
                 <>
                   <select style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={assigneePick} onChange={e => setAssigneePick(e.target.value)}>
-                    <option value="">Assign staff…</option>
-                    {staffOptions.map(s => <option key={s.id} value={s.name}>{s.name} ({s.company_role === "technician" ? "Technician" : "Engineer"})</option>)}
+                    <option value="">{alreadyAssigned.length ? "Assign another…" : "Assign staff…"}</option>
+                    {availableStaff.map(s => <option key={s.id} value={s.name}>{s.name} ({s.company_role === "technician" ? "Technician" : "Engineer"})</option>)}
                   </select>
                   <button style={styles.btnTealSmall} onClick={handleAssign} disabled={busy || !assigneePick}>{busy ? "…" : "Assign"}</button>
                 </>
