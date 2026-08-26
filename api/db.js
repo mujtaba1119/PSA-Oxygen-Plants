@@ -162,6 +162,68 @@ export default async function handler(req, res) {
       return json(res, 200, { success: true });
     }
 
+    // ─────────── STRUCTURED WORKFLOW (Point 1) ───────────
+    // New 4-status model: Open -> In Progress -> Resolved -> Verified
+    // "In Progress" is never written directly — it's derived on the frontend
+    // from status "Open" + a visit_date that has arrived. Kept here as a comment
+    // since both website and mobile must compute it the same way.
+
+    if (action === "assign_complaint") {
+      const { id, assigned_to, assigned_by } = body;
+      if (!id || !assigned_to) return json(res, 400, { error: "Missing id or assigned_to" });
+      const { error } = await admin.from("complaints").update({
+        assigned_to, assigned_by: assigned_by || null, assigned_at: new Date().toISOString(),
+      }).eq("id", id);
+      if (error) return json(res, 400, { error: error.message });
+      return json(res, 200, { success: true });
+    }
+
+    if (action === "log_visit") {
+      const { id, visit_date, logged_by } = body;
+      if (!id || !visit_date) return json(res, 400, { error: "Missing id or visit_date" });
+      const { error } = await admin.from("complaints").update({
+        visit_date, visit_logged_by: logged_by || null, visit_logged_at: new Date().toISOString(),
+      }).eq("id", id);
+      if (error) return json(res, 400, { error: error.message });
+      return json(res, 200, { success: true });
+    }
+
+    if (action === "mark_resolved") {
+      const { id, resolved_by } = body;
+      if (!id) return json(res, 400, { error: "Missing id" });
+      const { error } = await admin.from("complaints").update({
+        status: "Resolved", resolved_by: resolved_by || null, resolved_at: new Date().toISOString(),
+      }).eq("id", id);
+      if (error) return json(res, 400, { error: error.message });
+      return json(res, 200, { success: true });
+    }
+
+    if (action === "verify_complaint") {
+      const { id, verified_by } = body;
+      if (!id) return json(res, 400, { error: "Missing id" });
+      const { error } = await admin.from("complaints").update({
+        status: "Verified", verified_by: verified_by || null, verified_at: new Date().toISOString(),
+      }).eq("id", id);
+      if (error) return json(res, 400, { error: error.message });
+      return json(res, 200, { success: true });
+    }
+
+    // Amex rejects a resolution -> ticket goes all the way back to Open,
+    // assignment/visit/resolution data is cleared so the manager must reassign from scratch.
+    if (action === "reject_verification") {
+      const { id } = body;
+      if (!id) return json(res, 400, { error: "Missing id" });
+      const { error } = await admin.from("complaints").update({
+        status: "Open",
+        assigned_to: null, assigned_by: null, assigned_at: null,
+        visit_date: null, visit_logged_by: null, visit_logged_at: null,
+        resolved_by: null, resolved_at: null,
+        verified_by: null, verified_at: null,
+      }).eq("id", id);
+      if (error) return json(res, 400, { error: error.message });
+      return json(res, 200, { success: true });
+    }
+
     // ─────────── COMMENTS ───────────
     if (action === "insert_comment") {
       const { complaint_id, author, author_role, content } = body;
