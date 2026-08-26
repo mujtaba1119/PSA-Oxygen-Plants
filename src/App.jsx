@@ -732,14 +732,14 @@ async function loginWithClient(username, password) {
 
   const { data: byId, error: idErr } = await supabase
     .from("users")
-    .select("id, name, role, password")
+    .select("id, name, role, password, company, company_role")
     .eq("id", needle)
     .maybeSingle();
   if (idErr) throw idErr;
 
   let user = byId;
   if (!user) {
-    const { data: rows, error } = await supabase.from("users").select("id, name, role, password");
+    const { data: rows, error } = await supabase.from("users").select("id, name, role, password, company, company_role");
     if (error) throw error;
     user = (rows || []).find((u) => clean(u.name) === needle) || null;
   }
@@ -754,7 +754,7 @@ async function loginWithClient(username, password) {
     return null;
   }
 
-  return { id: user.id, name: user.name, role: user.role, company: user.company || null };
+  return { id: user.id, name: user.name, role: user.role, company: user.company || null, company_role: user.company_role || null };
 }
 
 async function loginUser(username, password) {
