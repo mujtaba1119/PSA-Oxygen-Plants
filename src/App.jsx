@@ -1250,7 +1250,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
 
   const post = async () => {
     if (!text.trim() || posting) return; setPosting(true);
-    const author = currentUser.role === "admin" ? "" : currentUser.role === "hospital" ? currentUser.name + " Hospital" : currentUser.name;
+    const author = currentUser.role === "admin" ? "" : currentUser.role === "hospital" ? currentUser.name + " Hospital" : `${currentUser.name} — ${getCompanyName(currentUser)}`;
     const role = currentUser.role;
     await insertComment(complaintId, author, role, text.trim()); setText(""); setPosting(false); await loadComments();
     // Notify: if hospital comments, notify companies. If company comments, notify hospital + other companies.
@@ -1433,7 +1433,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                 <>
                   <select style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={assigneePick} onChange={e => setAssigneePick(e.target.value)}>
                     <option value="">Assign staff…</option>
-                    {staffOptions.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                    {staffOptions.map(s => <option key={s.id} value={s.name}>{s.name} ({s.company_role === "technician" ? "Technician" : "Engineer"})</option>)}
                   </select>
                   <button style={styles.btnTealSmall} onClick={handleAssign} disabled={busy || !assigneePick}>{busy ? "…" : "Assign"}</button>
                 </>
@@ -1671,7 +1671,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
   const [adminHospital, setAdminHospital] = useState(ALL_HOSPITALS[0]); const [adminTitle, setAdminTitle] = useState(""); const [adminDesc, setAdminDesc] = useState(""); const [adminDate, setAdminDate] = useState("");
   const [adminSubmitting, setAdminSubmitting] = useState(false); const [adminSuccess, setAdminSuccess] = useState(false);
-  const [newUserId, setNewUserId] = useState(""); const [newUserName, setNewUserName] = useState(""); const [newUserRole, setNewUserRole] = useState("company"); const [newUserPw, setNewUserPw] = useState(""); const [newUserCompany, setNewUserCompany] = useState("Amex"); const [newUserCompanyRole, setNewUserCompanyRole] = useState("staff"); const [newUserEmail, setNewUserEmail] = useState(""); const [addingUser, setAddingUser] = useState(false);
+  const [newUserId, setNewUserId] = useState(""); const [newUserName, setNewUserName] = useState(""); const [newUserRole, setNewUserRole] = useState("company"); const [newUserPw, setNewUserPw] = useState(""); const [newUserCompany, setNewUserCompany] = useState("Amex"); const [newUserCompanyRole, setNewUserCompanyRole] = useState("engineer"); const [newUserEmail, setNewUserEmail] = useState(""); const [addingUser, setAddingUser] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [adminFiles, setAdminFiles] = useState([]);
   const [pendingFocus, setPendingFocus] = useState(null);
@@ -1690,7 +1690,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const handleVerify = async (id) => { await verifyComplaint(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
   const handleRejectVerify = async (id) => { await rejectVerification(id); await insertComment(id, "", "admin", "Verification rejected — ticket reopened."); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
   const handleDelete = async (id) => { await deleteComplaint(id); await onRefresh(); };
-  const staffOptions = users.filter(u => u.role === "company" && u.company_role === "staff");
+  const staffOptions = users.filter(u => u.role === "company" && (u.company_role === "engineer" || u.company_role === "technician"));
   const handlePasswordChange = async (userId) => {
     if (!newPw.trim() || saving) return;
     if (newPw.trim().length < 8) { alert("Password must be at least 8 characters"); return; }
@@ -1876,7 +1876,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
               <div style={{ flex: 1, minWidth: 140 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Full Name</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Full Name" value={newUserName} onChange={e => { setNewUserName(e.target.value); setNewUserId(e.target.value.trim().toLowerCase().replace(/\s+/g, "")); }} /></div>
               <div style={{ minWidth: 120 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Organization</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserCompany} onChange={e => setNewUserCompany(e.target.value)}>{companyGroups.map(g => <option key={g} value={g}>{g}</option>)}</select></div>
-              <div style={{ minWidth: 110 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Account Type</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserCompanyRole} onChange={e => setNewUserCompanyRole(e.target.value)}><option value="staff">Staff</option><option value="manager">Manager</option></select></div>
+              <div style={{ minWidth: 110 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Account Type</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserCompanyRole} onChange={e => setNewUserCompanyRole(e.target.value)}><option value="manager">Manager</option><option value="engineer">Engineer</option><option value="technician">Technician</option></select></div>
               <div style={{ flex: 1, minWidth: 140 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Email (optional)</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} type="email" placeholder="email@company.com" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} /></div>
               <div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Password</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} type="password" placeholder="Min 8 chars" value={newUserPw} onChange={e => setNewUserPw(e.target.value)} /></div>
               <button style={styles.pwSaveBtn} onClick={handleAddUser}>{addingUser ? "…" : "Add"}</button>
@@ -2044,7 +2044,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
   const handleMarkResolved = async (id) => { await markResolved(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification("amex", "resolved", `Ready for Verification: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Ready for Verification: ${c.hospital}`, c.title, c.hospital, id, notifyTarget).catch(() => {}); } await onRefresh(); };
   const handleVerify = async (id) => { await verifyComplaint(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, c.hospital, id, notifyTarget).catch(() => {}); } await onRefresh(); };
   const handleRejectVerify = async (id) => { await rejectVerification(id); await insertComment(id, user.name, "company", "Verification rejected — ticket reopened."); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, c.title, c.hospital, id, notifyTarget).catch(() => {}); } await onRefresh(); };
-  const staffOptions = (users || []).filter(u => u.role === "company" && u.company_role === "staff");
+  const staffOptions = (users || []).filter(u => u.role === "company" && (u.company_role === "engineer" || u.company_role === "technician"));
   // For the hero + stats
   const funcCount = myHospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
   const resolvedCount = myComplaints.filter(c => isClosedStatus(c.status)).length;
