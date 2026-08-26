@@ -43,14 +43,14 @@ export default async function handler(req, res) {
 
     // ─── FETCH USERS (no passwords returned) ───
     if (action === "fetch") {
-      const { data, error } = await admin.from("users").select("id, name, role, company, email");
+      const { data, error } = await admin.from("users").select("id, name, role, company, email, company_role");
       if (error) return json(res, 500, { error: error.message });
       return json(res, 200, { users: data });
     }
 
     // ─── CREATE USER ───
     if (action === "create") {
-      const { id, name, role, password, company, email } = body;
+      const { id, name, role, password, company, email, company_role } = body;
       if (!id || !name || !role || !password) return json(res, 400, { error: "Missing required fields" });
       if (password.trim().length < 8) return json(res, 400, { error: "Password must be at least 8 characters" });
 
@@ -58,6 +58,9 @@ export default async function handler(req, res) {
       const row = { id: id.trim().toLowerCase().replace(/\s+/g, ""), name: name.trim(), role, password: hashed };
       if (company) row.company = company;
       if (email) row.email = email.trim();
+      // Manager/staff designation, used by the ticket-assignment workflow (Point 1).
+      // Only meaningful for role "company" — a manager can assign staff and log site visits.
+      if (role === "company" && company_role) row.company_role = company_role;
 
       const { data, error } = await admin.from("users").insert([row]).select("id, name, role, company, email");
       if (error) return json(res, 400, { error: error.message });
