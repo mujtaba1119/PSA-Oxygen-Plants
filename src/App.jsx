@@ -167,7 +167,7 @@ const SEVERITY_COLORS = {
 function SeverityBadge({ severity }) {
   if (!severity) return null;
   const s = SEVERITY_COLORS[severity] || SEVERITY_COLORS["Low"];
-  return <span style={{ fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 10, color: s.color, background: s.background, textTransform: "uppercase", letterSpacing: 0.3 }}>{severity}</span>;
+  return <span style={{ fontSize: 10, fontWeight: 700, padding: "2.5px 8px", borderRadius: 10, color: s.color, background: s.background, textTransform: "uppercase", letterSpacing: 0.4, flexShrink: 0, whiteSpace: "nowrap" }}>{severity}</span>;
 }
 
 /* ─── Point 1: structured ticket workflow ───
@@ -745,13 +745,22 @@ function isFunctional(hospital, complaints, siteNotes) {
 }
 
 function SiteStatusBadge({ status }) {
-  let color, bg;
-  if (status === "Issues") { color = "#c0392b"; bg = "transparent"; }
-  else if (status === "Non Functional") { color = "#555"; bg = "#e8e8e8"; }
-  else if (status === "Shut Down") { color = "#fff"; bg = "#c0392b"; }
-  else { color = "#166534"; bg = "#dcfce7"; }
-  const icon = status === "Issues" ? "⚠ " : status === "Shut Down" ? "✕ " : status === "Fully Functional" ? "✓ " : "";
-  return <span style={{ fontSize: 11, fontWeight: 600, color, background: bg, padding: "4px 10px", borderRadius: 20, whiteSpace: "nowrap", letterSpacing: 0.3 }}>{icon}{status}</span>;
+  if (status === "Shut Down") {
+    return (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: "#fff", background: "#c0392b", padding: "4px 10px", borderRadius: 20, whiteSpace: "nowrap", letterSpacing: 0.2 }}>
+        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff", display: "inline-block", flexShrink: 0 }} />
+        {status}
+      </span>
+    );
+  }
+  const color = status === "Issues" ? "#c0392b" : status === "Non Functional" ? "#555" : "#166534";
+  const dot = status === "Issues" ? "#e0912f" : status === "Non Functional" ? "#999" : "#2f9e58";
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color, padding: "4px 10px", borderRadius: 20, whiteSpace: "nowrap", letterSpacing: 0.2 }}>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, display: "inline-block", flexShrink: 0 }} />
+      {status}
+    </span>
+  );
 }
 
 /* ─── App ─── */
@@ -1521,12 +1530,16 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                 )}
               </div>
               <div style={{ ...styles.ovCell, ...styles.ovCellOpen, padding: 0 }}>
-                {open.length > 0 ? open.map((c, ci) => (
-                  <div key={c.id} style={{ padding: "10px 16px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none", minHeight: 42, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 6, flexWrap: "wrap" }}>
+                {open.length > 0 ? open.map((c, ci) => {
+                  const borderColor = c.severity === "Critical" ? "#c0392b" : c.severity === "High" ? "#d9822b" : c.severity === "Low" ? "#999999" : "transparent";
+                  return (
+                  <div key={c.id} style={{ padding: "10px 14px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none", borderLeft: `3px solid ${borderColor}`, minHeight: 42, display: "flex", alignItems: "center", gap: 8 }}>
                     <SeverityBadge severity={c.severity} />
-                    <span style={{ fontSize: 12, color: C.red, fontWeight: 500 }}>{c.title} <span style={{ fontWeight: 400, color: C.textLight }}>({new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })})</span></span>
+                    <span style={{ fontSize: 12.5, color: C.black, fontWeight: 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.title}</span>
+                    <span style={{ fontSize: 11, color: C.textLight, flexShrink: 0, marginLeft: "auto", paddingLeft: 8 }}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</span>
                   </div>
-                )) : <div style={{ padding: "10px 16px", fontSize: 12, color: C.textLight, minHeight: 42, display: "flex", alignItems: "center", justifyContent: "center" }}></div>}
+                  );
+                }) : <div style={{ padding: "10px 16px", fontSize: 12, color: C.textLight, minHeight: 42, display: "flex", alignItems: "center", justifyContent: "center" }}></div>}
               </div>
               <div style={{ ...styles.ovCell, ...styles.ovCellNote, borderRight: "none", padding: 0 }}>
                 {open.length > 0 ? open.map((c, ci) => {
