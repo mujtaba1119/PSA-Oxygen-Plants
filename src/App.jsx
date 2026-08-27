@@ -720,28 +720,23 @@ function PartnerFooter() {
 }
 
 /* ─── Status Logic ─── */
-// Status values: "Fully Functional", "Non Functional", "Shut Down"
-// Display status: if site has open complaints → "Issues" (still functional)
-// Functional count = Fully Functional + Issues (has open complaints but not shut down)
-// Non Functional count = Non Functional + Shut Down
+// Site status is now purely 3 values, derived from actual ticket state (not a manual flag that
+// can go stale): "Fully Functional" (no open tickets), "Functional" (has open tickets, not shut
+// down), "Shut Down" (manually flagged — the only state still admin-controlled).
 function getSiteBaseStatus(hospital, siteNotes) {
   const note = siteNotes.find(s => s.hospital === hospital);
   return note?.site_status || "Fully Functional";
 }
 
 function getSiteDisplayStatus(hospital, complaints, siteNotes) {
-  const base = getSiteBaseStatus(hospital, siteNotes);
-  if (base === "Shut Down") return "Shut Down";
+  if (getSiteBaseStatus(hospital, siteNotes) === "Shut Down") return "Shut Down";
   const target = (hospital || "").toLowerCase().trim();
   const hasOpen = complaints.some(c => (c.hospital || "").toLowerCase().trim() === target && !isClosedStatus(c.status));
-  if (hasOpen) return "Issues";
-  if (base === "Non Functional") return "Non Functional";
-  return "Fully Functional";
+  return hasOpen ? "Functional" : "Fully Functional";
 }
 
 function isFunctional(hospital, complaints, siteNotes) {
-  const s = getSiteDisplayStatus(hospital, complaints, siteNotes);
-  return s === "Fully Functional" || s === "Issues";
+  return getSiteDisplayStatus(hospital, complaints, siteNotes) !== "Shut Down";
 }
 
 function SiteStatusBadge({ status }) {
@@ -753,8 +748,8 @@ function SiteStatusBadge({ status }) {
       </span>
     );
   }
-  const color = status === "Issues" ? "#c0392b" : status === "Non Functional" ? "#555" : "#166534";
-  const dot = status === "Issues" ? "#e0912f" : status === "Non Functional" ? "#999" : "#2f9e58";
+  const color = status === "Functional" ? "#c0392b" : "#166534";
+  const dot = status === "Functional" ? "#e0912f" : "#2f9e58";
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color, padding: "4px 10px", borderRadius: 20, whiteSpace: "nowrap", letterSpacing: 0.2 }}>
       <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, display: "inline-block", flexShrink: 0 }} />
@@ -1215,7 +1210,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
 
   const funcCount = hospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
   const shutdownSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Shut Down");
-  const issueSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Issues");
+  const issueSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Functional");
 
   const scoped = complaints.filter(c => hospitals.includes(c.hospital));
   const stageCounts = { "Open": 0, "Assigned": 0, "In Progress": 0, "Resolved": 0, "Verified": 0 };
@@ -1229,13 +1224,12 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
 
   const attentionSites = [...shutdownSites, ...issueSites].slice(0, 6);
 
-  // Pin colors: green = fully functional, amber = running but has an open issue,
-  // grey = non-functional (no active ticket, but flagged), red = shut down.
+  // Pin colors: green = fully functional (no open tickets), amber = functional but has an
+  // open ticket, red = shut down. "Non Functional" is no longer a separate manual state.
   const pinColor = (h) => {
     const s = getSiteDisplayStatus(h, complaints, siteNotes);
     if (s === "Shut Down") return "#e03131";
-    if (s === "Issues") return "#f08c00";
-    if (s === "Non Functional") return "#868e96";
+    if (s === "Functional") return "#f08c00";
     return "#2f9e44";
   };
   const mappedSites = hospitals.filter(h => SITE_COORDS[h]);
@@ -1434,18 +1428,20 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
   const funcCount = hospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
   const nonFuncCount = hospitals.length - funcCount;
 
-  const attentionSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Issues");
+  const attentionSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Functional");
   const shutdownSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Shut Down");
 
   // Sort order: Critical (or manually marked Shut Down) first, then High, then Low,
-  // then Non Functional (flagged but no open ticket), then Fully Functional last.
-  // Severity is a per-ticket attribute, so a site's rank is driven by its single worst open ticket.
+  // then Fully Functional last. Severity is a per-ticket attribute, so a site's rank is
+  // driven by its single worst open ticket. No longer depends on the old "Non Functional"
+  // manual flag for ranking — that flag could go stale independent of actual ticket state,
+  // which was pushing sites to the wrong position regardless of their real status.
   const SEVERITY_RANK = { "Critical": 0, "High": 1, "Low": 2 };
   const siteRank = (h) => {
     if (getSiteBaseStatus(h, siteNotes) === "Shut Down") return 0;
     const open = complaints.filter(c => c.hospital === h && !isClosedStatus(c.status));
     if (open.length > 0) return Math.min(...open.map(c => SEVERITY_RANK[c.severity] ?? 2));
-    return getSiteBaseStatus(h, siteNotes) === "Non Functional" ? 3 : 4;
+    return 3; // Fully Functional — no open tickets
   };
   const sortedHospitals = [...hospitals].sort((a, b) => siteRank(a) - siteRank(b));
 
@@ -1519,7 +1515,6 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                   statusEditing === h ? (
                     <select style={{ fontSize: 11, padding: "4px 8px", borderRadius: 20, border: `1px solid ${C.border}`, background: C.white }} value={getSiteBaseStatus(h, siteNotes)} onChange={e => handleStatusChange(h, e.target.value)}>
                       <option value="Fully Functional">Fully Functional</option>
-                      <option value="Non Functional">Non Functional</option>
                       <option value="Shut Down">Shut Down</option>
                     </select>
                   ) : (
