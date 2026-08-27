@@ -82,7 +82,7 @@ function getTicketNumber(complaint, allComplaints) {
   const code = SITE_CODES[complaint.hospital];
   if (!code) return "";
   const siteTickets = allComplaints
-    .filter(c => c.hospital === complaint.hospital)
+    .filter(c => hospitalMatches(c.hospital, complaint.hospital))
     .sort((a, b) => {
       const dt = new Date(a.created_at) - new Date(b.created_at);
       if (dt !== 0) return dt;
@@ -726,7 +726,7 @@ function PartnerFooter() {
 // there's no open ticket already explaining the situation; an open ticket always shows as
 // "Functional" unless the site is specifically marked Shut Down.
 function getSiteBaseStatus(hospital, siteNotes) {
-  const note = siteNotes.find(s => s.hospital === hospital);
+  const note = siteNotes.find(s => hospitalMatches(s.hospital, hospital));
   return note?.site_status || "Fully Functional";
 }
 
@@ -736,6 +736,20 @@ function getSiteBaseStatus(hospital, siteNotes) {
 // already normalized, creating exactly the kind of contradiction — status badge says one thing,
 // sort/ticket list says another — that's hard to spot without comparing both).
 function hospitalMatches(a, b) { return (a || "").toLowerCase().trim() === (b || "").toLowerCase().trim(); }
+
+// Small provider-colored initials avatar for the site directory table
+function providerAvatarColor(provider) {
+  if (provider === "Novair") return "#0f766e";
+  if (provider === "Intexim") return "#7c5cbf";
+  if (provider === "Z-Corps") return "#2f9e58";
+  return "#6b7280";
+}
+function initialsFor(name) {
+  const words = (name || "").trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "?";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  return (words[0][0] + words[1][0]).toUpperCase();
+}
 
 function getSiteDisplayStatus(hospital, complaints, siteNotes) {
   const base = getSiteBaseStatus(hospital, siteNotes);
@@ -1434,7 +1448,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
   const [statusEditing, setStatusEditing] = useState(null);
   const [sendingShutdown, setSendingShutdown] = useState(null);
 
-  const getNotesMap = h => { try { const raw = siteNotes.find(s => s.hospital === h)?.equipment_note || ""; const parsed = JSON.parse(raw); return typeof parsed === "object" && parsed !== null ? parsed : { _legacy: raw }; } catch { const raw = siteNotes.find(s => s.hospital === h)?.equipment_note || ""; return raw ? { _legacy: raw } : {}; } };
+  const getNotesMap = h => { try { const raw = siteNotes.find(s => hospitalMatches(s.hospital, h))?.equipment_note || ""; const parsed = JSON.parse(raw); return typeof parsed === "object" && parsed !== null ? parsed : { _legacy: raw }; } catch { const raw = siteNotes.find(s => hospitalMatches(s.hospital, h))?.equipment_note || ""; return raw ? { _legacy: raw } : {}; } };
   const getNoteForComplaint = (h, cid) => { const m = getNotesMap(h); return m[cid] || m._legacy || ""; };
   const openComplaints = h => complaints.filter(c => hospitalMatches(c.hospital, h) && !isClosedStatus(c.status));
   const allOpen = hospitals.reduce((sum, h) => sum + openComplaints(h).length, 0);
@@ -1511,8 +1525,9 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
             <div key={h} style={{ cursor: "pointer" }} onClick={() => setExpandedRow(expandedRow === h ? null : h)}>
             <div style={{ ...styles.overviewRow, background: rowBg, borderLeft: isShutDown ? "3px solid #c0392b" : "3px solid transparent", transition: "background 0.18s ease" }} onMouseEnter={e => e.currentTarget.style.background = C.tealBg} onMouseLeave={e => e.currentTarget.style.background = rowBg}>
               <div style={{ ...styles.ovCell, ...styles.ovCellSr, color: C.textLight, fontWeight: 500, fontSize: 12 }}>{i + 1}</div>
-              <div style={{ ...styles.ovCell, ...styles.ovCellSite, display: "flex", flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <span style={{ color: C.black, fontWeight: 600, fontSize: 13 }}>{displayName(h)}</span>
+              <div style={{ ...styles.ovCell, ...styles.ovCellSite, display: "flex", flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <span style={{ width: 26, height: 26, borderRadius: 8, background: providerAvatarColor(getProvider(h)), color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{initialsFor(displayName(h))}</span>
+                <span style={{ color: C.black, fontWeight: 700, fontSize: 13.5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName(h)}</span>
                 <span style={{ fontSize: 11, color: C.textLight, transform: expandedRow === h ? "rotate(180deg)" : "none", transition: "transform 0.18s ease", display: "inline-block", flexShrink: 0 }}>▾</span>
               </div>
               <div style={{ ...styles.ovCell, ...styles.ovCellProvider, color: C.textLight, fontWeight: 400, fontSize: 12 }}>{getProvider(h)}</div>
@@ -2655,15 +2670,15 @@ const styles = {
   commentInputRow: { display: "flex", gap: 8, marginTop: 12 },
   commentInput: { flex: 1, padding: "11px 14px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", background: C.white, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
   commentSendBtn: { fontSize: 12, fontWeight: 700, color: C.white, background: C.teal, border: "none", borderRadius: 10, padding: "10px 24px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase", boxShadow: "0 3px 8px rgba(13,148,136,0.25)" },
-  overviewTable: { background: C.white, borderRadius: 14, border: `1px solid ${C.tealLight}`, overflow: "auto", WebkitOverflowScrolling: "touch", boxShadow: "0 4px 14px rgba(15,118,110,0.08)" },
-  overviewHeaderRow: { display: "flex", padding: "0", background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", fontWeight: 700, fontSize: 10, color: "#fff", gap: 0, minWidth: 900, letterSpacing: 1.5, textTransform: "uppercase", position: "sticky", top: 0, zIndex: 2 },
-  overviewRow: { display: "flex", padding: "0", borderBottom: `1px solid ${C.borderLight}`, gap: 0, alignItems: "stretch", minWidth: 900, transition: "background 0.15s" },
-  ovCell: { padding: "14px 16px", fontSize: 13, display: "flex", flexDirection: "column", justifyContent: "center" },
-  ovCellHeader: { padding: "14px 16px", borderRight: "1px solid rgba(255,255,255,0.15)", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" },
+  overviewTable: { background: C.white, borderRadius: 16, border: "1px solid #e8ebeb", overflow: "auto", WebkitOverflowScrolling: "touch", boxShadow: "0 1px 2px rgba(15,23,25,0.04), 0 8px 24px rgba(15,23,25,0.05)" },
+  overviewHeaderRow: { display: "flex", padding: "0", background: "#fafbfb", borderBottom: "1px solid #eef0f0", fontWeight: 700, fontSize: 10.5, color: "#9aa1a6", gap: 0, minWidth: 900, letterSpacing: 1, textTransform: "uppercase", position: "sticky", top: 0, zIndex: 2 },
+  overviewRow: { display: "flex", padding: "0", borderBottom: "1px solid #eef0f0", gap: 0, alignItems: "stretch", minWidth: 900, transition: "background 0.15s" },
+  ovCell: { padding: "16px 16px", fontSize: 13, display: "flex", flexDirection: "column", justifyContent: "center" },
+  ovCellHeader: { padding: "13px 16px", fontSize: 10.5, display: "flex", alignItems: "center", justifyContent: "flex-start" },
   ovCellSr: { width: 40, flexShrink: 0, justifyContent: "center", alignItems: "center" },
   ovCellSite: { width: 160, flexShrink: 0 },
   ovCellProvider: { width: 100, flexShrink: 0 },
-  ovCellStatus: { width: 120, flexShrink: 0, alignItems: "center", justifyContent: "center" },
+  ovCellStatus: { width: 140, flexShrink: 0, alignItems: "center", justifyContent: "flex-start" },
   ovCellOpen: { flex: 1, minWidth: 170 },
   ovCellNote: { flex: 1, minWidth: 170, borderRight: "none" },
 };
