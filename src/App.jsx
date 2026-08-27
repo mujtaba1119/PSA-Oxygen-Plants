@@ -95,9 +95,11 @@ function getTicketNumber(complaint, allComplaints) {
 
 // Site coordinates for the homepage map, keyed by the EXACT site name used in GROUPS above
 // (not the fuller facility names they were given as — e.g. GROUPS uses "Kharan", not "DHQ Kharan").
-// 28 of 36 sites collected so far — the rest simply won't show a pin until added.
+// All 36 sites collected.
 const SITE_COORDS = {
   // Novair
+  "Rawalpindi": [33.640750, 73.058472],
+  "Kohat": [33.613417, 71.471972],
   "Swat": [34.758225, 72.358705],
   "Timergara": [34.829583, 71.845083],
   "Malakand": [34.611468, 71.961025],
@@ -111,6 +113,8 @@ const SITE_COORDS = {
   "Khaplu": [35.153222, 76.344028],
   "Islamabad": [33.703597, 73.053875],
   // Intexim
+  "Faisalabad": [31.450472, 73.081028],
+  "Multan": [30.201417, 71.442889],
   "Bhakkar": [31.626586, 71.088862],
   "Sahiwal": [30.683182, 73.100251],
   "Toba Tek Singh": [30.952000, 72.495583],
@@ -119,6 +123,10 @@ const SITE_COORDS = {
   "Jhang": [31.262636, 72.334968],
   "Bhimber": [32.969555, 74.053143],
   // Z-Corps
+  "Larkana": [27.555194, 68.199056],
+  "Jamshoro": [25.432539, 68.269924],
+  "Nawabshah": [26.243639, 68.405722],
+  "Karachi": [24.829139, 67.163861],
   "Quetta SZ": [30.083664, 66.961242],
   "DM Jamali": [28.542028, 68.210056],
   "Khuzdar": [27.810111, 66.610167],
