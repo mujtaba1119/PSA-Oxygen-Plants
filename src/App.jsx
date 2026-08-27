@@ -1428,12 +1428,17 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
   const attentionSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Issues");
   const shutdownSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Shut Down");
 
-  const statusOrder = { "Issues": 0, "Shut Down": 1, "Fully Functional": 2, "Non Functional": 3 };
-  const sortedHospitals = [...hospitals].sort((a, b) => {
-    const sa = getSiteDisplayStatus(a, complaints, siteNotes);
-    const sb = getSiteDisplayStatus(b, complaints, siteNotes);
-    return (statusOrder[sa] ?? 2) - (statusOrder[sb] ?? 2);
-  });
+  // Sort order: Critical (or manually marked Shut Down) first, then High, then Low,
+  // then Non Functional (flagged but no open ticket), then Fully Functional last.
+  // Severity is a per-ticket attribute, so a site's rank is driven by its single worst open ticket.
+  const SEVERITY_RANK = { "Critical": 0, "High": 1, "Low": 2 };
+  const siteRank = (h) => {
+    if (getSiteBaseStatus(h, siteNotes) === "Shut Down") return 0;
+    const open = complaints.filter(c => c.hospital === h && !isClosedStatus(c.status));
+    if (open.length > 0) return Math.min(...open.map(c => SEVERITY_RANK[c.severity] ?? 2));
+    return getSiteBaseStatus(h, siteNotes) === "Non Functional" ? 3 : 4;
+  };
+  const sortedHospitals = [...hospitals].sort((a, b) => siteRank(a) - siteRank(b));
 
   const saveNote = async (h, cid) => { setSaving(true); const m = getNotesMap(h); if (cid) { m[cid] = noteText; delete m._legacy; } else { m._site = noteText; } await updateSiteNote(h, JSON.stringify(m)); setEditingNote(null); setNoteText(""); setSaving(false); await onRefresh(); };
   const handleStatusChange = async (h, s) => { await updateSiteStatus(h, s); setStatusEditing(null); await onRefresh(); };
@@ -1517,7 +1522,8 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
               </div>
               <div style={{ ...styles.ovCell, ...styles.ovCellOpen, padding: 0 }}>
                 {open.length > 0 ? open.map((c, ci) => (
-                  <div key={c.id} style={{ padding: "10px 16px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none", minHeight: 42, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+                  <div key={c.id} style={{ padding: "10px 16px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none", minHeight: 42, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", gap: 6, flexWrap: "wrap" }}>
+                    <SeverityBadge severity={c.severity} />
                     <span style={{ fontSize: 12, color: C.red, fontWeight: 500 }}>{c.title} <span style={{ fontWeight: 400, color: C.textLight }}>({new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })})</span></span>
                   </div>
                 )) : <div style={{ padding: "10px 16px", fontSize: 12, color: C.textLight, minHeight: 42, display: "flex", alignItems: "center", justifyContent: "center" }}></div>}
