@@ -12,7 +12,7 @@ async function dbWrite(payload) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    });a
+    });
     const data = await res.json();
     if (!res.ok) { console.error("dbWrite error:", data.error); return { error: data.error }; }
     return data;
@@ -1157,12 +1157,14 @@ function makePinIcon(color) {
 function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
   const [pkBoundary, setPkBoundary] = useState(null);
   useEffect(() => {
-    fetch("https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json")
+    // Self-hosted (see public/pakistan-boundary.geojson) — sourced from OSM's own "Pakistan"
+    // relation (id 307573), which follows Pakistan's own administrative claim including Azad
+    // Kashmir and Gilgit-Baltistan. Third-party live boundary sources kept either excluding those
+    // regions or failing to fetch due to CORS, so this is hosted locally instead — same-origin,
+    // no external dependency, no CORS risk.
+    fetch("/pakistan-boundary.geojson")
       .then(r => r.json())
-      .then(data => {
-        const pk = (data.features || []).find(f => (f.properties?.name || "").toLowerCase() === "pakistan");
-        if (pk) setPkBoundary(pk);
-      })
+      .then(data => { if (data) setPkBoundary(data); })
       .catch(() => {}); // map still works fine without the boundary overlay if this fails
   }, []);
 
