@@ -139,9 +139,36 @@ const SITE_COORDS = {
 };
 
 const COMPLAINT_TYPES = [
-  "Compressor Issue","Dryer Issue","Booster Filling System Issue","Purity Issue",
-  "Electrical/Power Issue","Monitoring/CSS Issue","Backup Manifold Issue","Other Issue"
+  "Complete Shutdown","Compressor Issue","Dryer Issue","Purity Issue/Oxygen Generator Issue",
+  "Electrical/Power Issue","Booster Filling System Issue","Monitoring/CSS Issue",
+  "Backup Manifold Issue","Power Generator Issue","Other Issue"
 ];
+
+// Severity auto-assigned per issue type at ticket creation. Operator can still override
+// (see the severity select next to the issue-type dropdown in the submission form).
+const SEVERITY_MAP = {
+  "Complete Shutdown": "Critical",
+  "Compressor Issue": "High",
+  "Dryer Issue": "High",
+  "Purity Issue/Oxygen Generator Issue": "High",
+  "Electrical/Power Issue": "High",
+  "Booster Filling System Issue": "High",
+  "Monitoring/CSS Issue": "Low",
+  "Backup Manifold Issue": "Low",
+  "Power Generator Issue": "Low",
+  "Other Issue": "Low",
+};
+function getDefaultSeverity(issueTitle) { return SEVERITY_MAP[issueTitle] || "Low"; }
+const SEVERITY_COLORS = {
+  "Critical": { color: "#fff", background: "#c0392b" },
+  "High": { color: "#fff", background: "#d9822b" },
+  "Low": { color: "#555555", background: "#e6e6e6" },
+};
+function SeverityBadge({ severity }) {
+  if (!severity) return null;
+  const s = SEVERITY_COLORS[severity] || SEVERITY_COLORS["Low"];
+  return <span style={{ fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 10, color: s.color, background: s.background, textTransform: "uppercase", letterSpacing: 0.3 }}>{severity}</span>;
+}
 
 /* ─── Point 1: structured ticket workflow ───
    Statuses actually stored: "Open", "Resolved", "Verified".
@@ -235,8 +262,8 @@ async function fetchComplaints() {
   if (error) { console.error(error); return []; }
   return data;
 }
-async function insertComplaint(hospital, title, description, customDate, submittedBy) {
-  const data = await dbWrite({ action: "insert_complaint", hospital, title, description, submitted_by: submittedBy || null, created_at: customDate ? new Date(customDate).toISOString() : null });
+async function insertComplaint(hospital, title, description, customDate, submittedBy, severity) {
+  const data = await dbWrite({ action: "insert_complaint", hospital, title, description, submitted_by: submittedBy || null, created_at: customDate ? new Date(customDate).toISOString() : null, severity: severity || getDefaultSeverity(title) });
   if (data.error || !data.complaint) { console.error(data.error); return null; }
   const complaint = data.complaint;
   notifyComplaintEmail(hospital, title, description).catch((e) => console.error("Email notify failed", e));
@@ -1789,6 +1816,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               <strong style={{ fontSize: 16, fontWeight: 700, color: C.black, whiteSpace: expanded ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</strong>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+              <SeverityBadge severity={c.severity} />
               <StatusBadge status={effStatus} />
               <span style={{ fontSize: 16, color: C.tealDark, transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>⌄</span>
             </div>
@@ -1901,6 +1929,7 @@ function ComplaintListView({ hospital, complaints, currentUser, canComment, isAd
 function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const [operatorName, setOperatorName] = useState("");
   const [title, setTitle] = useState(""); const [desc, setDesc] = useState("");
+  const [severity, setSeverity] = useState(""); const [severityTouched, setSeverityTouched] = useState(false);
   const [files, setFiles] = useState([]);
   const [success, setSuccess] = useState(false); const [submitting, setSubmitting] = useState(false);
   const [focusInfo, setFocusInfo] = useState(null); // { complaintId, isComment, commentText }
@@ -1958,10 +1987,11 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
     if (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) return;
     setSubmitting(true);
     const savedTitle = title.trim(); const savedDesc = desc.trim(); const savedFiles = [...files];
-    const r = await insertComplaint(user.name, savedTitle, savedDesc, null, operatorName.trim());
+    const savedSeverity = severity || getDefaultSeverity(savedTitle);
+    const r = await insertComplaint(user.name, savedTitle, savedDesc, null, operatorName.trim(), savedSeverity);
     if (r) {
       if (savedFiles.length > 0) await doUpload(r.id, savedFiles);
-      setTitle(""); setDesc(""); setFiles([]);
+      setTitle(""); setDesc(""); setFiles([]); setSeverity(""); setSeverityTouched(false);
       notifyUsers("new_complaint", `New Complaint: ${user.name}`, savedTitle, user.name, r.id, user.id).catch(() => {});
       await onRefresh();
       setSubmitting(false);
@@ -2014,7 +2044,22 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
             Submit a Ticket
           </h2>
           <input style={styles.inputTeal} placeholder="Your name (operator name)" value={operatorName} onChange={e => setOperatorName(e.target.value)} />
-          <ComplaintTypeSelect value={title} onChange={e => setTitle(e.target.value)} style={styles.inputTealSelect} />
+          <ComplaintTypeSelect value={title} onChange={e => { setTitle(e.target.value); if (!severityTouched) setSeverity(getDefaultSeverity(e.target.value)); }} style={styles.inputTealSelect} />
+          {title && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+              <span style={{ fontSize: 12.5, color: C.textMid }}>Severity:</span>
+              <select
+                value={severity || getDefaultSeverity(title)}
+                onChange={e => { setSeverity(e.target.value); setSeverityTouched(true); }}
+                style={{ fontSize: 12.5, padding: "5px 8px", borderRadius: 7, border: `1px solid ${C.tealLight}` }}
+              >
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Low">Low</option>
+              </select>
+              <SeverityBadge severity={severity || getDefaultSeverity(title)} />
+            </div>
+          )}
           <textarea style={{ ...styles.inputTeal, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue in detail…" value={desc} onChange={e => setDesc(e.target.value)} />
           <div style={{ marginBottom: 14 }}>
             <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: C.teal, fontWeight: 600, cursor: "pointer", padding: "10px 18px", border: `1.5px solid ${C.tealLight}`, background: C.tealBg, borderRadius: 10 }}>
