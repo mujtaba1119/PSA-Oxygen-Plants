@@ -12,7 +12,7 @@ async function dbWrite(payload) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    });
+    });a
     const data = await res.json();
     if (!res.ok) { console.error("dbWrite error:", data.error); return { error: data.error }; }
     return data;
