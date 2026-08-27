@@ -1156,6 +1156,7 @@ function makePinIcon(color) {
    Overview (the older site-list view) remains available as its own separate tab. ─── */
 function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
   const [pkBoundary, setPkBoundary] = useState(null);
+  const [mapTheme, setMapTheme] = useState("light"); // "light" or "dark"
   useEffect(() => {
     // Self-hosted (see public/pakistan-boundary.geojson) — sourced from OSM's own "Pakistan"
     // relation (id 307573), which follows Pakistan's own administrative claim including Azad
@@ -1237,7 +1238,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
-        <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.border}`, height: 380 }}>
+        <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.border}`, height: 380, position: "relative" }}>
           <style>{`
             .leaflet-control-attribution {
               font-size: 9px !important;
@@ -1245,8 +1246,17 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
               background: rgba(255,255,255,0.55) !important;
               line-height: 1.4 !important;
             }
+            .dark-map-mode .leaflet-tile-pane {
+              filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+            }
           `}</style>
-          <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
+          <button
+            onClick={() => setMapTheme(t => t === "light" ? "dark" : "light")}
+            style={{ position: "absolute", top: 10, right: 10, zIndex: 1000, fontSize: 11.5, fontWeight: 600, padding: "6px 12px", borderRadius: 7, border: "none", cursor: "pointer", color: mapTheme === "light" ? "#fff" : "#1a2332", background: mapTheme === "light" ? "#1a2332" : "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}
+          >
+            {mapTheme === "light" ? "🌙 Dark" : "☀️ Light"}
+          </button>
+          <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false} className={mapTheme === "dark" ? "dark-map-mode" : ""}>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -1254,7 +1264,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
               maxZoom={19}
             />
             {pkBoundary && (
-              <GeoJSON data={pkBoundary} style={{ color: "#0f766e", weight: 2, fillOpacity: 0, dashArray: "4 3" }} />
+              <GeoJSON data={pkBoundary} style={{ color: mapTheme === "dark" ? "#5eead4" : "#0f766e", weight: 2, fillOpacity: 0, dashArray: "4 3" }} />
             )}
             {mappedSites.map(h => (
               <Marker key={h} position={SITE_COORDS[h]} icon={makePinIcon(pinColor(h))}>
