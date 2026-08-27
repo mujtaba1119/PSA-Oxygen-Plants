@@ -720,23 +720,29 @@ function PartnerFooter() {
 }
 
 /* ─── Status Logic ─── */
-// Site status is now purely 3 values, derived from actual ticket state (not a manual flag that
-// can go stale): "Fully Functional" (no open tickets), "Functional" (has open tickets, not shut
-// down), "Shut Down" (manually flagged — the only state still admin-controlled).
+// Site status has 4 values: "Fully Functional" (no open tickets), "Functional" (has open
+// tickets, running), "Non Functional" (manually flagged — not producing, but not an emergency
+// shutdown), "Shut Down" (manually flagged — the emergency state). Manual flags only apply when
+// there's no open ticket already explaining the situation; an open ticket always shows as
+// "Functional" unless the site is specifically marked Shut Down.
 function getSiteBaseStatus(hospital, siteNotes) {
   const note = siteNotes.find(s => s.hospital === hospital);
   return note?.site_status || "Fully Functional";
 }
 
 function getSiteDisplayStatus(hospital, complaints, siteNotes) {
-  if (getSiteBaseStatus(hospital, siteNotes) === "Shut Down") return "Shut Down";
+  const base = getSiteBaseStatus(hospital, siteNotes);
+  if (base === "Shut Down") return "Shut Down";
   const target = (hospital || "").toLowerCase().trim();
   const hasOpen = complaints.some(c => (c.hospital || "").toLowerCase().trim() === target && !isClosedStatus(c.status));
-  return hasOpen ? "Functional" : "Fully Functional";
+  if (hasOpen) return "Functional";
+  if (base === "Non Functional") return "Non Functional";
+  return "Fully Functional";
 }
 
 function isFunctional(hospital, complaints, siteNotes) {
-  return getSiteDisplayStatus(hospital, complaints, siteNotes) !== "Shut Down";
+  const s = getSiteDisplayStatus(hospital, complaints, siteNotes);
+  return s === "Fully Functional" || s === "Functional";
 }
 
 function SiteStatusBadge({ status }) {
@@ -748,8 +754,8 @@ function SiteStatusBadge({ status }) {
       </span>
     );
   }
-  const color = status === "Functional" ? "#c0392b" : "#166534";
-  const dot = status === "Functional" ? "#e0912f" : "#2f9e58";
+  const color = status === "Functional" ? "#c0392b" : status === "Non Functional" ? "#555" : "#166534";
+  const dot = status === "Functional" ? "#e0912f" : status === "Non Functional" ? "#999" : "#2f9e58";
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color, padding: "4px 10px", borderRadius: 20, whiteSpace: "nowrap", letterSpacing: 0.2 }}>
       <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, display: "inline-block", flexShrink: 0 }} />
@@ -1224,12 +1230,13 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
 
   const attentionSites = [...shutdownSites, ...issueSites].slice(0, 6);
 
-  // Pin colors: green = fully functional (no open tickets), amber = functional but has an
-  // open ticket, red = shut down. "Non Functional" is no longer a separate manual state.
+  // Pin colors: green = fully functional (no open tickets), amber = functional with an open
+  // ticket, grey = non-functional (manually flagged, no active ticket), red = shut down.
   const pinColor = (h) => {
     const s = getSiteDisplayStatus(h, complaints, siteNotes);
     if (s === "Shut Down") return "#e03131";
     if (s === "Functional") return "#f08c00";
+    if (s === "Non Functional") return "#868e96";
     return "#2f9e44";
   };
   const mappedSites = hospitals.filter(h => SITE_COORDS[h]);
@@ -1428,20 +1435,17 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
   const funcCount = hospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
   const nonFuncCount = hospitals.length - funcCount;
 
-  const attentionSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Functional");
   const shutdownSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Shut Down");
 
   // Sort order: Critical (or manually marked Shut Down) first, then High, then Low,
-  // then Fully Functional last. Severity is a per-ticket attribute, so a site's rank is
-  // driven by its single worst open ticket. No longer depends on the old "Non Functional"
-  // manual flag for ranking — that flag could go stale independent of actual ticket state,
-  // which was pushing sites to the wrong position regardless of their real status.
+  // then Non Functional (flagged, no open ticket), then Fully Functional last.
+  // Severity is a per-ticket attribute, so a site's rank is driven by its single worst open ticket.
   const SEVERITY_RANK = { "Critical": 0, "High": 1, "Low": 2 };
   const siteRank = (h) => {
     if (getSiteBaseStatus(h, siteNotes) === "Shut Down") return 0;
     const open = complaints.filter(c => c.hospital === h && !isClosedStatus(c.status));
     if (open.length > 0) return Math.min(...open.map(c => SEVERITY_RANK[c.severity] ?? 2));
-    return 3; // Fully Functional — no open tickets
+    return getSiteBaseStatus(h, siteNotes) === "Non Functional" ? 3 : 4;
   };
   const sortedHospitals = [...hospitals].sort((a, b) => siteRank(a) - siteRank(b));
 
@@ -1458,32 +1462,25 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: C.teal, textTransform: "uppercase", marginBottom: 6 }}>Site directory</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 24, fontWeight: 800, color: C.black, letterSpacing: "-0.01em" }}>{hospitals.length} sites</div>
+          <div style={{ fontSize: 13.5, color: C.textMid }}>{funcCount} functional · {allOpen} open ticket{allOpen === 1 ? "" : "s"}</div>
+        </div>
+      </div>
+
       {shutdownSites.length > 0 && (
-        <div className="fade-up" style={{ background: "#fed7d7", border: "1px solid #fc8181", borderRadius: 12, padding: "16px 20px", marginBottom: 12, animationDelay: "0s" }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#e53e3e", marginBottom: 8 }}>🚨 Plant Shut Down — Not Producing Oxygen ({shutdownSites.length})</div>
+        <div className="fade-up" style={{ background: "#fdeeee", border: "1px solid #f0b8b8", borderRadius: 12, padding: "14px 18px", marginBottom: 20, animationDelay: "0s" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#c0392b", flexShrink: 0 }} />
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: "#9b2c2c" }}>{shutdownSites.length} {shutdownSites.length === 1 ? "site" : "sites"} shut down — not producing oxygen</span>
+          </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {shutdownSites.map(h => (
-              <span key={h} style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "#b32020", background: "#fff", border: "1px solid #f5b5b5", padding: "7px 14px", borderRadius: 999, boxShadow: "0 1px 3px rgba(224,62,62,0.12)" }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#e53e3e", flexShrink: 0 }} />
-                {h}
-                {isAdmin && <button style={{ fontSize: 11, color: "#e53e3e", background: "none", border: "1px solid #e53e3e", borderRadius: 6, padding: "1px 6px", cursor: "pointer", marginLeft: 2 }} onClick={() => handleSendShutdownEmail(h)} disabled={sendingShutdown === h}>{sendingShutdown === h ? "…" : "📧"}</button>}
-              </span>
-            ))}
-          </div>
-          {isAdmin && <p style={{ fontSize: 11, color: "#9b2c2c", marginTop: 6 }}>Click 📧 to send shutdown notification email to stakeholders</p>}
-        </div>
-      )}
-
-      <div className="fade-up" style={{ borderTop: "1px solid #ddd", margin: "0 0 24px", opacity: 0.6, animationDelay: "0.3s" }}></div>
-
-      {attentionSites.length > 0 && (
-        <div className="fade-up" style={{ marginBottom: 20, animationDelay: "0.4s" }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: "#c47f1e", marginBottom: 12, letterSpacing: 1.5, textTransform: "uppercase" }}>Attention Needed ({attentionSites.length})</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {attentionSites.map(h => (
-              <span key={h} style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 600, color: "#92600c", background: "#fef3e2", border: "1px solid #f7d9a8", padding: "7px 14px", borderRadius: 999, boxShadow: "0 1px 3px rgba(196,127,30,0.12)" }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#e0912f", flexShrink: 0 }} />
-                {h}
+              <span key={h} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#9b2c2c", background: C.white, border: "1px solid #f0b8b8", padding: "5px 12px", borderRadius: 8 }}>
+                {displayName(h)}
+                {isAdmin && <button style={{ fontSize: 10, color: "#c0392b", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }} onClick={() => handleSendShutdownEmail(h)} disabled={sendingShutdown === h}>{sendingShutdown === h ? "…" : "notify"}</button>}
               </span>
             ))}
           </div>
@@ -1515,6 +1512,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                   statusEditing === h ? (
                     <select style={{ fontSize: 11, padding: "4px 8px", borderRadius: 20, border: `1px solid ${C.border}`, background: C.white }} value={getSiteBaseStatus(h, siteNotes)} onChange={e => handleStatusChange(h, e.target.value)}>
                       <option value="Fully Functional">Fully Functional</option>
+                      <option value="Non Functional">Non Functional</option>
                       <option value="Shut Down">Shut Down</option>
                     </select>
                   ) : (
