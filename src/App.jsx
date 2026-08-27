@@ -1929,7 +1929,6 @@ function ComplaintListView({ hospital, complaints, currentUser, canComment, isAd
 function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const [operatorName, setOperatorName] = useState("");
   const [title, setTitle] = useState(""); const [desc, setDesc] = useState("");
-  const [severity, setSeverity] = useState(""); const [severityTouched, setSeverityTouched] = useState(false);
   const [files, setFiles] = useState([]);
   const [success, setSuccess] = useState(false); const [submitting, setSubmitting] = useState(false);
   const [focusInfo, setFocusInfo] = useState(null); // { complaintId, isComment, commentText }
@@ -1987,11 +1986,11 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
     if (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) return;
     setSubmitting(true);
     const savedTitle = title.trim(); const savedDesc = desc.trim(); const savedFiles = [...files];
-    const savedSeverity = severity || getDefaultSeverity(savedTitle);
+    const savedSeverity = getDefaultSeverity(savedTitle);
     const r = await insertComplaint(user.name, savedTitle, savedDesc, null, operatorName.trim(), savedSeverity);
     if (r) {
       if (savedFiles.length > 0) await doUpload(r.id, savedFiles);
-      setTitle(""); setDesc(""); setFiles([]); setSeverity(""); setSeverityTouched(false);
+      setTitle(""); setDesc(""); setFiles([]);
       notifyUsers("new_complaint", `New Complaint: ${user.name}`, savedTitle, user.name, r.id, user.id).catch(() => {});
       await onRefresh();
       setSubmitting(false);
@@ -2044,20 +2043,11 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
             Submit a Ticket
           </h2>
           <input style={styles.inputTeal} placeholder="Your name (operator name)" value={operatorName} onChange={e => setOperatorName(e.target.value)} />
-          <ComplaintTypeSelect value={title} onChange={e => { setTitle(e.target.value); if (!severityTouched) setSeverity(getDefaultSeverity(e.target.value)); }} style={styles.inputTealSelect} />
+          <ComplaintTypeSelect value={title} onChange={e => setTitle(e.target.value)} style={styles.inputTealSelect} />
           {title && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
               <span style={{ fontSize: 12.5, color: C.textMid }}>Severity:</span>
-              <select
-                value={severity || getDefaultSeverity(title)}
-                onChange={e => { setSeverity(e.target.value); setSeverityTouched(true); }}
-                style={{ fontSize: 12.5, padding: "5px 8px", borderRadius: 7, border: `1px solid ${C.tealLight}` }}
-              >
-                <option value="Critical">Critical</option>
-                <option value="High">High</option>
-                <option value="Low">Low</option>
-              </select>
-              <SeverityBadge severity={severity || getDefaultSeverity(title)} />
+              <SeverityBadge severity={getDefaultSeverity(title)} />
             </div>
           )}
           <textarea style={{ ...styles.inputTeal, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue in detail…" value={desc} onChange={e => setDesc(e.target.value)} />
