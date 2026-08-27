@@ -89,11 +89,12 @@ export default async function handler(req, res) {
   try {
 // ─────────── COMPLAINTS ───────────
     if (action === "insert_complaint") {
-      const { hospital, title, description, submitted_by, created_at } = body;
+      const { hospital, title, description, submitted_by, created_at, severity } = body;
       if (!hospital || !title || !description) return json(res, 400, { error: "Missing fields" });
       const row = { hospital, title, description, status: "Open" };
       if (submitted_by) row.submitted_by = submitted_by;
       if (created_at) row.created_at = created_at;
+      if (severity) row.severity = severity;
       const { data, error } = await admin.from("complaints").insert([row]).select();
       if (error) return json(res, 400, { error: error.message });
       return json(res, 200, { complaint: data[0] });
