@@ -212,6 +212,14 @@ function isClosedStatus(status) { return status === "Resolved" || status === "Ve
 // Global ticket sort order: Open, then Assigned, then In Progress, then Resolved, then Verified —
 // irrespective of when each ticket was opened. Within the same status, most recent first.
 const STATUS_SORT_ORDER = { "Open": 0, "Assigned": 1, "In Progress": 2, "Resolved": 3, "Verified": 4 };
+// Ordered stage list + solid bar colors for the HomeTab ticket pipeline visualization
+const STAGE_META = [
+  { key: "Open", color: "#c2622f" },
+  { key: "Assigned", color: "#7c5cbf" },
+  { key: "In Progress", color: "#d69e2e" },
+  { key: "Resolved", color: "#2874a6" },
+  { key: "Verified", color: "#2f9e58" },
+];
 function compareTicketsForDisplay(a, b) {
   const ra = STATUS_SORT_ORDER[getEffectiveStatus(a)] ?? 0;
   const rb = STATUS_SORT_ORDER[getEffectiveStatus(b)] ?? 0;
@@ -1201,41 +1209,55 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 16 }}>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: C.black }}>OxyTrack network</div>
-          <div style={{ fontSize: 13, color: C.textMid }}>{funcCount} of {hospitals.length} sites fully functional</div>
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 12, marginBottom: 20 }}>
-        <div style={{ background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 14 }}>
-          <div style={{ fontSize: 12, color: C.textMid, marginBottom: 4 }}>Total sites</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: C.black }}>{hospitals.length}</div>
-        </div>
-        <div style={{ background: "#eafaf1", border: "1px solid #b7e4c7", borderRadius: 10, padding: 14 }}>
-          <div style={{ fontSize: 12, color: "#276749", marginBottom: 4 }}>Functional</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#276749" }}>{funcCount}</div>
-        </div>
-        <div style={{ background: "#fef3c7", border: "1px solid #fde68a", borderRadius: 10, padding: 14 }}>
-          <div style={{ fontSize: 12, color: "#7c5e10", marginBottom: 4 }}>Issues</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#7c5e10" }}>{issueSites.length}</div>
-        </div>
-        <div style={{ background: "#feebc8", border: "1px solid #fc8181", borderRadius: 10, padding: 14 }}>
-          <div style={{ fontSize: 12, color: "#9c4221", marginBottom: 4 }}>Shut down</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#9c4221" }}>{shutdownSites.length}</div>
-        </div>
-      </div>
-
-      <div style={{ fontSize: 15, fontWeight: 700, color: C.black, marginBottom: 8 }}>Tickets by stage</div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-        {Object.entries(stageCounts).map(([stage, count]) => (
-          <div key={stage} style={{ flex: 1, minWidth: 80, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 10, textAlign: "center" }}>
-            <div style={{ fontSize: 17, fontWeight: 700, color: C.black }}>{count}</div>
-            <div style={{ fontSize: 10.5, color: C.textMid }}>{statusLabel(stage)}</div>
+      {/* Hero stat: one headline number, not a grid of equal boxes */}
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: C.teal, textTransform: "uppercase", marginBottom: 6 }}>Network status</div>
+        <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 14, marginBottom: 10 }}>
+          <div style={{ fontSize: 34, fontWeight: 800, color: C.black, letterSpacing: "-0.02em" }}>
+            {funcCount}<span style={{ color: C.textLight, fontWeight: 600 }}>/{hospitals.length}</span>
           </div>
-        ))}
+          <div style={{ fontSize: 14, color: C.textMid, paddingBottom: 4 }}>sites fully functional</div>
+        </div>
+        {(issueSites.length > 0 || shutdownSites.length > 0) && (
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+            {issueSites.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#b7791f", fontWeight: 600 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f0932b", display: "inline-block" }} />
+                {issueSites.length} {issueSites.length === 1 ? "site" : "sites"} with open issues
+              </div>
+            )}
+            {shutdownSites.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#c0392b", fontWeight: 600 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#e03131", display: "inline-block" }} />
+                {shutdownSites.length} {shutdownSites.length === 1 ? "site" : "sites"} shut down
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Ticket pipeline: one segmented proportion bar instead of five identical boxes */}
+      {scoped.length > 0 && (
+        <div style={{ marginBottom: 26 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C.black }}>Ticket pipeline</div>
+            <div style={{ fontSize: 12, color: C.textLight }}>{scoped.length} total</div>
+          </div>
+          <div style={{ display: "flex", height: 10, borderRadius: 6, overflow: "hidden", background: C.borderLight, marginBottom: 10 }}>
+            {STAGE_META.filter(s => stageCounts[s.key] > 0).map(s => (
+              <div key={s.key} style={{ flex: `${stageCounts[s.key]} 0 0%`, background: s.color }} title={`${statusLabel(s.key)}: ${stageCounts[s.key]}`} />
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+            {STAGE_META.map(s => (
+              <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: C.textMid }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.color, display: "inline-block", flexShrink: 0 }} />
+                <span style={{ fontWeight: 700, color: C.black }}>{stageCounts[s.key]}</span> {statusLabel(s.key)}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
         <div className={mapTheme === "dark" ? "dark-map-mode" : ""} style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.border}`, height: 380, position: "relative" }}>
@@ -1290,18 +1312,21 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
           </MapContainer>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, background: C.white, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14, height: 380, overflowY: "auto" }}>
           {attentionSites.length > 0 && (
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.black, marginBottom: 6 }}>Needs attention</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: C.textLight, textTransform: "uppercase", marginBottom: 8 }}>Needs attention</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {attentionSites.map(h => {
                   const s = getSiteDisplayStatus(h, complaints, siteNotes);
                   const isDown = s === "Shut Down";
                   return (
-                    <div key={h} onClick={() => onViewSite(h)} style={{ cursor: "pointer", background: isDown ? "#feebc8" : "#fef3c7", borderRadius: 8, padding: "8px 10px" }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: isDown ? "#9c4221" : "#7c5e10" }}>{h}</div>
-                      <div style={{ fontSize: 11, color: isDown ? "#9c4221" : "#7c5e10" }}>{s}</div>
+                    <div key={h} onClick={() => onViewSite(h)} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8, borderRadius: 8, padding: "7px 8px", transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = C.bg} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: isDown ? "#e03131" : "#f0932b", flexShrink: 0 }} />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: C.black, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h}</div>
+                        <div style={{ fontSize: 10.5, color: C.textLight }}>{s}</div>
+                      </div>
                     </div>
                   );
                 })}
@@ -1310,33 +1335,49 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
           )}
           {resolvedThisWeek.length > 0 && (
             <div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.black, marginBottom: 6, marginTop: 4 }}>Resolved this week</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: C.textLight, textTransform: "uppercase", marginBottom: 8 }}>Resolved this week</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {resolvedThisWeek.map(c => (
-                  <div key={c.id} onClick={() => onViewSite(c.hospital)} style={{ cursor: "pointer", fontSize: 12.5, color: C.black }}>
-                    {c.title} <span style={{ color: C.textMid }}>— {c.hospital}</span>
+                  <div key={c.id} onClick={() => onViewSite(c.hospital)} style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8, borderRadius: 8, padding: "7px 8px", transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = C.bg} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#2f9e58", flexShrink: 0, marginTop: 4 }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: C.black }}>{c.title}</div>
+                      <div style={{ fontSize: 10.5, color: C.textLight }}>{c.hospital}</div>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
+          {attentionSites.length === 0 && resolvedThisWeek.length === 0 && (
+            <div style={{ fontSize: 12.5, color: C.textLight, textAlign: "center", marginTop: 40 }}>No activity to show yet.</div>
+          )}
         </div>
       </div>
 
       {showProviderBreakdown && (
-        <div style={{ marginTop: 20 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: C.black, marginBottom: 8 }}>By service provider</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {providerEntries.map(([provider, sites]) => {
-              const providerSites = sites.filter(s => hospitals.includes(s));
-              const openCount = complaints.filter(c => providerSites.includes(c.hospital) && !isClosedStatus(c.status)).length;
-              return (
-                <div key={provider} style={{ display: "flex", justifyContent: "space-between", background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 8, padding: "8px 12px" }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: C.black }}>{provider}</span>
-                  <span style={{ fontSize: 12, color: C.textMid }}>{providerSites.length} sites · {openCount} open tickets</span>
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: C.black, marginBottom: 10 }}>By service provider</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {(() => {
+              const rows = providerEntries.map(([provider, sites]) => {
+                const providerSites = sites.filter(s => hospitals.includes(s));
+                const openCount = complaints.filter(c => providerSites.includes(c.hospital) && !isClosedStatus(c.status)).length;
+                return { provider, siteCount: providerSites.length, openCount };
+              });
+              const maxSites = Math.max(1, ...rows.map(r => r.siteCount));
+              return rows.map(r => (
+                <div key={r.provider}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: C.black }}>{r.provider}</span>
+                    <span style={{ fontSize: 12, color: C.textMid }}>{r.siteCount} sites · {r.openCount} open</span>
+                  </div>
+                  <div style={{ height: 7, borderRadius: 4, background: C.borderLight, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${(r.siteCount / maxSites) * 100}%`, background: C.teal, borderRadius: 4 }} />
+                  </div>
                 </div>
-              );
-            })}
+              ));
+            })()}
           </div>
         </div>
       )}
