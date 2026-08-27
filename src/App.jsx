@@ -167,7 +167,7 @@ const SEVERITY_COLORS = {
 function SeverityBadge({ severity }) {
   if (!severity) return null;
   const s = SEVERITY_COLORS[severity] || SEVERITY_COLORS["Low"];
-  return <span style={{ fontSize: 10, fontWeight: 700, padding: "2.5px 8px", borderRadius: 10, color: s.color, background: s.background, textTransform: "uppercase", letterSpacing: 0.4, flexShrink: 0, whiteSpace: "nowrap" }}>{severity}</span>;
+  return <span style={{ fontSize: 8.5, fontWeight: 700, padding: "2px 6px", borderRadius: 8, color: s.color, background: s.background, textTransform: "uppercase", letterSpacing: 0.3, flexShrink: 0, whiteSpace: "nowrap" }}>{severity}</span>;
 }
 
 /* ─── Point 1: structured ticket workflow ───
@@ -730,11 +730,17 @@ function getSiteBaseStatus(hospital, siteNotes) {
   return note?.site_status || "Fully Functional";
 }
 
+// Hospital names are matched case/whitespace-insensitively everywhere complaints are filtered
+// by site — ticket records and the site list aren't always byte-identical strings, and a strict
+// equality check here silently drops real tickets (they'd still show correctly anywhere that
+// already normalized, creating exactly the kind of contradiction — status badge says one thing,
+// sort/ticket list says another — that's hard to spot without comparing both).
+function hospitalMatches(a, b) { return (a || "").toLowerCase().trim() === (b || "").toLowerCase().trim(); }
+
 function getSiteDisplayStatus(hospital, complaints, siteNotes) {
   const base = getSiteBaseStatus(hospital, siteNotes);
   if (base === "Shut Down") return "Shut Down";
-  const target = (hospital || "").toLowerCase().trim();
-  const hasOpen = complaints.some(c => (c.hospital || "").toLowerCase().trim() === target && !isClosedStatus(c.status));
+  const hasOpen = complaints.some(c => hospitalMatches(c.hospital, hospital) && !isClosedStatus(c.status));
   if (hasOpen) return "Functional";
   if (base === "Non Functional") return "Non Functional";
   return "Fully Functional";
@@ -1430,7 +1436,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
 
   const getNotesMap = h => { try { const raw = siteNotes.find(s => s.hospital === h)?.equipment_note || ""; const parsed = JSON.parse(raw); return typeof parsed === "object" && parsed !== null ? parsed : { _legacy: raw }; } catch { const raw = siteNotes.find(s => s.hospital === h)?.equipment_note || ""; return raw ? { _legacy: raw } : {}; } };
   const getNoteForComplaint = (h, cid) => { const m = getNotesMap(h); return m[cid] || m._legacy || ""; };
-  const openComplaints = h => complaints.filter(c => c.hospital === h && !isClosedStatus(c.status));
+  const openComplaints = h => complaints.filter(c => hospitalMatches(c.hospital, h) && !isClosedStatus(c.status));
   const allOpen = hospitals.reduce((sum, h) => sum + openComplaints(h).length, 0);
   const funcCount = hospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
   const nonFuncCount = hospitals.length - funcCount;
@@ -1443,7 +1449,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
   const SEVERITY_RANK = { "Critical": 0, "High": 1, "Low": 2 };
   const siteRank = (h) => {
     if (getSiteBaseStatus(h, siteNotes) === "Shut Down") return 0;
-    const open = complaints.filter(c => c.hospital === h && !isClosedStatus(c.status));
+    const open = complaints.filter(c => hospitalMatches(c.hospital, h) && !isClosedStatus(c.status));
     if (open.length > 0) return Math.min(...open.map(c => SEVERITY_RANK[c.severity] ?? 2));
     return getSiteBaseStatus(h, siteNotes) === "Non Functional" ? 3 : 4;
   };
@@ -1503,9 +1509,12 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
           const isShutDown = siteStatus === "Shut Down";
           return (
             <div key={h} style={{ cursor: "pointer" }} onClick={() => setExpandedRow(expandedRow === h ? null : h)}>
-            <div style={{ ...styles.overviewRow, background: rowBg, borderLeft: isShutDown ? "3px solid #c0392b" : "3px solid transparent" }} onMouseEnter={e => e.currentTarget.style.background = C.tealBg} onMouseLeave={e => e.currentTarget.style.background = rowBg}>
+            <div style={{ ...styles.overviewRow, background: rowBg, borderLeft: isShutDown ? "3px solid #c0392b" : "3px solid transparent", transition: "background 0.18s ease" }} onMouseEnter={e => e.currentTarget.style.background = C.tealBg} onMouseLeave={e => e.currentTarget.style.background = rowBg}>
               <div style={{ ...styles.ovCell, ...styles.ovCellSr, color: C.textLight, fontWeight: 500, fontSize: 12 }}>{i + 1}</div>
-              <div style={{ ...styles.ovCell, ...styles.ovCellSite }}><span style={{ color: C.black, fontWeight: 600, fontSize: 13 }}>{displayName(h)}</span></div>
+              <div style={{ ...styles.ovCell, ...styles.ovCellSite, display: "flex", flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <span style={{ color: C.black, fontWeight: 600, fontSize: 13 }}>{displayName(h)}</span>
+                <span style={{ fontSize: 11, color: C.textLight, transform: expandedRow === h ? "rotate(180deg)" : "none", transition: "transform 0.18s ease", display: "inline-block", flexShrink: 0 }}>▾</span>
+              </div>
               <div style={{ ...styles.ovCell, ...styles.ovCellProvider, color: C.textLight, fontWeight: 400, fontSize: 12 }}>{getProvider(h)}</div>
               <div style={{ ...styles.ovCell, ...styles.ovCellStatus }}>
                 {isAdmin ? (
@@ -1716,8 +1725,8 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
 }
 
 function GroupedHospitalList({ groups, complaints, onSelect }) {
-  const countFor = h => complaints.filter(c => c.hospital === h).length;
-  const openCountFor = h => complaints.filter(c => c.hospital === h && !isClosedStatus(c.status)).length;
+  const countFor = h => complaints.filter(c => hospitalMatches(c.hospital, h)).length;
+  const openCountFor = h => complaints.filter(c => hospitalMatches(c.hospital, h) && !isClosedStatus(c.status)).length;
   const groupCountFor = hs => complaints.filter(c => hs.includes(c.hospital)).length;
   const groupOpenFor = hs => complaints.filter(c => hs.includes(c.hospital) && !isClosedStatus(c.status)).length;
   return (<div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>{Object.entries(groups).map(([p, hs]) => (
@@ -1908,7 +1917,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
 }
 
 function ComplaintListView({ hospital, complaints, currentUser, canComment, isAdmin, onBack, onAssign, onLogVisit, onMarkResolved, onVerify, onRejectVerify, onDelete, onRefresh, staffOptions, focusInfo }) {
-  const hc = complaints.filter(c => c.hospital === hospital).sort(compareTicketsForDisplay);
+  const hc = complaints.filter(c => hospitalMatches(c.hospital, hospital)).sort(compareTicketsForDisplay);
   const cardRefs = useRef({});
   const [localFocus, setLocalFocus] = useState(null);
   useEffect(() => {
@@ -1954,7 +1963,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
     }, 100);
     setTimeout(() => setFocusInfo(null), 2500);
   };
-  const mine = complaints.filter(c => c.hospital === user.name).sort(compareTicketsForDisplay);
+  const mine = complaints.filter(c => hospitalMatches(c.hospital, user.name)).sort(compareTicketsForDisplay);
   const openCount = mine.filter(c => !isClosedStatus(c.status)).length;
 
   const compressImage = (file) => new Promise((resolve) => {
@@ -2649,7 +2658,7 @@ const styles = {
   overviewTable: { background: C.white, borderRadius: 14, border: `1px solid ${C.tealLight}`, overflow: "auto", WebkitOverflowScrolling: "touch", boxShadow: "0 4px 14px rgba(15,118,110,0.08)" },
   overviewHeaderRow: { display: "flex", padding: "0", background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", fontWeight: 700, fontSize: 10, color: "#fff", gap: 0, minWidth: 900, letterSpacing: 1.5, textTransform: "uppercase", position: "sticky", top: 0, zIndex: 2 },
   overviewRow: { display: "flex", padding: "0", borderBottom: `1px solid ${C.borderLight}`, gap: 0, alignItems: "stretch", minWidth: 900, transition: "background 0.15s" },
-  ovCell: { padding: "14px 16px", borderRight: `1px solid ${C.borderLight}`, fontSize: 13, display: "flex", flexDirection: "column", justifyContent: "center" },
+  ovCell: { padding: "14px 16px", fontSize: 13, display: "flex", flexDirection: "column", justifyContent: "center" },
   ovCellHeader: { padding: "14px 16px", borderRight: "1px solid rgba(255,255,255,0.15)", fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center" },
   ovCellSr: { width: 40, flexShrink: 0, justifyContent: "center", alignItems: "center" },
   ovCellSite: { width: 160, flexShrink: 0 },
