@@ -1238,7 +1238,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
-        <div style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.border}`, height: 380, position: "relative" }}>
+        <div className={mapTheme === "dark" ? "dark-map-mode" : ""} style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.border}`, height: 380, position: "relative" }}>
           <style>{`
             .leaflet-control-attribution {
               font-size: 9px !important;
@@ -1256,7 +1256,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
           >
             {mapTheme === "light" ? "🌙 Dark" : "☀️ Light"}
           </button>
-          <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false} className={mapTheme === "dark" ? "dark-map-mode" : ""}>
+          <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
