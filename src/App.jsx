@@ -1319,7 +1319,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
           {showProviderBreakdown && (<div style={{ background: "#161a1e", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "20px" }}>
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", marginBottom: 16 }}>By service provider</div>
-            {(() => { const rows = providerEntries.map(([provider, sites]) => { const providerSites = sites.filter(s => hospitals.includes(s)); const openCount = complaints.filter(c => providerSites.includes(c.hospital) && !isClosedStatus(c.status)).length; return { provider, siteCount: providerSites.length, openCount }; }); const maxSites = Math.max(1, ...rows.map(r => r.siteCount)); return rows.map(r => (<div key={r.provider} style={{ marginBottom: 16 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}><span style={{ fontSize: 13, fontWeight: 700, color: "#e8eaed" }}>{r.provider}</span><div style={{ display: "flex", gap: 8 }}><span style={{ fontSize: 12, color: "#6b7280" }}>{r.siteCount} sites</span>{r.openCount > 0 && <span style={{ fontSize: 12, fontWeight: 600, color: "#f59e0b" }}>{r.openCount} open</span>}</div></div><div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.06)" }}><div style={{ height: "100%", width: `${(r.siteCount / maxSites) * 100}%`, borderRadius: 3, background: "linear-gradient(90deg, #0f766e, #2dd4a8)", boxShadow: "0 0 10px rgba(45,212,168,0.25)", transition: "width 0.4s ease" }} /></div></div>)); })()}
+            {(() => { const rows = providerEntries.map(([provider, sites]) => { const providerSites = sites.filter(s => hospitals.includes(s)); const openCount = complaints.filter(c => providerSites.includes(c.hospital) && !isClosedStatus(c.status)).length; return { provider, siteCount: providerSites.length, openCount }; }); const maxSites = Math.max(1, ...rows.map(r => r.siteCount)); return rows.map(r => (<div key={r.provider} style={{ marginBottom: 16 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}><span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{r.provider}</span><div style={{ display: "flex", gap: 8 }}><span style={{ fontSize: 12, color: "#6b7280" }}>{r.siteCount} sites</span>{r.openCount > 0 && <span style={{ fontSize: 12, fontWeight: 600, color: "#f59e0b" }}>{r.openCount} open</span>}</div></div><div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.06)" }}><div style={{ height: "100%", width: `${(r.siteCount / maxSites) * 100}%`, borderRadius: 3, background: "linear-gradient(90deg, #0f766e, #2dd4a8)", boxShadow: "0 0 10px rgba(45,212,168,0.25)", transition: "width 0.4s ease" }} /></div></div>)); })()}
           </div>)}
           <div style={{ background: "#161a1e", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "20px" }}>
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", marginBottom: 16 }}>Recent activity</div>
@@ -1386,7 +1386,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
       <div style={{ display: "flex", background: "rgba(255,255,255,0.06)", borderRadius: 10, padding: 0, marginBottom: 6, border: "1px solid rgba(255,255,255,0.08)", minWidth: 900 }}>
         <div style={{ flex: "0 0 40px", padding: "12px 0", textAlign: "center", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1 }}>#</div>
         <div style={{ flex: "1 1 200px", padding: "12px 16px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Site</div>
-        <div style={{ flex: "0 0 140px", padding: "12px 16px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Service Provider</div>
+        <div style={{ flex: "0 0 160px", padding: "12px 16px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Service Provider</div>
         <div style={{ flex: "0 0 130px", padding: "12px 16px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Status</div>
         <div style={{ flex: "1 1 200px", padding: "12px 16px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Open Tickets</div>
         <div style={{ flex: "1 1 160px", padding: "12px 16px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Notes</div>
@@ -1400,12 +1400,12 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
           return (
             <div key={h}>
             <div onClick={() => setExpandedRow(expandedRow === h ? null : h)} style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.06)", border: isShutDown ? "1px solid rgba(140,40,40,0.4)" : "1px solid rgba(255,255,255,0.08)", borderRadius: 10, cursor: "pointer", transition: "all 0.2s", minWidth: 900 }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}>
-              <div style={{ flex: "0 0 40px", padding: "14px 0", textAlign: "center", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>{i + 1}</div>
+              <div style={{ flex: "0 0 40px", padding: "14px 0", textAlign: "center", fontSize: 12, fontWeight: 600, color: "#fff" }}>{i + 1}</div>
               <div style={{ flex: "1 1 200px", padding: "14px 16px", textAlign: "center" }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#e8eaed" }}>{displayName(h)}</span>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginLeft: 8, transform: expandedRow === h ? "rotate(180deg)" : "none", transition: "transform 0.18s", display: "inline-block" }}>▾</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{displayName(h)}</span>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginLeft: 8, transform: expandedRow === h ? "rotate(180deg)" : "none", transition: "transform 0.18s", display: "inline-block" }}>▾</span>
               </div>
-              <div style={{ flex: "0 0 140px", padding: "14px 16px", textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{getProvider(h)}</div>
+              <div style={{ flex: "0 0 160px", padding: "14px 16px", textAlign: "center", fontSize: 12.5, fontWeight: 500, color: "#fff" }}>{getProvider(h)}</div>
               <div style={{ flex: "0 0 130px", padding: "14px 16px", textAlign: "center" }}>
                 {isAdmin ? (
                   statusEditing === h ? (
@@ -1425,11 +1425,11 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                 {open.length > 0 ? (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "center" }}>
                     {open.map(c => {
-                      const sevColor = c.severity === "Critical" ? "#ef4444" : c.severity === "High" ? "#2dd4a8" : "#64748b";
+                      const sevColor = c.severity === "Critical" ? "#ff6b6b" : c.severity === "High" ? "#5eead4" : "#cbd5e1";
                       return <span key={c.id} style={{ fontSize: 11, fontWeight: 600, color: sevColor, background: `${sevColor}18`, padding: "3px 10px", borderRadius: 8, border: `1px solid ${sevColor}33` }}>{c.title.length > 25 ? c.title.slice(0, 25) + "\u2026" : c.title}</span>;
                     })}
                   </div>
-                ) : <span style={{ fontSize: 12, color: "rgba(255,255,255,0.25)" }}>—</span>}
+                ) : <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>—</span>}
               </div>
               <div style={{ flex: "1 1 160px", padding: "14px 16px", textAlign: "center" }}>
                 {(() => {
@@ -1444,17 +1444,17 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                       </div>);
                     }
                     return (<div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "center" }}>
-                      <span style={{ fontSize: 12, color: cNote ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.25)" }}>{cNote || "—"}</span>
+                      <span style={{ fontSize: 12, color: cNote ? "#fff" : "rgba(255,255,255,0.4)" }}>{cNote || "—"}</span>
                       <button style={{ fontSize: 10, color: "#2dd4a8", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={e => { e.stopPropagation(); setEditingNote(noteKey || h); setNoteText(cNote); }}>edit</button>
                     </div>);
                   }
-                  return <span style={{ fontSize: 12, color: cNote ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.25)" }}>{cNote || "—"}</span>;
+                  return <span style={{ fontSize: 12, color: cNote ? "#fff" : "rgba(255,255,255,0.4)" }}>{cNote || "—"}</span>;
                 })()}
               </div>
             </div>
             {expandedRow === h && (
               <div className="fade-in" style={{ background: "rgba(255,255,255,0.03)", padding: "16px 24px", borderRadius: "0 0 10px 10px", marginTop: -2, border: "1px solid rgba(255,255,255,0.06)", borderTop: "none" }}>
-                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: C.textLight, marginBottom: 10 }}>Complaint Details — {displayName(h)}</div>
+                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 10 }}>Complaint Details — {displayName(h)}</div>
                 {open.length > 0 ? open.map(c => (
                   <div key={c.id} style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "12px 16px", marginBottom: 8, border: "1px solid rgba(255,255,255,0.08)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
