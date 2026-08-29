@@ -1370,7 +1370,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
   const [expandedRow, setExpandedRow] = useState(null);
 
   return (
-    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: "radial-gradient(ellipse 800px 500px at 10% 0%, rgba(15,118,110,0.18), transparent 55%), radial-gradient(ellipse 600px 600px at 90% 100%, rgba(20,184,166,0.12), transparent 55%), #0e1013", margin: "-28px -32px", padding: "28px 32px", minHeight: "calc(100vh - 94px)", borderRadius: "0" }}>
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: "radial-gradient(ellipse 900px 600px at 0% 0%, rgba(11,59,56,0.95), transparent 60%), radial-gradient(ellipse 800px 700px at 100% 100%, rgba(15,86,80,0.6), transparent 55%), #0a2e2a", margin: "-28px -32px", padding: "28px 32px", minHeight: "calc(100vh - 94px)", borderRadius: "0" }}>
       <div style={{ marginBottom: 18 }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#2dd4a8", textTransform: "uppercase", marginBottom: 6 }}>Site directory</div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
@@ -1380,7 +1380,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
       </div>
 
       {/* Header tile */}
-      <div style={{ display: "flex", background: "rgba(13,148,136,0.12)", borderRadius: 14, padding: 0, marginBottom: 8, border: "1px solid rgba(45,212,168,0.15)", minWidth: 900 }}>
+      <div style={{ display: "flex", background: "rgba(255,255,255,0.06)", borderRadius: 14, padding: 0, marginBottom: 8, border: "1px solid rgba(255,255,255,0.08)", minWidth: 900 }}>
         <div style={{ flex: "0 0 40px", padding: "12px 0", textAlign: "center", fontSize: 10, fontWeight: 700, color: "#0f766e", textTransform: "uppercase", letterSpacing: 1 }}>#</div>
         <div style={{ flex: "1 1 200px", padding: "12px 16px", fontSize: 10, fontWeight: 700, color: "#0f766e", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Site</div>
         <div style={{ flex: "0 0 140px", padding: "12px 16px", fontSize: 10, fontWeight: 700, color: "#0f766e", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Provider</div>
@@ -1397,7 +1397,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
           const isShutDown = siteStatus === "Shut Down";
           return (
             <div key={h}>
-            <div onClick={() => setExpandedRow(expandedRow === h ? null : h)} style={{ display: "flex", alignItems: "center", background: "#1a1f23", border: isShutDown ? "1px solid #f0b8b8" : "1px solid rgba(255,255,255,0.06)", borderRadius: 12, cursor: "pointer", transition: "all 0.2s", minWidth: 900 }} onMouseEnter={e => { e.currentTarget.style.background = "#1e2529"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.3)"; }} onMouseLeave={e => { e.currentTarget.style.background = "#1a1f23"; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}>
+            <div onClick={() => setExpandedRow(expandedRow === h ? null : h)} style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.05)", border: isShutDown ? "1px solid #f0b8b8" : "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(8px)", borderRadius: 12, cursor: "pointer", transition: "all 0.2s", minWidth: 900 }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.2)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}>
               <div style={{ flex: "0 0 40px", padding: "14px 0", textAlign: "center", fontSize: 12, fontWeight: 500, color: "rgba(255,255,255,0.35)" }}>{i + 1}</div>
               <div style={{ flex: "1 1 200px", padding: "14px 16px", textAlign: "center" }}>
                 <span style={{ fontSize: 13.5, fontWeight: 700, color: "#e8eaed" }}>{displayName(h)}</span>
@@ -1407,7 +1407,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
               <div style={{ flex: "0 0 130px", padding: "14px 16px", textAlign: "center" }}>
                 {isAdmin ? (
                   statusEditing === h ? (
-                    <select style={{ fontSize: 11, padding: "4px 8px", borderRadius: 20, border: "1px solid rgba(255,255,255,0.15)", background: "#1a1f23", color: "#e8eaed" }} value={getSiteBaseStatus(h, siteNotes)} onChange={e => handleStatusChange(h, e.target.value)}>
+                    <select style={{ fontSize: 11, padding: "4px 8px", borderRadius: 20, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.08)", color: "#e8eaed" }} value={getSiteBaseStatus(h, siteNotes)} onChange={e => handleStatusChange(h, e.target.value)}>
                       <option value="Fully Functional">Fully Functional</option>
                       <option value="Non Functional">Non Functional</option>
                       <option value="Shut Down">Shut Down</option>
@@ -1451,10 +1451,10 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
               </div>
             </div>
             {expandedRow === h && (
-              <div className="fade-in" style={{ background: "#151a1e", padding: "16px 24px", borderRadius: "0 0 12px 12px", marginTop: -4, border: "1px solid rgba(255,255,255,0.06)", borderTop: "none" }}>
+              <div className="fade-in" style={{ background: "rgba(255,255,255,0.03)", padding: "16px 24px", borderRadius: "0 0 12px 12px", marginTop: -4, border: "1px solid rgba(255,255,255,0.06)", borderTop: "none" }}>
                 <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: C.textLight, marginBottom: 10 }}>Complaint Details — {displayName(h)}</div>
                 {open.length > 0 ? open.map(c => (
-                  <div key={c.id} style={{ background: "#1a1f23", borderRadius: 8, padding: "12px 16px", marginBottom: 8, border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div key={c.id} style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "12px 16px", marginBottom: 8, border: "1px solid rgba(255,255,255,0.08)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: C.red }}>{c.title}</span>
                       <span style={{ fontSize: 11, color: C.textLight }}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</span>
