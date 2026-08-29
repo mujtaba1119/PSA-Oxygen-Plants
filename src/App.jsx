@@ -2602,11 +2602,11 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
             <button style={{ ...styles.deleteBtn, fontSize: 12 }} onClick={async () => { if (window.confirm("Delete ALL notifications for ALL users? This cannot be undone.")) { await dbWrite({ action: "reset_all_notifications" }); alert("All notifications cleared."); } }}>RESET ALL NOTIFICATIONS</button>
           </div>
         </>)}
-          </div>
-        </main>
-        <PartnerFooter />
-      </div>
+        </div>
+      </main>
+      <PartnerFooter />
     </div>
+  </div>
   );
 }
 
