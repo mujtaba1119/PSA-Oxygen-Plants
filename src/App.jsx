@@ -1379,124 +1379,82 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
         </div>
       </div>
 
-      {shutdownSites.length > 0 && (
-        <div className="fade-up" style={{ background: "#fdeeee", border: "1px solid #f0b8b8", borderRadius: 12, padding: "14px 18px", marginBottom: 20, animationDelay: "0s" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#c0392b", flexShrink: 0 }} />
-            <span style={{ fontSize: 13.5, fontWeight: 700, color: "#9b2c2c" }}>{shutdownSites.length} {shutdownSites.length === 1 ? "site" : "sites"} shut down — not producing oxygen</span>
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {shutdownSites.map(h => (
-              <span key={h} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#9b2c2c", background: C.white, border: "1px solid #f0b8b8", padding: "5px 12px", borderRadius: 8 }}>
-                {displayName(h)}
-                {isAdmin && <button style={{ fontSize: 10, color: "#c0392b", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "underline" }} onClick={() => handleSendShutdownEmail(h)} disabled={sendingShutdown === h}>{sendingShutdown === h ? "…" : "notify"}</button>}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Header tile */}
+      <div style={{ display: "flex", background: "rgba(13,148,136,0.1)", borderRadius: 14, padding: 0, marginBottom: 8, border: "1px solid #d5ece5", minWidth: 900 }}>
+        <div style={{ flex: "0 0 40px", padding: "12px 0", textAlign: "center", fontSize: 10, fontWeight: 700, color: "#0f766e", textTransform: "uppercase", letterSpacing: 1 }}>#</div>
+        <div style={{ flex: "1 1 200px", padding: "12px 16px", fontSize: 10, fontWeight: 700, color: "#0f766e", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Site</div>
+        <div style={{ flex: "0 0 140px", padding: "12px 16px", fontSize: 10, fontWeight: 700, color: "#0f766e", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Provider</div>
+        <div style={{ flex: "0 0 130px", padding: "12px 16px", fontSize: 10, fontWeight: 700, color: "#0f766e", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Status</div>
+        <div style={{ flex: "1 1 200px", padding: "12px 16px", fontSize: 10, fontWeight: 700, color: "#0f766e", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Open Tickets</div>
+        <div style={{ flex: "1 1 160px", padding: "12px 16px", fontSize: 10, fontWeight: 700, color: "#0f766e", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Notes</div>
+      </div>
 
-      <div className="fade-up" style={{ ...styles.overviewTable, animationDelay: "0.5s" }}>
-        <div style={styles.overviewHeaderRow}>
-          <div style={{ ...styles.ovCellHeader, ...styles.ovCellSr }}>#</div>
-          <div style={{ ...styles.ovCellHeader, ...styles.ovCellSite }}>Site</div>
-          <div style={{ ...styles.ovCellHeader, ...styles.ovCellProvider }}>Service Provider</div>
-          <div style={{ ...styles.ovCellHeader, ...styles.ovCellStatus }}>Status</div>
-          <div style={{ ...styles.ovCellHeader, ...styles.ovCellOpen }}>Open Tickets</div>
-          <div style={{ ...styles.ovCellHeader, ...styles.ovCellNote, borderRight: "none" }}>Equipment / Notes</div>
-        </div>
+      {/* Site tiles */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {sortedHospitals.map((h, i) => {
           const open = openComplaints(h);
           const siteStatus = getSiteDisplayStatus(h, complaints, siteNotes);
-          const rowBg = i % 2 === 0 ? "rgba(240,253,250,0.5)" : "rgba(230,248,243,0.6)";
           const isShutDown = siteStatus === "Shut Down";
           return (
-            <div key={h} style={{ cursor: "pointer" }} onClick={() => setExpandedRow(expandedRow === h ? null : h)}>
-            <div style={{ ...styles.overviewRow, background: rowBg, borderLeft: isShutDown ? "3px solid #c0392b" : "3px solid transparent", transition: "background 0.18s ease" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(204,251,241,0.5)"} onMouseLeave={e => e.currentTarget.style.background = rowBg}>
-              <div style={{ ...styles.ovCell, ...styles.ovCellSr, color: C.textLight, fontWeight: 500, fontSize: 12 }}>{i + 1}</div>
-              <div style={{ ...styles.ovCell, ...styles.ovCellSite, display: "flex", flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <span style={{ width: 26, height: 26, borderRadius: 8, background: providerAvatarColor(getProvider(h)), color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{initialsFor(displayName(h))}</span>
-                <span style={{ color: C.black, fontWeight: 700, fontSize: 13.5, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{displayName(h)}</span>
-                <span style={{ fontSize: 11, color: C.textLight, transform: expandedRow === h ? "rotate(180deg)" : "none", transition: "transform 0.18s ease", display: "inline-block", flexShrink: 0 }}>▾</span>
+            <div key={h}>
+            <div onClick={() => setExpandedRow(expandedRow === h ? null : h)} style={{ display: "flex", alignItems: "center", background: "linear-gradient(135deg, #edf7f4, #f2faf8)", border: isShutDown ? "1px solid #f0b8b8" : "1px solid #d5ece5", borderRadius: 12, cursor: "pointer", transition: "all 0.2s", minWidth: 900 }} onMouseEnter={e => { e.currentTarget.style.background = "linear-gradient(135deg, #e0f5ef, #e8f8f4)"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(13,148,136,0.08)"; }} onMouseLeave={e => { e.currentTarget.style.background = "linear-gradient(135deg, #edf7f4, #f2faf8)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}>
+              <div style={{ flex: "0 0 40px", padding: "14px 0", textAlign: "center", fontSize: 12, fontWeight: 500, color: C.textLight }}>{i + 1}</div>
+              <div style={{ flex: "1 1 200px", padding: "14px 16px", textAlign: "center" }}>
+                <span style={{ fontSize: 13.5, fontWeight: 700, color: "#0f172a" }}>{displayName(h)}</span>
+                <span style={{ fontSize: 11, color: C.textLight, marginLeft: 8, transform: expandedRow === h ? "rotate(180deg)" : "none", transition: "transform 0.18s", display: "inline-block" }}>▾</span>
               </div>
-              <div style={{ ...styles.ovCell, ...styles.ovCellProvider, color: C.textLight, fontWeight: 400, fontSize: 12 }}>{getProvider(h)}</div>
-              <div style={{ ...styles.ovCell, ...styles.ovCellStatus }}>
+              <div style={{ flex: "0 0 140px", padding: "14px 16px", textAlign: "center", fontSize: 12, color: C.textMid }}>{getProvider(h)}</div>
+              <div style={{ flex: "0 0 130px", padding: "14px 16px", textAlign: "center" }}>
                 {isAdmin ? (
                   statusEditing === h ? (
-                    <select style={{ fontSize: 11, padding: "4px 8px", borderRadius: 20, border: `1px solid ${C.border}`, background: C.white }} value={getSiteBaseStatus(h, siteNotes)} onChange={e => handleStatusChange(h, e.target.value)}>
+                    <select style={{ fontSize: 11, padding: "4px 8px", borderRadius: 20, border: "1px solid #d5ece5", background: "#fff" }} value={getSiteBaseStatus(h, siteNotes)} onChange={e => handleStatusChange(h, e.target.value)}>
                       <option value="Fully Functional">Fully Functional</option>
                       <option value="Non Functional">Non Functional</option>
                       <option value="Shut Down">Shut Down</option>
                     </select>
                   ) : (
-                    <div style={{ cursor: "pointer" }} onClick={() => setStatusEditing(h)}><SiteStatusBadge status={siteStatus} /></div>
+                    <div onClick={e => { e.stopPropagation(); setStatusEditing(h); }}><SiteStatusBadge status={siteStatus} /></div>
                   )
                 ) : (
                   <SiteStatusBadge status={siteStatus} />
                 )}
               </div>
-              <div style={{ ...styles.ovCell, ...styles.ovCellOpen, padding: 0 }}>
-                {open.length > 0 ? open.map((c, ci) => {
-                  const borderColor = c.severity === "Critical" ? "#c0392b" : c.severity === "High" ? "#d9822b" : c.severity === "Low" ? "#999999" : "transparent";
-                  return (
-                  <div key={c.id} style={{ padding: "10px 14px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none", borderLeft: `3px solid ${borderColor}`, minHeight: 42, display: "flex", alignItems: "center", gap: 8 }}>
-                    <SeverityBadge severity={c.severity} />
-                    <span style={{ fontSize: 12.5, color: C.black, fontWeight: 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.title}</span>
-                    <span style={{ fontSize: 11, color: C.textLight, flexShrink: 0, marginLeft: "auto", paddingLeft: 8 }}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</span>
+              <div style={{ flex: "1 1 200px", padding: "14px 16px", textAlign: "center" }}>
+                {open.length > 0 ? (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "center" }}>
+                    {open.map(c => {
+                      const sevColor = c.severity === "Critical" ? "#c0392b" : c.severity === "High" ? "#d9822b" : "#94a3b8";
+                      return <span key={c.id} style={{ fontSize: 11, fontWeight: 600, color: sevColor, background: "rgba(255,255,255,0.7)", padding: "2px 8px", borderRadius: 6, border: `1px solid ${sevColor}33` }}>{c.title.length > 25 ? c.title.slice(0, 25) + "\u2026" : c.title}</span>;
+                    })}
                   </div>
-                  );
-                }) : <div style={{ padding: "10px 16px", fontSize: 12, color: C.textLight, minHeight: 42, display: "flex", alignItems: "center", justifyContent: "center" }}></div>}
+                ) : <span style={{ fontSize: 12, color: C.textLight }}>—</span>}
               </div>
-              <div style={{ ...styles.ovCell, ...styles.ovCellNote, borderRight: "none", padding: 0 }}>
-                {open.length > 0 ? open.map((c, ci) => {
-                  const cNote = getNoteForComplaint(h, c.id);
-                  return (
-                  <div key={c.id} style={{ padding: "10px 16px", borderBottom: ci < open.length - 1 ? `1px solid ${C.borderLight}` : "none", minHeight: 42, display: "flex", alignItems: "center" }}>
-                    {isAdmin ? (
-                      editingNote === c.id ? (
-                        <div style={{ display: "flex", gap: 4, width: "100%" }}>
-                          <input style={{ ...styles.pwInput, width: "100%", fontSize: 11 }} value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote(h, c.id)} />
-                          <button style={{ ...styles.pwSaveBtn, fontSize: 10, padding: "3px 8px" }} onClick={() => saveNote(h, c.id)}>✓</button>
-                          <button style={{ ...styles.pwCancelBtn, fontSize: 10 }} onClick={() => setEditingNote(null)}>✕</button>
-                        </div>
-                      ) : (
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
-                          <span style={{ fontSize: 12, color: cNote ? C.black : C.textLight, flex: 1 }}>{cNote || ""}</span>
-                          <button style={{ fontSize: 10, color: C.textMid, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={() => { setEditingNote(c.id); setNoteText(cNote); }}>edit</button>
-                        </div>
-                      )
-                    ) : (
-                      <span style={{ fontSize: 12, color: cNote ? C.black : C.textLight }}>{cNote || ""}</span>
-                    )}
-                  </div>
-                  );
-                }) : (
-                  <div style={{ padding: "10px 16px", minHeight: 42, display: "flex", alignItems: "center" }}>
-                    {isAdmin ? (
-                      editingNote === h ? (
-                        <div style={{ display: "flex", gap: 4, width: "100%" }}>
-                          <input style={{ ...styles.pwInput, width: "100%", fontSize: 11 }} value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote(h, null)} />
-                          <button style={{ ...styles.pwSaveBtn, fontSize: 10, padding: "3px 8px" }} onClick={() => saveNote(h, null)}>✓</button>
-                          <button style={{ ...styles.pwCancelBtn, fontSize: 10 }} onClick={() => setEditingNote(null)}>✕</button>
-                        </div>
-                      ) : (
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, width: "100%" }}>
-                          <span style={{ fontSize: 12, color: C.textLight, flex: 1 }}></span>
-                          <button style={{ fontSize: 10, color: C.textMid, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={() => { setEditingNote(h); setNoteText(""); }}>edit</button>
-                        </div>
-                      )
-                    ) : (
-                      <span style={{ fontSize: 12, color: C.textLight }}></span>
-                    )}
-                  </div>
-                )}
+              <div style={{ flex: "1 1 160px", padding: "14px 16px", textAlign: "center" }}>
+                {(() => {
+                  const noteKey = open.length > 0 ? open[0].id : null;
+                  const cNote = noteKey ? getNoteForComplaint(h, noteKey) : "";
+                  if (isAdmin) {
+                    if (editingNote === (noteKey || h)) {
+                      return (<div style={{ display: "flex", gap: 4, justifyContent: "center" }} onClick={e => e.stopPropagation()}>
+                        <input style={{ ...styles.pwInput, width: 120, fontSize: 11 }} value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote(h, noteKey)} />
+                        <button style={{ ...styles.pwSaveBtn, fontSize: 10, padding: "3px 8px" }} onClick={() => saveNote(h, noteKey)}>✓</button>
+                        <button style={{ ...styles.pwCancelBtn, fontSize: 10 }} onClick={() => setEditingNote(null)}>✕</button>
+                      </div>);
+                    }
+                    return (<div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "center" }}>
+                      <span style={{ fontSize: 12, color: cNote ? C.black : C.textLight }}>{cNote || "—"}</span>
+                      <button style={{ fontSize: 10, color: C.textMid, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={e => { e.stopPropagation(); setEditingNote(noteKey || h); setNoteText(cNote); }}>edit</button>
+                    </div>);
+                  }
+                  return <span style={{ fontSize: 12, color: cNote ? C.black : C.textLight }}>{cNote || "—"}</span>;
+                })()}
               </div>
             </div>
             {expandedRow === h && (
-              <div className="fade-in" style={{ background: "rgba(230,248,243,0.7)", padding: "16px 24px", borderBottom: "1px solid #d5ece5" }}>
+              <div className="fade-in" style={{ background: "rgba(230,248,243,0.7)", padding: "16px 24px", borderRadius: "0 0 12px 12px", marginTop: -4, border: "1px solid #d5ece5", borderTop: "none" }}>
                 <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: C.textLight, marginBottom: 10 }}>Complaint Details — {displayName(h)}</div>
                 {open.length > 0 ? open.map(c => (
-                  <div key={c.id} style={{ background: C.white, borderRadius: 8, padding: "12px 16px", marginBottom: 8, border: `1px solid #eee` }}>
+                  <div key={c.id} style={{ background: C.white, borderRadius: 8, padding: "12px 16px", marginBottom: 8, border: "1px solid #eee" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: C.red }}>{c.title}</span>
                       <span style={{ fontSize: 11, color: C.textLight }}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</span>
