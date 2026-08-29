@@ -2271,27 +2271,27 @@ function SidebarNav({ items, active, onSelect, bottomItems }) {
   );
 }
 
-/* ─── Top Bar (teal gradient header — compact, inside sidebar layout) ─── */
+/* ─── Top Bar (teal gradient — same as original hero, inside sidebar layout) ─── */
 function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, children }) {
   return (
-    <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 24px", minHeight: 52 }}>
+    <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", fontFamily: "'DM Sans', system-ui, sans-serif", color: "#fff" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px 18px", minHeight: 56 }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", letterSpacing: 0.3 }}>{title}</div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 2 }}>{subtitle}</div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", letterSpacing: 1.5, textTransform: "uppercase" }}>{title}</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 3 }}>{subtitle}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {children}
-          <button title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.1)", cursor: "pointer", borderRadius: 8, transition: "background .15s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.2)"} onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}>
-            <svg className={refreshing ? "spinning" : ""} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          <button className="refresh-btn" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 12.5, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>
+            <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            <span className="refresh-label" style={{ display: refreshing ? "none" : undefined }}>Refresh</span>
+            {refreshing && <svg className="refresh-icon-desktop spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
           </button>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "#fff", letterSpacing: 0.5, textTransform: "uppercase", padding: "6px 14px", border: "1px solid rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.1)", borderRadius: 8 }}>{user.role === "admin" ? "Admin" : user.name}</span>
-          <button onClick={onLogout} style={{ fontSize: 11, fontWeight: 600, color: "#fff", background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 8, padding: "7px 10px", cursor: "pointer", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+          <button title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
         </div>
       </div>
-      <div style={{ height: 3, background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
     </div>
   );
 }
