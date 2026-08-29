@@ -2549,7 +2549,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   };
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif", background: "radial-gradient(ellipse 600px 400px at 10% 20%, rgba(15,118,110,0.35), transparent), radial-gradient(ellipse 500px 500px at 80% 70%, rgba(20,184,166,0.2), transparent), radial-gradient(ellipse 400px 300px at 50% 40%, rgba(13,148,136,0.15), transparent), #071a18" }}>
       <style>{`
         .sb-item:hover { background: rgba(94,234,212,0.06) !important; }
         .sb-item:hover span { color: rgba(255,255,255,0.85) !important; }
@@ -2565,7 +2565,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} bottomItems={NAV_BOTTOM} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "radial-gradient(ellipse 700px 500px at 8% 15%, rgba(15,118,110,0.45), transparent 60%), radial-gradient(ellipse 600px 600px at 85% 75%, rgba(20,184,166,0.28), transparent 55%), radial-gradient(ellipse 500px 400px at 45% 45%, rgba(13,148,136,0.2), transparent 60%), #071a18", minHeight: "100vh" }}>
+      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "transparent", minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${ALL_HOSPITALS.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
         </TopBar>
@@ -2824,7 +2824,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
   };
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif", background: "radial-gradient(ellipse 600px 400px at 10% 20%, rgba(15,118,110,0.35), transparent), radial-gradient(ellipse 500px 500px at 80% 70%, rgba(20,184,166,0.2), transparent), radial-gradient(ellipse 400px 300px at 50% 40%, rgba(13,148,136,0.15), transparent), #071a18" }}>
       <style>{`
         .sb-item:hover { background: rgba(94,234,212,0.06) !important; }
         .sb-item:hover span { color: rgba(255,255,255,0.85) !important; }
@@ -2839,7 +2839,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "radial-gradient(ellipse 700px 500px at 8% 15%, rgba(15,118,110,0.45), transparent 60%), radial-gradient(ellipse 600px 600px at 85% 75%, rgba(20,184,166,0.28), transparent 55%), radial-gradient(ellipse 500px 400px at 45% 45%, rgba(13,148,136,0.2), transparent 60%), #071a18", minHeight: "100vh" }}>
+      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "transparent", minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${myHospitals.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
         </TopBar>
