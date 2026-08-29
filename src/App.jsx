@@ -2129,7 +2129,7 @@ function SidebarNav({ items, active, onSelect, bottomItems }) {
   return (
     <nav className="sidebar-nav" style={sidebarStyles.nav}>
       {/* Vessel + Brand */}
-      <div style={{ padding: "6px 0 18px", display: "flex", flexDirection: "column", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 8, width: "100%" }}>
+      <div style={{ padding: "16px 0 18px", display: "flex", flexDirection: "column", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 8, width: "100%" }}>
         <SidebarVessel />
         <div style={{ fontSize: 11, fontWeight: 700, color: "#5eead4", letterSpacing: 2, textTransform: "uppercase", marginTop: 2 }}>OxyTrack</div>
       </div>
@@ -2183,8 +2183,12 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
       <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", color: "#fff", position: "relative", paddingBottom: 30 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", height: 64 }}>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", letterSpacing: 0.1 }}>{title}</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 2 }}>{subtitle}</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", letterSpacing: 0.1 }}>
+              {typeof title === "string" && title.includes("Oxygen") ? (<>
+                {title.split("Oxygen")[0]}<span style={{ background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Oxygen</span>{title.split("Oxygen")[1]}
+              </>) : title}
+            </div>
+            
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {children}
