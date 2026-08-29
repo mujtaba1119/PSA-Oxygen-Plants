@@ -1221,7 +1221,7 @@ function makePinIcon(color) {
    Overview (the older site-list view) remains available as its own separate tab. ─── */
 function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
   const [pkBoundary, setPkBoundary] = useState(null);
-  const [mapTheme, setMapTheme] = useState("light"); // "light" or "dark"
+  const [mapTheme, setMapTheme] = useState("dark"); // "light" or "dark"
   useEffect(() => {
     // Self-hosted (see public/pakistan-boundary.geojson) — sourced from OSM's own "Pakistan"
     // relation (id 307573), which follows Pakistan's own administrative claim including Azad
@@ -1293,7 +1293,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
 
       {/* Map + Side Panel */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 16, marginBottom: 22 }}>
-        <div className={mapTheme === "dark" ? "dark-map-mode" : ""} style={{ borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)", height: 400, position: "relative" }}>
+        <div className={mapTheme === "dark" ? "dark-map-mode" : ""} style={{ borderRadius: 16, overflow: "hidden", border: "1px solid rgba(94,234,212,0.1)", height: 400, position: "relative" }}>
           <style>{`
             .leaflet-control-attribution {
               font-size: 9px !important;
@@ -2553,7 +2553,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
       <style>{`
         .sb-item:hover { background: rgba(94,234,212,0.06) !important; }
         .sb-item:hover span { color: rgba(255,255,255,0.85) !important; }
-        .glass-mesh-bg::before { content: ''; position: fixed; inset: 0; z-index: -1; background: radial-gradient(ellipse 600px 400px at 10% 20%, rgba(15,118,110,0.35), transparent), radial-gradient(ellipse 500px 500px at 80% 70%, rgba(20,184,166,0.2), transparent), radial-gradient(ellipse 400px 300px at 50% 40%, rgba(13,148,136,0.15), transparent); pointer-events: none; }
+        
         .glass-card { background: rgba(255,255,255,0.04) !important; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(94,234,212,0.08) !important; }
         .glass-card:hover { background: rgba(255,255,255,0.06) !important; border-color: rgba(94,234,212,0.15) !important; }
         .tb-glass:hover { background: rgba(94,234,212,0.12) !important; border-color: rgba(94,234,212,0.2) !important; }
@@ -2565,7 +2565,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} bottomItems={NAV_BOTTOM} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area glass-mesh-bg" style={{ flex: 1, marginLeft: 180, background: "#071a18", minHeight: "100vh" }}>
+      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "radial-gradient(ellipse 700px 500px at 8% 15%, rgba(15,118,110,0.45), transparent 60%), radial-gradient(ellipse 600px 600px at 85% 75%, rgba(20,184,166,0.28), transparent 55%), radial-gradient(ellipse 500px 400px at 45% 45%, rgba(13,148,136,0.2), transparent 60%), #071a18", minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${ALL_HOSPITALS.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
         </TopBar>
@@ -2828,7 +2828,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
       <style>{`
         .sb-item:hover { background: rgba(94,234,212,0.06) !important; }
         .sb-item:hover span { color: rgba(255,255,255,0.85) !important; }
-        .glass-mesh-bg::before { content: ''; position: fixed; inset: 0; z-index: -1; background: radial-gradient(ellipse 600px 400px at 10% 20%, rgba(15,118,110,0.35), transparent), radial-gradient(ellipse 500px 500px at 80% 70%, rgba(20,184,166,0.2), transparent), radial-gradient(ellipse 400px 300px at 50% 40%, rgba(13,148,136,0.15), transparent); pointer-events: none; }
+        
         .glass-card { background: rgba(255,255,255,0.04) !important; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(94,234,212,0.08) !important; }
         .glass-card:hover { background: rgba(255,255,255,0.06) !important; border-color: rgba(94,234,212,0.15) !important; }
         @keyframes refresh-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -2839,7 +2839,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area glass-mesh-bg" style={{ flex: 1, marginLeft: 180, background: "#071a18", minHeight: "100vh" }}>
+      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "radial-gradient(ellipse 700px 500px at 8% 15%, rgba(15,118,110,0.45), transparent 60%), radial-gradient(ellipse 600px 600px at 85% 75%, rgba(20,184,166,0.28), transparent 55%), radial-gradient(ellipse 500px 400px at 45% 45%, rgba(13,148,136,0.2), transparent 60%), #071a18", minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${myHospitals.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
         </TopBar>
