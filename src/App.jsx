@@ -1379,9 +1379,12 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
         </div>
       </div>
 
-      {/* Header tile */}
+      {/* Site tiles — dark teal background with header inside */}
+      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", padding: "14px", borderRadius: 14 }}>
+
+      {/* Column headers */}
       <div style={{ display: "flex", background: "rgba(255,255,255,0.06)", borderRadius: 10, padding: 0, marginBottom: 6, border: "1px solid rgba(255,255,255,0.08)", minWidth: 900 }}>
-        <div style={{ flex: "0 0 40px", padding: "12px 0", textAlign: "center", fontSize: 10, fontWeight: 700, color: "#0f766e", textTransform: "uppercase", letterSpacing: 1 }}>#</div>
+        <div style={{ flex: "0 0 40px", padding: "12px 0", textAlign: "center", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1 }}>#</div>
         <div style={{ flex: "1 1 200px", padding: "12px 16px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Site</div>
         <div style={{ flex: "0 0 140px", padding: "12px 16px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Service Provider</div>
         <div style={{ flex: "0 0 130px", padding: "12px 16px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Status</div>
@@ -1389,8 +1392,6 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
         <div style={{ flex: "1 1 160px", padding: "12px 16px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Notes</div>
       </div>
 
-      {/* Site tiles — dark teal background */}
-      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", padding: "14px", borderRadius: 14 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
         {sortedHospitals.map((h, i) => {
           const open = openComplaints(h);
