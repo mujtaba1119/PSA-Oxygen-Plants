@@ -2142,6 +2142,7 @@ function SidebarIcon({ name, size = 20 }) {
     users: <svg viewBox="0 0 24 24" style={s}><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
     emails: <svg viewBox="0 0 24 24" style={s}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-8.97 5.7a1.94 1.94 0 01-2.06 0L2 7"/></svg>,
     submit: <svg viewBox="0 0 24 24" style={s}><path d="M12 5v14"/><path d="M5 12h14"/></svg>,
+    equipment: <svg viewBox="0 0 24 24" style={s}><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 1v3"/><path d="M15 1v3"/><path d="M9 20v3"/><path d="M15 20v3"/><path d="M20 9h3"/><path d="M20 14h3"/><path d="M1 9h3"/><path d="M1 14h3"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/><line x1="9" y1="15" x2="9.01" y2="15"/><line x1="15" y1="15" x2="15.01" y2="15"/></svg>,
     settings: <svg viewBox="0 0 24 24" style={s}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33h.08a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.08a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>,
     refresh: <svg viewBox="0 0 24 24" style={s}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>,
     bell: <svg viewBox="0 0 24 24" style={s}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,
@@ -2344,6 +2345,87 @@ const sidebarStyles = {
   itemActive: { background: "rgba(255,255,255,0.1)" },
   divider: { height: 1, background: "rgba(255,255,255,0.06)", margin: "8px 16px" },
 };
+
+/* ─── Equipment Data (36 sites × 15 equipment types, from Excel inventory) ─── */
+const EQUIPMENT_DATA = {"Rawalpindi":{"oxyswing_a":"4423","oxyswing_b":"4723","comp1":"22177409","comp2":"22177477","comp3":"1018987","comp4":"1018985","dryer1":"230015546","dryer2":"230015550","dryer3":"230015536","dryer4":"230015525","hpox":"20230519328F01","oxycheck":"20230519424J01","css":"20230519280R01","medgas":"20230419404G01","generator":"HEI0009698"},"Bhakkar":{"oxyswing_a":"11323","oxyswing_b":"11023","comp1":"24036368","comp2":"22622357","comp3":"24036366","comp4":"24036365","dryer1":"230022546","dryer2":"230022549","dryer3":"230022529","dryer4":"230022537","hpox":"20230719759F01","oxycheck":"20230719436J01","css":"20230819291R01","medgas":"20230919411G01","generator":"HEI0009956"},"Toba Tek Singh":{"oxyswing_a":"17023","oxyswing_b":"17323","comp1":"25051330","comp2":"24036391","comp3":"24036389","comp4":"1017330","dryer1":"230030842","dryer2":"230030847","dryer3":"230033373","dryer4":"230033361","hpox":"20231019756F01","oxycheck":"20231019444J01","css":"20230919297R01","medgas":"20230919414G01","generator":"HEI0010115"},"Sahiwal":{"oxyswing_a":"9823","oxyswing_b":"10123","comp1":"22622344","comp2":"22622347","comp3":"22622348","comp4":"22622346","dryer1":"230022539","dryer2":"230022515","dryer3":"230022514","dryer4":"230022517","hpox":"20230619338F01","oxycheck":"20230719431J01","css":"20230819292R01","medgas":"20230719410G01","generator":"HEI0009831"},"Sargodha":{"oxyswing_a":"6223","oxyswing_b":"6523","comp1":"1019667","comp2":"1019664","comp3":"1019662","comp4":"1019665","dryer1":"230015538","dryer2":"230015544","dryer3":"230015541","dryer4":"230015534","hpox":"20230519331F01","oxycheck":"20230519427J01","css":"20230619281R01","medgas":"20230219398G01","generator":"HEI0009735"},"Multan":{"oxyswing_a":"9523","oxyswing_b":"9223","comp1":"22622351","comp2":"22622345","comp3":"22622350","comp4":"22622349","dryer1":"230022544","dryer2":"230022528","dryer3":"230022520","dryer4":"230022538","hpox":"20230619333F01","oxycheck":"20230719432J01","css":"20240521439R01","medgas":"20230719408G01","generator":"HEI0009832"},"Rahim Yar Khan":{"oxyswing_a":"15523","oxyswing_b":"15223","comp1":"20255406","comp2":"20558499","comp3":"20254409","comp4":"20254406","dryer1":"230033363","dryer2":"230033366","dryer3":"230033372","dryer4":"230030852","hpox":"20230619336F01","oxycheck":"20231019446J01","css":"20230919299R01","medgas":"20230919415G01","generator":"HEI0010149"},"Islamabad":{"oxyswing_a":"4624","oxyswing_b":"4324","comp1":"22177473","comp2":"22177412","comp3":"22177414","comp4":"22177411","dryer1":"240012716","dryer2":"240012706","dryer3":"240012712","dryer4":"240012709","hpox":"20240421435F01","oxycheck":"20240421555J01","css":"20240521457R01","medgas":"20240421456G01","generator":"HEI0010546"},"Faisalabad":{"oxyswing_a":"17623","oxyswing_b":"17923","comp1":"24036388","comp2":"25051333","comp3":"24949321","comp4":"25051329","dryer1":"230030846","dryer2":"230030853","dryer3":"230033367","dryer4":"230030845","hpox":"20231119759F01","oxycheck":"20231019443J01","css":"20230919294R01","medgas":"20230919422G01","generator":"HEI0009978"},"Jhang":{"oxyswing_a":"4024","oxyswing_b":"3724","comp1":"22177404","comp2":"22177475","comp3":"22177478","comp4":"22177476","dryer1":"240012707","dryer2":"240012710","dryer3":"240012708","dryer4":"240012713","hpox":"20240421417F01","oxycheck":"20240421533J01","css":"20240521421R01","medgas":"20240421420G01","generator":"HEI0010393"},"Bannu":{"oxyswing_a":"18523","oxyswing_b":"18223","comp1":"24949339","comp2":"25051331","comp3":"24949340","comp4":"24036390","dryer1":"23003358","dryer2":"23003365","dryer3":"230030854","dryer4":"230030841","hpox":"20231019754F01","oxycheck":"20231019498J01","css":"20230919295R01","medgas":"20230919418G01","generator":"HEI0009958"},"Kohat":{"oxyswing_a":"8623","oxyswing_b":"8923","comp1":"22622341","comp2":"22622338","comp3":"22622339","comp4":"22622343","dryer1":"230022541","dryer2":"230022516","dryer3":"230022542","dryer4":"230022543","hpox":"20230619337F01","oxycheck":"20230719434J01","css":"20230719288R01","medgas":"20230719406G01","generator":"HEI0009859"},"Lower Dir":{"oxyswing_a":"16823","oxyswing_b":"16423","comp1":"20254410","comp2":"20558496","comp3":"20255408","comp4":"20254407","dryer1":"230033360","dryer2":"230033357","dryer3":"230033369","dryer4":"230033356","hpox":"20231119757F01","oxycheck":"20231019455J01","css":"20230919300R01","medgas":"20230919416G01","generator":"HEI0010114"},"Malakand":{"oxyswing_a":"12523","oxyswing_b":"12223","comp1":"24138331","comp2":"24138330","comp3":"24138329","comp4":"24138327","dryer1":"230022526","dryer2":"230022533","dryer3":"230022532","dryer4":"230022545","hpox":"20230719340F01","oxycheck":"20230719435J01","css":"20230719289R01","medgas":"20230719407G01","generator":"HEI0009826"},"Swat":{"oxyswing_a":"14023","oxyswing_b":"14323","comp1":"24645375","comp2":"24645376","comp3":"22622352","comp4":"24645377","dryer1":"230022531","dryer2":"230030849","dryer3":"230022536","dryer4":"230030844","hpox":"20230719750F01","oxycheck":"20231019439J01","css":"20230719287R01","medgas":"20230719407G01","generator":"HEI0010116"},"Khaplu":{"oxyswing_a":"8323","oxyswing_b":"8023","comp1":"1019663","comp2":"1019644","comp3":"1019666","comp4":"1019994","dryer1":"230015522","dryer2":"230015526","dryer3":"230015524","dryer4":"230015549","hpox":"20230619330F01","oxycheck":"20230519428J01","css":"20230619187R01","medgas":"20230419401G01","generator":"HEI0009759"},"Ghizer":{"oxyswing_a":"7723","oxyswing_b":"7423","comp1":"1018993","comp2":"1019646","comp3":"1019643","comp4":"1018995","dryer1":"230015530","dryer2":"230015516","dryer3":"230015532","dryer4":"230015551","hpox":"20230619339F01","oxycheck":"20230519386J01","css":"20230619283R01","medgas":"20230419403G01","generator":"HEI0009757"},"Nagar":{"oxyswing_a":"1624","oxyswing_b":"1324","comp1":"20559408","comp2":"20559410","comp3":"20559411","comp4":"20559409","dryer1":"240006537","dryer2":"240006534","dryer3":"240006533","dryer4":"240006531","hpox":"20240421345F01","oxycheck":"20240221489J01","css":"20240321349R01","medgas":"20240221348G01","generator":"HEI0010473"},"Astore":{"oxyswing_a":"3124","oxyswing_b":"3424","comp1":"20660427","comp2":"20660426","comp3":"22177403","comp4":"20761474","dryer1":"240009706","dryer2":"240009716","dryer3":"240009713","dryer4":"240009714","hpox":"20240421399F01","oxycheck":"20240421522J01","css":"20240421403R01","medgas":"20240321402G01","generator":"HEI0010555"},"Haveli":{"oxyswing_a":"1924","oxyswing_b":"2224","comp1":"22177408","comp2":"22177407","comp3":"22177406","comp4":"22177405","dryer1":"240009707","dryer2":"240009712","dryer3":"240009715","dryer4":"240009708","hpox":"20240421363F01","oxycheck":"20240421500J01","css":"20240421367R01","medgas":"20240321366G01","generator":"HEI0010064"},"Neelum":{"oxyswing_a":"14423","oxyswing_b":"14823","comp1":"20552497","comp2":"20255409","comp3":"20254408","comp4":"20255405","dryer1":"230033371","dryer2":"230033364","dryer3":"230033368","dryer4":"230033354","hpox":"20231019755F01","oxycheck":"20231019441J01","css":"20230919301R01","medgas":"20230919420G01","generator":"HEI0010070"},"Jhelum":{"oxyswing_a":"1024","oxyswing_b":"724","comp1":"20559405","comp2":"20559412","comp3":"20559404","comp4":"20559407","dryer1":"240006535","dryer2":"240006528","dryer3":"240006536","dryer4":"240006530","hpox":"20240421327F01","oxycheck":"20240221478J01","css":"20240231331R01","medgas":"20240221330G01","generator":"HEI0010460"},"Bhimber":{"oxyswing_a":"5923","oxyswing_b":"5623","comp1":"1018988","comp2":"1019650","comp3":"1019652","comp4":"1019651","dryer1":"230015521","dryer2":"230015548","dryer3":"230015543","dryer4":"230015540","hpox":"20230619335F01","oxycheck":"20230519423J01","css":"20230719284R01","medgas":"20230419385G01","generator":"HEI0009717"},"Quetta SZ":{"oxyswing_a":"3223","oxyswing_b":"3523","comp1":"1018980","comp2":"1018981","comp3":"1018979","comp4":"1018982","dryer1":"230015518","dryer2":"230015519","dryer3":"230015535","dryer4":"230015517","hpox":"20230519329F01","oxycheck":"20230519425J01","css":"20230519278R01","medgas":"20230419399G01","generator":"HEI0009696"},"Quetta Sandeman":{"oxyswing_a":"224","oxyswing_b":"424","comp1":"20559401","comp2":"20559402","comp3":"20559403","comp4":"20559406","dryer1":"240006539","dryer2":"240006529","dryer3":"240006538","dryer4":"240006532","hpox":"20240421309F01","oxycheck":"20240221467J01","css":"20240321313R01","medgas":"20240221312G01","generator":"HEI0010464"},"Khuzdar":{"oxyswing_a":"11623","oxyswing_b":"11923","comp1":"24036364","comp2":"24036369","comp3":"24138328","comp4":"24036367","dryer1":"230022548","dryer2":"230022518","dryer3":"230022521","dryer4":"230022534","hpox":"20230719341F01","oxycheck":"20230719433J01","css":"20230819290R01","medgas":"20230919412G01","generator":"HEI0009986"},"Sibbi":{"oxyswing_a":"13723","oxyswing_b":"13423","comp1":"24240360","comp2":"22622359","comp3":"24240361","comp4":"22622340","dryer1":"230022535","dryer2":"230022530","dryer3":"230022540","dryer4":"230022524","hpox":"20231019753F01","oxycheck":"20231019438J01","css":"20230719285R01","medgas":"20230719405G01","generator":"HEI0010069"},"DM Jamali":{"oxyswing_a":"7123","oxyswing_b":"6823","comp1":"1018992","comp2":"1018989","comp3":"1018991","comp4":"1018990","dryer1":"230015537","dryer2":"230015531","dryer3":"230015523","dryer4":"230015527","hpox":"20230619334F01","oxycheck":"20230519430J01","css":"20230619276R01","medgas":"20230419397G01","generator":"HEI0009734"},"Zhob":{"oxyswing_a":"18823","oxyswing_b":"19123","comp1":"24949342","comp2":"25051332","comp3":"24949343","comp4":"24949338","dryer1":"230030843","dryer2":"230030848","dryer3":"230033370","dryer4":"230030850","hpox":"20231119258F01","oxycheck":"20231019447J01","css":"20230919296R01","medgas":"20230919419G01","generator":"HEI0009992"},"Loralai":{"oxyswing_a":"10423","oxyswing_b":"10723","comp1":"22622342","comp2":"22622361","comp3":"22622358","comp4":"22622362","dryer1":"230022547","dryer2":"230022522","dryer3":"230022519","dryer4":"220022527","hpox":"20230719749F01","oxycheck":"20230919437J01","css":"20230619293R01","medgas":"20230919413G01","generator":"HEI0009957"},"Kharan":{"oxyswing_a":"12823","oxyswing_b":"13123","comp1":"24240363","comp2":"24240364","comp3":"24240362","comp4":"22622360","dryer1":"230022523","dryer2":"230030855","dryer3":"230030856","dryer4":"230022525","hpox":"20230919752F01","oxycheck":"20231019440J01","css":"20230719286R01","medgas":"20230719409G01","generator":"HEI0010121"},"Pangjur":{"oxyswing_a":"15823","oxyswing_b":"16123","comp1":"20255407","comp2":"24645378","comp3":"20558498","comp4":"20559400","dryer1":"230033362","dryer2":"230033355","dryer3":"230033359","dryer4":"230030851","hpox":"20231019760F01","oxycheck":"20231019442J01","css":"20230919298R01","medgas":"20230919417G01","generator":"HEI0010150"},"Jamshoro":{"oxyswing_a":"4123","oxyswing_b":"2823","comp1":"1018983","comp2":"1018986","comp3":"1018996","comp4":"1018984","dryer1":"230015547","dryer2":"230015542","dryer3":"230015528","dryer4":"230015533","hpox":"20230519190F01","oxycheck":"20230519426J01","css":"20230519279R01","medgas":"20230419400G01","generator":"HEI0009359"},"Larkana":{"oxyswing_a":"5323","oxyswing_b":"5023","comp1":"1019649","comp2":"1019647","comp3":"1019645","comp4":"1019648","dryer1":"230015520","dryer2":"230015519","dryer3":"230015545","dryer4":"230015539","hpox":"20230619332F01","oxycheck":"20230519429J01","css":"20230619277R01","medgas":"20230419402G01","generator":"HEI0009746"},"Nawabshah":{"oxyswing_a":"2824","oxyswing_b":"2524","comp1":"20660424","comp2":"1011454N","comp3":"20660423","comp4":"20660425","dryer1":"240009711","dryer2":"240009705","dryer3":"240009709","dryer4":"240009710","hpox":"20240421381F01","oxycheck":"20240421511J01","css":"20240421385R01","medgas":"20240321384G01","generator":"HEI0010531"}};
+
+const EQUIP_CATEGORIES = [
+  { group: "Oxygen Generator", items: [{ key: "oxyswing_a", label: "Oxyswing Master Unit A" }, { key: "oxyswing_b", label: "Oxyswing Master Unit B" }]},
+  { group: "Air Compressors", items: [{ key: "comp1", label: "Compressor 1" }, { key: "comp2", label: "Compressor 2" }, { key: "comp3", label: "Compressor 3" }, { key: "comp4", label: "Compressor 4" }]},
+  { group: "Air Dryers", items: [{ key: "dryer1", label: "Dryer 1" }, { key: "dryer2", label: "Dryer 2" }, { key: "dryer3", label: "Dryer 3" }, { key: "dryer4", label: "Dryer 4" }]},
+  { group: "Auxiliary Systems", items: [{ key: "hpox", label: "HPOX 450 Booster" }, { key: "oxycheck", label: "Oxycheck Analyzer" }, { key: "css", label: "Central Supervision System" }, { key: "medgas", label: "Medgas Flow" }, { key: "generator", label: "Diesel Generator (Pramac)" }]},
+];
+const EQUIP_GROUP_COLORS = { "Oxygen Generator": { border: "#0d9488", text: "#0f766e" }, "Air Compressors": { border: "#3b82f6", text: "#1e5bbf" }, "Air Dryers": { border: "#d9822b", text: "#b06318" }, "Auxiliary Systems": { border: "#7c5cbf", text: "#5b3fa0" } };
+
+function EquipmentTab({ hospitals, complaints, siteNotes }) {
+  const [selectedSite, setSelectedSite] = useState(null);
+  const [search, setSearch] = useState("");
+  if (selectedSite) {
+    const equip = EQUIPMENT_DATA[selectedSite] || {};
+    const siteStatus = getSiteDisplayStatus(selectedSite, complaints, siteNotes);
+    const siteComplaints = complaints.filter(c => hospitalMatches(c.hospital, selectedSite) && !isClosedStatus(c.status));
+    return (
+      <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+        <button onClick={() => setSelectedSite(null)} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; All Sites</button>
+        <div style={{ marginBottom: 24 }}>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111", margin: 0, letterSpacing: -0.3 }}>{displayName(selectedSite)}</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
+            <SiteStatusBadge status={siteStatus} />
+            <span style={{ fontSize: 12, color: "#8a9199" }}>{getProvider(selectedSite)}</span>
+            <span style={{ fontSize: 12, color: "#8a9199" }}>{Object.keys(equip).length} equipment</span>
+            {siteComplaints.length > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#c0392b", background: "#fce8e8", padding: "2px 10px", borderRadius: 20 }}>{siteComplaints.length} open</span>}
+          </div>
+        </div>
+        {EQUIP_CATEGORIES.map(cat => {
+          const gc = EQUIP_GROUP_COLORS[cat.group];
+          const catItems = cat.items.filter(item => equip[item.key]);
+          if (catItems.length === 0) return null;
+          return (<div key={cat.group} style={{ marginBottom: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: gc.text, textTransform: "uppercase", marginBottom: 10, paddingLeft: 2 }}>{cat.group}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
+              {catItems.map(item => (
+                <div key={item.key} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", borderLeft: `3px solid ${gc.border}`, boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#111", marginBottom: 6 }}>{item.label}</div>
+                  <div style={{ fontSize: 12, color: "#8a9199" }}>SN: <span style={{ color: C.tealDark, fontWeight: 700, fontFamily: "monospace" }}>{equip[item.key]}</span></div>
+                </div>
+              ))}
+            </div>
+          </div>);
+        })}
+        {Object.keys(equip).length === 0 && <div style={{ textAlign: "center", padding: "60px 24px", color: "#8a9199", fontSize: 14 }}>No equipment data available for this site.</div>}
+      </div>
+    );
+  }
+  const filtered = search.trim() ? ALL_HOSPITALS.filter(h => h.toLowerCase().includes(search.toLowerCase()) || displayName(h).toLowerCase().includes(search.toLowerCase())) : ALL_HOSPITALS;
+  return (
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#8a9199", textTransform: "uppercase", marginBottom: 4 }}>Equipment inventory</div>
+          <div style={{ fontSize: 13, color: "#555" }}>{ALL_HOSPITALS.length} sites · {Object.values(EQUIPMENT_DATA).reduce((s, e) => s + Object.keys(e).length, 0)} registered equipment</div>
+        </div>
+        <input style={{ padding: "8px 14px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", width: 220, background: "#fff", color: "#111" }} placeholder="Search sites..." value={search} onChange={e => setSearch(e.target.value)} onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.tealLight} />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
+        {Object.entries(GROUPS).map(([provider, sites]) => sites.filter(s => filtered.includes(s)).map(h => {
+          const equip = EQUIPMENT_DATA[h] || {}; const equipCount = Object.keys(equip).length;
+          const status = getSiteDisplayStatus(h, complaints, siteNotes);
+          return (<div key={h} onClick={() => setSelectedSite(h)} style={{ background: "#fff", borderRadius: 14, padding: "18px 20px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)", cursor: "pointer", transition: "box-shadow 0.2s, transform 0.2s", borderLeft: `3px solid ${status === "Shut Down" ? "#c0392b" : status === "Non Functional" ? "#868e96" : "#0d9488"}` }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(15,118,110,0.12), 0 8px 24px rgba(15,23,25,0.06)"; e.currentTarget.style.transform = "translateY(-2px)"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)"; e.currentTarget.style.transform = "none"; }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div><div style={{ fontSize: 15, fontWeight: 700, color: "#111", marginBottom: 4 }}>{displayName(h)}</div><div style={{ fontSize: 11, color: "#8a9199" }}>{provider}</div></div>
+              <SiteStatusBadge status={status} />
+            </div>
+            <div style={{ display: "flex", gap: 16, marginTop: 12, fontSize: 11, color: "#555" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: equipCount > 0 ? "#0d9488" : "#ccc" }} />{equipCount} equipment</span>
+              <span style={{ color: "#0d9488", fontWeight: 600 }}>View inventory &rarr;</span>
+            </div>
+          </div>);
+        }))}
+      </div>
+    </div>
+  );
+}
+
 function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRefresh, onLogout }) {
   const [tab, setTab] = useState("dashboard"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const [editingUser, setEditingUser] = useState(null); const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
@@ -2450,6 +2532,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const NAV_ITEMS = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "sites", icon: "sites", label: "Sites" },
+    { id: "equipment", icon: "equipment", label: "Equipment" },
     { id: "tickets", icon: "tickets", label: "Tickets" },
     { id: "submit", icon: "submit", label: "Submit" },
     { id: "maintenance", icon: "maintenance", label: "Maintenance" },
@@ -2461,7 +2544,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   ];
 
   const PAGE_TITLES = {
-    dashboard: "Dashboard", sites: "Sites", tickets: "Tickets", submit: "Submit Ticket",
+    dashboard: "Dashboard", sites: "Sites", equipment: "Equipment", tickets: "Tickets", submit: "Submit Ticket",
     maintenance: "Maintenance", analytics: "Analytics", users: "Users", emails: "Emails"
   };
 
@@ -2487,6 +2570,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
           <div key={tab} className="scale-in">
           {tab === "dashboard" && <HomeTab hospitals={ALL_HOSPITALS} groups={GROUPS} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "sites" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
+          {tab === "equipment" && <EquipmentTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} />}
           {tab === "tickets" && !selected && (<>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
               <button style={styles.tabActionBtn} onClick={() => downloadCSV(complaints, "All Tickets Data")}>↓ Download Data</button>
@@ -2725,13 +2809,14 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
   const NAV_ITEMS = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "sites", icon: "sites", label: "Sites" },
+    { id: "equipment", icon: "equipment", label: "Equipment" },
     { id: "tickets", icon: "tickets", label: "Tickets" },
     { id: "maintenance", icon: "maintenance", label: "Maintenance" },
     { id: "analytics", icon: "analytics", label: "Analytics" },
   ];
 
   const PAGE_TITLES = {
-    dashboard: "Dashboard", sites: "Sites", tickets: "Tickets",
+    dashboard: "Dashboard", sites: "Sites", equipment: "Equipment", tickets: "Tickets",
     maintenance: "Maintenance", analytics: "Analytics"
   };
 
@@ -2757,6 +2842,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
           <div key={tab} className="scale-in">
           {tab === "dashboard" && <HomeTab hospitals={myHospitals} groups={myGroups} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "sites" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
+          {tab === "equipment" && <EquipmentTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} />}
           {tab === "tickets" && !selected && (<>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
               <button style={styles.tabActionBtn} onClick={() => downloadCSV(myComplaints, "All Tickets Data")}>↓ Download Data</button>
