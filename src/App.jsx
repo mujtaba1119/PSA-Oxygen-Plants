@@ -1346,15 +1346,15 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
 
   const shutdownSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Shut Down");
 
-  // Sort order: Critical (or manually marked Shut Down) first, then High, then Low,
-  // then Non Functional (flagged, no open ticket), then Fully Functional last.
-  // Severity is a per-ticket attribute, so a site's rank is driven by its single worst open ticket.
+  // Sort order: Shut Down first, then Functional-with-open-tickets (by severity),
+  // then Fully Functional (no tickets), then Non Functional last.
   const SEVERITY_RANK = { "Critical": 0, "High": 1, "Low": 2 };
   const siteRank = (h) => {
     if (getSiteBaseStatus(h, siteNotes) === "Shut Down") return 0;
     const open = complaints.filter(c => hospitalMatches(c.hospital, h) && !isClosedStatus(c.status));
-    if (open.length > 0) return Math.min(...open.map(c => SEVERITY_RANK[c.severity] ?? 2));
-    return getSiteBaseStatus(h, siteNotes) === "Non Functional" ? 3 : 4;
+    if (open.length > 0) return 1 + (Math.min(...open.map(c => SEVERITY_RANK[c.severity] ?? 2)) * 0.01);
+    if (getSiteBaseStatus(h, siteNotes) === "Non Functional") return 3;
+    return 2;
   };
   const sortedHospitals = [...hospitals].sort((a, b) => siteRank(a) - siteRank(b));
 
@@ -1379,13 +1379,13 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
       {/* Clean light table */}
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e5e5e0", overflow: "hidden" }}>
         {/* Header */}
-        <div style={{ display: "flex", borderBottom: "1px solid #e5e5e0", background: "#fafaf7", minWidth: 900 }}>
-          <div style={{ flex: "0 0 48px", padding: "13px 0", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5 }}>#</div>
-          <div style={{ flex: "1 1 220px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5, textAlign: "center" }}>Site Name</div>
-          <div style={{ flex: "0 0 150px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5, textAlign: "center" }}>Service Provider</div>
-          <div style={{ flex: "0 0 140px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5, textAlign: "center" }}>Status</div>
-          <div style={{ flex: "1 1 200px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5, textAlign: "center" }}>Open Tickets</div>
-          <div style={{ flex: "1 1 200px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5, textAlign: "center" }}>Equipment / Notes</div>
+        <div style={{ display: "flex", borderBottom: "1px solid #e5e5e0", background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", minWidth: 900 }}>
+          <div style={{ flex: "0 0 48px", padding: "14px 0", textAlign: "center", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8 }}>#</div>
+          <div style={{ flex: "1 1 220px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Site Name</div>
+          <div style={{ flex: "0 0 150px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Service Provider</div>
+          <div style={{ flex: "0 0 140px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Status</div>
+          <div style={{ flex: "1 1 200px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Open Tickets</div>
+          <div style={{ flex: "1 1 200px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Equipment / Notes</div>
         </div>
         {/* Rows */}
         {sortedHospitals.map((h, i) => {
