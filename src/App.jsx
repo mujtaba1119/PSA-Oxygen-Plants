@@ -1265,59 +1265,40 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
   const showProviderBreakdown = providerEntries.length > 1;
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
-      {/* Hero stat: one headline number, not a grid of equal boxes */}
-      <div style={{ marginBottom: 22 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: C.teal, textTransform: "uppercase", marginBottom: 6 }}>Network status</div>
-        <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: 14, marginBottom: 10 }}>
-          <div style={{ fontSize: 34, fontWeight: 800, color: C.black, letterSpacing: "-0.02em" }}>
-            {funcCount}<span style={{ color: C.textLight, fontWeight: 600 }}>/{hospitals.length}</span>
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      {/* 4 Stat Cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginBottom: 20 }}>
+        <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: "16px 18px" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.textLight, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Operational</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: C.black, letterSpacing: "-0.02em" }}>{funcCount} <span style={{ fontSize: 16, color: C.textLight, fontWeight: 600 }}>/ {hospitals.length}</span></div>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 600, marginTop: 5, padding: "2px 8px", borderRadius: 10, background: "#d4edda", color: "#1d6a38" }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor" }} />
+            {hospitals.length > 0 ? Math.round(funcCount / hospitals.length * 100) : 0}% uptime
           </div>
-          <div style={{ fontSize: 14, color: C.textMid, paddingBottom: 4 }}>sites fully functional</div>
         </div>
-        {(issueSites.length > 0 || shutdownSites.length > 0) && (
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            {issueSites.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#b7791f", fontWeight: 600 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#f0932b", display: "inline-block" }} />
-                {issueSites.length} {issueSites.length === 1 ? "site" : "sites"} with open issues
-              </div>
-            )}
-            {shutdownSites.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#c0392b", fontWeight: 600 }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#e03131", display: "inline-block" }} />
-                {shutdownSites.length} {shutdownSites.length === 1 ? "site" : "sites"} shut down
-              </div>
-            )}
-          </div>
-        )}
+        <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: "16px 18px" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.textLight, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Open tickets</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: C.black }}>{scoped.filter(c => !isClosedStatus(c.status)).length}</div>
+          {shutdownSites.length > 0 && <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 600, marginTop: 5, padding: "2px 8px", borderRadius: 10, background: "#f8d7da", color: "#993333" }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor" }} />{shutdownSites.length} critical</div>}
+        </div>
+        <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: "16px 18px" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.textLight, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Resolved this week</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: C.black }}>{resolvedThisWeek.length}</div>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 600, marginTop: 5, padding: "2px 8px", borderRadius: 10, background: "#d4edda", color: "#1d6a38" }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor" }} />Last 7 days</div>
+        </div>
+        <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: "16px 18px" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.textLight, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Sites needing attention</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: C.black }}>{attentionSites.length}</div>
+          {issueSites.length > 0 && <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 600, marginTop: 5, padding: "2px 8px", borderRadius: 10, background: "#fff3cd", color: "#856404" }}>
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor" }} />{issueSites.length} with issues</div>}
+        </div>
       </div>
 
-      {/* Ticket pipeline: one segmented proportion bar instead of five identical boxes */}
-      {scoped.length > 0 && (
-        <div style={{ marginBottom: 26 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C.black }}>Ticket pipeline</div>
-            <div style={{ fontSize: 12, color: C.textLight }}>{scoped.length} total</div>
-          </div>
-          <div style={{ display: "flex", height: 10, borderRadius: 6, overflow: "hidden", background: C.borderLight, marginBottom: 10 }}>
-            {STAGE_META.filter(s => stageCounts[s.key] > 0).map(s => (
-              <div key={s.key} style={{ flex: `${stageCounts[s.key]} 0 0%`, background: s.color }} title={`${statusLabel(s.key)}: ${stageCounts[s.key]}`} />
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            {STAGE_META.map(s => (
-              <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: C.textMid }}>
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.color, display: "inline-block", flexShrink: 0 }} />
-                <span style={{ fontWeight: 700, color: C.black }}>{stageCounts[s.key]}</span> {statusLabel(s.key)}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
-        <div className={mapTheme === "dark" ? "dark-map-mode" : ""} style={{ borderRadius: 12, overflow: "hidden", border: `1px solid ${C.border}`, height: 380, position: "relative" }}>
+      {/* Map + Side Panel */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 14, marginBottom: 18 }}>
+        <div className={mapTheme === "dark" ? "dark-map-mode" : ""} style={{ borderRadius: 0, overflow: "hidden", border: `1px solid ${C.borderLight}`, height: 380, position: "relative" }}>
           <style>{`
             .leaflet-control-attribution {
               font-size: 9px !important;
@@ -1369,53 +1350,49 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
           </MapContainer>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, background: C.white, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14, height: 380, overflowY: "auto" }}>
-          {attentionSites.length > 0 && (
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: C.textLight, textTransform: "uppercase", marginBottom: 8 }}>Needs attention</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {attentionSites.map(h => {
-                  const s = getSiteDisplayStatus(h, complaints, siteNotes);
-                  const isDown = s === "Shut Down";
-                  return (
-                    <div key={h} onClick={() => onViewSite(h)} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8, borderRadius: 8, padding: "7px 8px", transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = C.bg} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: isDown ? "#e03131" : "#f0932b", flexShrink: 0 }} />
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 600, color: C.black, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h}</div>
-                        <div style={{ fontSize: 10.5, color: C.textLight }}>{s}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          {resolvedThisWeek.length > 0 && (
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", color: C.textLight, textTransform: "uppercase", marginBottom: 8 }}>Resolved this week</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {resolvedThisWeek.map(c => (
-                  <div key={c.id} onClick={() => onViewSite(c.hospital)} style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8, borderRadius: 8, padding: "7px 8px", transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = C.bg} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#2f9e58", flexShrink: 0, marginTop: 4 }} />
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: C.black }}>{c.title}</div>
-                      <div style={{ fontSize: 10.5, color: C.textLight }}>{c.hospital}</div>
-                    </div>
-                  </div>
+        {/* Side Panel: Attention + Pipeline */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: 14, flex: 1, overflowY: "auto" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: C.textLight, textTransform: "uppercase", marginBottom: 10 }}>Needs attention</div>
+            {attentionSites.length > 0 ? attentionSites.map(h => {
+              const s = getSiteDisplayStatus(h, complaints, siteNotes);
+              const isDown = s === "Shut Down";
+              const isNonFunc = s === "Non Functional";
+              return (
+                <div key={h} onClick={() => onViewSite(h)} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "5px 0" }} onMouseEnter={e => e.currentTarget.querySelector(".at-n").style.color = C.teal} onMouseLeave={e => e.currentTarget.querySelector(".at-n").style.color = C.black}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: isDown ? "#c0392b" : isNonFunc ? "#868e96" : "#f0932b", flexShrink: 0 }} />
+                  <span className="at-n" style={{ fontSize: 12, fontWeight: 600, color: C.black, flex: 1, transition: "color .12s" }}>{h}</span>
+                  <span style={{ fontSize: 10, color: C.textLight }}>{s}</span>
+                </div>
+              );
+            }) : <div style={{ fontSize: 12, color: C.textLight }}>All sites operational</div>}
+          </div>
+          <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: C.textLight, textTransform: "uppercase", marginBottom: 10 }}>Ticket pipeline</div>
+            {scoped.length > 0 ? (<>
+              <div style={{ display: "flex", height: 8, overflow: "hidden", background: C.borderLight, marginBottom: 8 }}>
+                {STAGE_META.filter(s => stageCounts[s.key] > 0).map(s => (
+                  <div key={s.key} style={{ flex: `${stageCounts[s.key]} 0 0%`, background: s.color }} />
                 ))}
               </div>
-            </div>
-          )}
-          {attentionSites.length === 0 && resolvedThisWeek.length === 0 && (
-            <div style={{ fontSize: 12.5, color: C.textLight, textAlign: "center", marginTop: 40 }}>No activity to show yet.</div>
-          )}
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {STAGE_META.map(s => (
+                  <span key={s.key} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: C.textMid }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: s.color }} />
+                    {stageCounts[s.key]} {statusLabel(s.key)}
+                  </span>
+                ))}
+              </div>
+            </>) : <div style={{ fontSize: 12, color: C.textLight }}>No tickets yet</div>}
+          </div>
         </div>
       </div>
 
-      {showProviderBreakdown && (
-        <div style={{ marginTop: 24 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: C.black, marginBottom: 10 }}>By service provider</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Bottom: Provider breakdown + Recent activity */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        {showProviderBreakdown && (
+          <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: 16 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: C.textLight, textTransform: "uppercase", marginBottom: 10 }}>By service provider</div>
             {(() => {
               const rows = providerEntries.map(([provider, sites]) => {
                 const providerSites = sites.filter(s => hospitals.includes(s));
@@ -1426,18 +1403,30 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
               return rows.map(r => (
                 <div key={r.provider}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: C.black }}>{r.provider}</span>
-                    <span style={{ fontSize: 12, color: C.textMid }}>{r.siteCount} sites · {r.openCount} open</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: C.black }}>{r.provider}</span>
+                    <span style={{ fontSize: 10, color: C.textLight }}>{r.siteCount} sites · {r.openCount} open</span>
                   </div>
-                  <div style={{ height: 7, borderRadius: 4, background: C.borderLight, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${(r.siteCount / maxSites) * 100}%`, background: C.teal, borderRadius: 4 }} />
+                  <div style={{ height: 5, background: C.borderLight, marginBottom: 12 }}>
+                    <div style={{ height: "100%", width: `${(r.siteCount / maxSites) * 100}%`, background: `linear-gradient(90deg, ${C.tealDark}, #14b8a6)` }} />
                   </div>
                 </div>
               ));
             })()}
           </div>
+        )}
+        <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: 16 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: C.textLight, textTransform: "uppercase", marginBottom: 10 }}>Recent activity</div>
+          {resolvedThisWeek.length > 0 ? resolvedThisWeek.map(c => (
+            <div key={c.id} onClick={() => onViewSite(c.hospital)} style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#27ae60", marginTop: 5, flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.black }}>{c.title}</div>
+                <div style={{ fontSize: 10, color: C.textLight }}>{c.hospital} · {c.resolved_at ? new Date(c.resolved_at).toLocaleDateString() : ""}</div>
+              </div>
+            </div>
+          )) : <div style={{ fontSize: 12, color: C.textLight }}>No recent resolutions</div>}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -2159,12 +2148,63 @@ function SidebarIcon({ name, size = 20 }) {
   return paths[name] || null;
 }
 
+/* ─── Compact Vessel Animation for Sidebar ─── */
+function SidebarVessel() {
+  const VW = 54, VH = 64;
+  const cx = VW / 2;
+  const vW = 22, vX = cx - vW / 2;
+  const vTop = 12, vBottom = 52;
+  const inTop = vTop + 2, inBottom = vBottom - 2, inH = inBottom - inTop;
+  const surfAt = (r) => inBottom + (inTop + 2 - inBottom) * r;
+  const surfY_lo = surfAt(0.4), surfY_hi = surfAt(1);
+  const colH_lo = (inH - 2) * 0.4, colH_hi = (inH - 2) * 1;
+  const Mote = ({ mx, r, top, bottom, dur, delay }) => (
+    <circle cx={mx} r={r} fill="#eafff9">
+      <animate attributeName="cy" values={`${bottom};${top};${bottom}`} dur={`${dur}ms`} begin={`${delay}ms`} repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
+      <animate attributeName="opacity" values="0;0.9;0" dur={`${dur}ms`} begin={`${delay}ms`} repeatCount="indefinite" />
+    </circle>
+  );
+  return (
+    <svg width={VW} height={VH} viewBox={`0 0 ${VW} ${VH}`} style={{ display: "block" }}>
+      <defs>
+        <linearGradient id="sv-col" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#c4fff2" stopOpacity="0.95" />
+          <stop offset="0.5" stopColor="#5eead4" stopOpacity="0.8" />
+          <stop offset="1" stopColor="#14b8a6" stopOpacity="0.55" />
+        </linearGradient>
+        <linearGradient id="sv-glass" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="rgba(255,255,255,0.85)" />
+          <stop offset="0.5" stopColor="rgba(255,255,255,0.3)" />
+          <stop offset="1" stopColor="rgba(255,255,255,0.85)" />
+        </linearGradient>
+        <clipPath id="sv-clip"><rect x={vX + 2} y={inTop} width={vW - 4} height={inH} rx={(vW - 4) / 2} /></clipPath>
+      </defs>
+      <line x1={cx} y1={vTop} x2={cx} y2="6" stroke="rgba(255,255,255,0.5)" strokeWidth="1" strokeLinecap="round" />
+      <circle cx={cx} cy="5" r="2.5" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1" />
+      <g clipPath="url(#sv-clip)">
+        <rect x={vX + 2} width={vW - 4} fill="url(#sv-col)">
+          <animate attributeName="y" values={`${surfY_lo};${surfY_hi};${surfY_lo}`} dur="10400ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
+          <animate attributeName="height" values={`${colH_lo};${colH_hi};${colH_lo}`} dur="10400ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
+        </rect>
+        <ellipse cx={cx} rx={(vW - 6) / 2} fill="#eafff9" opacity="0.8">
+          <animate attributeName="cy" values={`${surfY_lo};${surfY_hi};${surfY_lo}`} dur="10400ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
+          <animate attributeName="ry" values="2;3.5;2" dur="4800ms" repeatCount="indefinite" />
+        </ellipse>
+        <Mote mx={cx - 3} r={1.2} top={inTop + 4} bottom={inBottom - 4} dur={3400} delay={0} />
+        <Mote mx={cx + 3} r={1.5} top={inTop + 4} bottom={inBottom - 4} dur={4000} delay={1200} />
+      </g>
+      <rect x={vX} y={vTop} width={vW} height={vBottom - vTop} rx={vW / 2} fill="none" stroke="url(#sv-glass)" strokeWidth="1.2" />
+      <line x1={vX + 4} y1={vTop + 6} x2={vX + 4} y2={vBottom - 6} stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 /* ─── Sidebar Navigation ─── */
 function SidebarNav({ items, active, onSelect, bottomItems }) {
   return (
     <nav className="sidebar-nav" style={sidebarStyles.nav}>
-      <div style={sidebarStyles.logo}>
-        <span style={sidebarStyles.logoText}>O<sub style={{ fontSize: 10, fontWeight: 700 }}>₂</sub></span>
+      <div style={{ marginBottom: 10 }}>
+        <SidebarVessel />
       </div>
       <div style={sidebarStyles.items}>
         {items.map(item => (
@@ -2196,26 +2236,28 @@ function SidebarNav({ items, active, onSelect, bottomItems }) {
   );
 }
 
-/* ─── Top Bar (replaces old hero header — compact, inside sidebar layout) ─── */
+/* ─── Top Bar (teal gradient header — compact, inside sidebar layout) ─── */
 function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, children }) {
   return (
-    <>
-      <div style={{ height: 3, background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 24px", background: "#fff", borderBottom: "1px solid #e0e0e0", minHeight: 52, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+    <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 24px", minHeight: 52 }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#111", letterSpacing: 0.3 }}>{title}</div>
-          <div style={{ fontSize: 11, color: "#999", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 1 }}>{subtitle}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", letterSpacing: 0.3 }}>{title}</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 2 }}>{subtitle}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {children}
-          <button title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "transparent", cursor: "pointer", borderRadius: 6, transition: "background .15s", color: "#0f766e" }} onMouseEnter={e => e.currentTarget.style.background = "#f0fdfa"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-            <svg className={refreshing ? "spinning" : ""} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          <button title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.1)", cursor: "pointer", borderRadius: 8, transition: "background .15s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.2)"} onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}>
+            <svg className={refreshing ? "spinning" : ""} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
           </button>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "#0f766e", letterSpacing: 0.5, textTransform: "uppercase", padding: "6px 14px", border: "1px solid #ccfbf1", background: "#f0fdfa" }}>{user.role === "admin" ? "Admin" : user.name}</span>
-          <button onClick={onLogout} style={{ fontSize: 11, fontWeight: 600, color: "#fff", background: "#111", border: "none", padding: "7px 16px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" }}>Sign out</button>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#fff", letterSpacing: 0.5, textTransform: "uppercase", padding: "6px 14px", border: "1px solid rgba(255,255,255,0.25)", background: "rgba(255,255,255,0.1)", borderRadius: 8 }}>{user.role === "admin" ? "Admin" : user.name}</span>
+          <button onClick={onLogout} style={{ fontSize: 11, fontWeight: 600, color: "#fff", background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: 8, padding: "7px 10px", cursor: "pointer", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
         </div>
       </div>
-    </>
+      <div style={{ height: 3, background: "linear-gradient(90deg, #0b3b38 0%, #14b8a6 50%, #5eead4 100%)" }} />
+    </div>
   );
 }
 
