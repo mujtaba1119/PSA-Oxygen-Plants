@@ -1400,7 +1400,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                 <div style={{ flex: "0 0 140px", padding: "14px 16px", textAlign: "center" }}>
                   {(() => {
                     const statusMeta = {
-                      "Fully Functional": { label: "Functional", color: "#16a34a", dot: "#16a34a" },
+                      "Fully Functional": { label: "Fully Functional", color: "#16a34a", dot: "#16a34a" },
                       "Functional": { label: "Functional", color: "#b7920a", dot: "#b7920a" },
                       "Issues": { label: "Functional", color: "#b7920a", dot: "#b7920a" },
                       "Non Functional": { label: "Non Functional", color: "#64748b", dot: "#94a3b8" },
