@@ -2148,18 +2148,19 @@ function SidebarIcon({ name, size = 20 }) {
   return paths[name] || null;
 }
 
-/* ─── Compact Vessel Animation for Sidebar ─── */
+/* ─── Compact Vessel Animation for Sidebar (full replica of login vessel) ─── */
 function SidebarVessel() {
-  const VW = 54, VH = 64;
+  const VW = 64, VH = 80;
   const cx = VW / 2;
-  const vW = 22, vX = cx - vW / 2;
-  const vTop = 12, vBottom = 52;
+  const vW = 26, vX = cx - vW / 2;
+  const vTop = 14, vBottom = 62;
   const inTop = vTop + 2, inBottom = vBottom - 2, inH = inBottom - inTop;
   const surfAt = (r) => inBottom + (inTop + 2 - inBottom) * r;
-  const surfY_lo = surfAt(0.4), surfY_hi = surfAt(1);
-  const colH_lo = (inH - 2) * 0.4, colH_hi = (inH - 2) * 1;
-  const Mote = ({ mx, r, top, bottom, dur, delay }) => (
-    <circle cx={mx} r={r} fill="#eafff9">
+  const rLo = 0.4, rHi = 1;
+  const surfY_lo = surfAt(rLo), surfY_hi = surfAt(rHi);
+  const colH_lo = (inH - 2) * rLo, colH_hi = (inH - 2) * rHi;
+  const Mote = ({ mx, r, top, bottom, dur, delay, color }) => (
+    <circle cx={mx} r={r} fill={color || "#eafff9"}>
       <animate attributeName="cy" values={`${bottom};${top};${bottom}`} dur={`${dur}ms`} begin={`${delay}ms`} repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
       <animate attributeName="opacity" values="0;0.9;0" dur={`${dur}ms`} begin={`${delay}ms`} repeatCount="indefinite" />
     </circle>
@@ -2167,6 +2168,10 @@ function SidebarVessel() {
   return (
     <svg width={VW} height={VH} viewBox={`0 0 ${VW} ${VH}`} style={{ display: "block" }}>
       <defs>
+        <radialGradient id="sv-halo" cx="50%" cy="50%" r="50%">
+          <stop offset="0" stopColor="#5eead4" stopOpacity="0.4" />
+          <stop offset="1" stopColor="#5eead4" stopOpacity="0" />
+        </radialGradient>
         <linearGradient id="sv-col" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#c4fff2" stopOpacity="0.95" />
           <stop offset="0.5" stopColor="#5eead4" stopOpacity="0.8" />
@@ -2179,22 +2184,52 @@ function SidebarVessel() {
         </linearGradient>
         <clipPath id="sv-clip"><rect x={vX + 2} y={inTop} width={vW - 4} height={inH} rx={(vW - 4) / 2} /></clipPath>
       </defs>
-      <line x1={cx} y1={vTop} x2={cx} y2="6" stroke="rgba(255,255,255,0.5)" strokeWidth="1" strokeLinecap="round" />
-      <circle cx={cx} cy="5" r="2.5" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1" />
+      {/* ambient halo */}
+      <circle cx={cx} cy="38" fill="url(#sv-halo)">
+        <animate attributeName="r" values="28;36;28" dur="6000ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
+        <animate attributeName="opacity" values="0.10;0.20;0.10" dur="6000ms" repeatCount="indefinite" />
+      </circle>
+      {/* neck + crown valve */}
+      <line x1={cx} y1={vTop} x2={cx} y2="7" stroke="rgba(255,255,255,0.5)" strokeWidth="1" strokeLinecap="round" />
+      <circle cx={cx} cy="5.5" r="3" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1" />
+      {/* luminous column, clipped */}
       <g clipPath="url(#sv-clip)">
         <rect x={vX + 2} width={vW - 4} fill="url(#sv-col)">
           <animate attributeName="y" values={`${surfY_lo};${surfY_hi};${surfY_lo}`} dur="10400ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
           <animate attributeName="height" values={`${colH_lo};${colH_hi};${colH_lo}`} dur="10400ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
         </rect>
-        <ellipse cx={cx} rx={(vW - 6) / 2} fill="#eafff9" opacity="0.8">
+        {/* surface meniscus */}
+        <ellipse cx={cx} rx={(vW - 6) / 2} fill="#eafff9" opacity="0.85">
           <animate attributeName="cy" values={`${surfY_lo};${surfY_hi};${surfY_lo}`} dur="10400ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
           <animate attributeName="ry" values="2;3.5;2" dur="4800ms" repeatCount="indefinite" />
         </ellipse>
-        <Mote mx={cx - 3} r={1.2} top={inTop + 4} bottom={inBottom - 4} dur={3400} delay={0} />
-        <Mote mx={cx + 3} r={1.5} top={inTop + 4} bottom={inBottom - 4} dur={4000} delay={1200} />
+        {/* rising motes */}
+        <Mote mx={cx - 4} r={1.3} top={inTop + 4} bottom={inBottom - 4} dur={3400} delay={0} />
+        <Mote mx={cx + 4} r={1.6} top={inTop + 4} bottom={inBottom - 4} dur={4000} delay={1200} />
+        <Mote mx={cx} r={1} top={inTop + 4} bottom={inBottom - 4} dur={3700} delay={2200} />
       </g>
+      {/* glass outline */}
       <rect x={vX} y={vTop} width={vW} height={vBottom - vTop} rx={vW / 2} fill="none" stroke="url(#sv-glass)" strokeWidth="1.2" />
-      <line x1={vX + 4} y1={vTop + 6} x2={vX + 4} y2={vBottom - 6} stroke="rgba(255,255,255,0.35)" strokeWidth="1.2" strokeLinecap="round" />
+      {/* specular highlight */}
+      <line x1={vX + 4} y1={vTop + 8} x2={vX + 4} y2={vBottom - 8} stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" strokeLinecap="round" />
+      {/* measurement scale */}
+      <line x1={vX - 6} y1={inTop} x2={vX - 6} y2={inBottom} stroke="rgba(255,255,255,0.18)" strokeWidth="0.7" />
+      <line x1={vX - 8} y1={inTop} x2={vX - 4} y2={inTop} stroke="rgba(255,255,255,0.18)" strokeWidth="0.7" />
+      <line x1={vX - 7} y1={inTop + inH * 0.5} x2={vX - 5} y2={inTop + inH * 0.5} stroke="rgba(255,255,255,0.15)" strokeWidth="0.7" />
+      <line x1={vX - 8} y1={inBottom} x2={vX - 4} y2={inBottom} stroke="rgba(255,255,255,0.18)" strokeWidth="0.7" />
+      {/* level marker */}
+      <circle cx={vX - 6} r="1.5" fill="#5eead4">
+        <animate attributeName="cy" values={`${surfY_lo};${surfY_hi};${surfY_lo}`} dur="10400ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
+      </circle>
+      {/* pedestal */}
+      <line x1={cx - 14} y1="68" x2={cx + 14} y2="68" stroke="rgba(255,255,255,0.3)" strokeWidth="0.8" strokeLinecap="round" />
+      <line x1={vX + 4} y1={vBottom} x2={cx - 9} y2="68" stroke="rgba(255,255,255,0.22)" strokeWidth="0.8" />
+      <line x1={vX + vW - 4} y1={vBottom} x2={cx + 9} y2="68" stroke="rgba(255,255,255,0.22)" strokeWidth="0.8" />
+      {/* reflection */}
+      <ellipse cx={cx} cy="72" rx="14" ry="3" fill="#5eead4" opacity="0.08" />
+      {/* atmosphere particles */}
+      <Mote mx={cx - 22} r={1} top={16} bottom={56} dur={6000} delay={0} color="rgba(94,234,212,0.4)" />
+      <Mote mx={cx + 24} r={1.2} top={14} bottom={56} dur={7000} delay={1500} color="rgba(94,234,212,0.35)" />
     </svg>
   );
 }
@@ -2256,7 +2291,7 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
           </button>
         </div>
       </div>
-      <div style={{ height: 3, background: "linear-gradient(90deg, #0b3b38 0%, #14b8a6 50%, #5eead4 100%)" }} />
+      <div style={{ height: 3, background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
     </div>
   );
 }
@@ -2294,14 +2329,14 @@ function AnalyticsPage() {
 
 /* ─── Sidebar Styles ─── */
 const sidebarStyles = {
-  nav: { background: "linear-gradient(180deg, #062825 0%, #0b3b38 40%, #0f766e 100%)", display: "flex", flexDirection: "column", padding: "14px 0", gap: 2, alignItems: "center", width: 54, minHeight: "100vh", position: "fixed", top: 0, left: 0, zIndex: 100 },
+  nav: { background: "linear-gradient(180deg, #0b3b38 0%, #0a3533 30%, #0f766e 100%)", display: "flex", flexDirection: "column", padding: "0 0 14px", gap: 2, alignItems: "center", width: 64, minHeight: "100vh", position: "fixed", top: 0, left: 0, zIndex: 100 },
   logo: { width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18 },
   logoText: { fontSize: 18, fontWeight: 800, color: "#5eead4", letterSpacing: -1, fontFamily: "'DM Sans', system-ui, sans-serif" },
   items: { display: "flex", flexDirection: "column", gap: 2, alignItems: "center" },
-  item: { width: 38, height: 38, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 0.15s", position: "relative" },
+  item: { width: 42, height: 42, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 0.15s", position: "relative" },
   itemActive: { background: "rgba(255,255,255,0.12)" },
-  tip: { display: "none", position: "absolute", left: 48, top: "50%", transform: "translateY(-50%)", background: "#0b3b38", border: "1px solid #14b8a6", padding: "4px 10px", borderRadius: 6, fontSize: 11, color: "#ccfbf1", whiteSpace: "nowrap", fontWeight: 600, zIndex: 10, pointerEvents: "none", letterSpacing: 0.3, fontFamily: "'DM Sans', system-ui, sans-serif" },
-  divider: { width: 22, height: 1, background: "rgba(255,255,255,0.12)", margin: "8px 0" },
+  tip: { display: "none", position: "absolute", left: 54, top: "50%", transform: "translateY(-50%)", background: "#0b3b38", border: "1px solid #14b8a6", padding: "4px 10px", borderRadius: 6, fontSize: 11, color: "#ccfbf1", whiteSpace: "nowrap", fontWeight: 600, zIndex: 10, pointerEvents: "none", letterSpacing: 0.3, fontFamily: "'DM Sans', system-ui, sans-serif" },
+  divider: { width: 28, height: 1, background: "rgba(255,255,255,0.12)", margin: "8px 0" },
 };
 function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRefresh, onLogout }) {
   const [tab, setTab] = useState("dashboard"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
@@ -2438,7 +2473,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} bottomItems={NAV_BOTTOM} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area" style={{ flex: 1, marginLeft: 54, background: C.bg, minHeight: "100vh" }}>
+      <div className="main-area" style={{ flex: 1, marginLeft: 64, background: C.bg, minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${ALL_HOSPITALS.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
         </TopBar>
@@ -2708,7 +2743,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area" style={{ flex: 1, marginLeft: 54, background: C.bg, minHeight: "100vh" }}>
+      <div className="main-area" style={{ flex: 1, marginLeft: 64, background: C.bg, minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${myHospitals.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
         </TopBar>
