@@ -2458,6 +2458,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
           )}
           {tab === "maintenance" && <MaintenancePage />}
           {tab === "analytics" && <AnalyticsPage />}
+          {tab === "users" && (<>
           {/* Add User Form */}
           <div style={styles.formSection}>
             <h2 style={styles.sectionTitle}>Add New User</h2>
