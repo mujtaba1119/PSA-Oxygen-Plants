@@ -2176,11 +2176,11 @@ function SidebarNav({ items, active, onSelect, bottomItems }) {
   );
 }
 
-/* ─── Top Bar (teal gradient, dark both ends, ZeBeyond-style pills, wavy edge) ─── */
+/* ─── Top Bar (teal gradient, dark both ends, curved bottom, ZeBeyond pills) ─── */
 function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, children }) {
   return (
     <div style={{ position: "sticky", top: 0, zIndex: 90, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", color: "#fff", boxShadow: "0 4px 24px rgba(11,59,56,0.3)" }}>
+      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", color: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", height: 64 }}>
           <div>
             <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", letterSpacing: 0.1 }}>{title}</div>
@@ -2200,6 +2200,11 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
           </div>
         </div>
       </div>
+      {/* Curved bottom edge — gradient-filled, starts deep on left (sidebar junction), sweeps across */}
+      <svg viewBox="0 0 1200 30" preserveAspectRatio="none" style={{ display: "block", width: "100%", height: 30, marginTop: -1 }}>
+        <defs><linearGradient id="topbar-curve-grad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#0b3b38"/><stop offset="0.5" stopColor="#0f766e"/><stop offset="1" stopColor="#0b3b38"/></linearGradient></defs>
+        <path d="M0,0 C0,24 400,30 700,18 S1200,6 1200,0 Z" fill="url(#topbar-curve-grad)"/>
+      </svg>
     </div>
   );
 }
