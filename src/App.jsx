@@ -1370,15 +1370,17 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
   const [expandedRow, setExpandedRow] = useState(null);
 
   return (
-    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: "radial-gradient(ellipse 900px 600px at 0% 0%, rgba(11,59,56,0.95), transparent 60%), radial-gradient(ellipse 800px 700px at 100% 100%, rgba(15,86,80,0.6), transparent 55%), #0a2e2a", margin: "-28px -32px", padding: "28px 32px", minHeight: "calc(100vh - 94px)", borderRadius: "0" }}>
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: "#2dd4a8", textTransform: "uppercase", marginBottom: 6 }}>Site directory</div>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: C.teal, textTransform: "uppercase", marginBottom: 6 }}>Site directory</div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
-          <div style={{ fontSize: 24, fontWeight: 800, color: "#e8eaed", letterSpacing: "-0.01em" }}>{hospitals.length} sites</div>
-          <div style={{ fontSize: 13.5, color: "rgba(255,255,255,0.5)" }}>{funcCount} functional · {allOpen} open ticket{allOpen === 1 ? "" : "s"}</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.01em" }}>{hospitals.length} sites</div>
+          <div style={{ fontSize: 13.5, color: "#64748b" }}>{funcCount} functional · {allOpen} open ticket{allOpen === 1 ? "" : "s"}</div>
         </div>
       </div>
 
+      {/* Table area — dark teal background */}
+      <div style={{ background: "radial-gradient(ellipse 900px 500px at 0% 0%, rgba(11,59,56,0.9), transparent 55%), radial-gradient(ellipse 700px 600px at 100% 100%, rgba(15,86,80,0.5), transparent 50%), #0c2421", margin: "0 -32px", padding: "20px 32px 28px", borderRadius: 20 }}>
       {/* Header tile */}
       <div style={{ display: "flex", background: "rgba(255,255,255,0.06)", borderRadius: 14, padding: 0, marginBottom: 8, border: "1px solid rgba(255,255,255,0.08)", minWidth: 900 }}>
         <div style={{ flex: "0 0 40px", padding: "12px 0", textAlign: "center", fontSize: 10, fontWeight: 700, color: "#0f766e", textTransform: "uppercase", letterSpacing: 1 }}>#</div>
@@ -1476,6 +1478,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );
