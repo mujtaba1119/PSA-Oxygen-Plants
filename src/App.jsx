@@ -2150,12 +2150,12 @@ function SidebarIcon({ name, size = 20 }) {
   return paths[name] || null;
 }
 
-/* ─── Compact Vessel Animation for Sidebar (full replica of login vessel) ─── */
+/* ─── Compact Vessel Animation for Sidebar (elongated like login vessel) ─── */
 function SidebarVessel() {
-  const VW = 100, VH = 90;
+  const VW = 100, VH = 110;
   const cx = VW / 2;
-  const vW = 30, vX = cx - vW / 2;
-  const vTop = 14, vBottom = 62;
+  const vW = 22, vX = cx - vW / 2;
+  const vTop = 12, vBottom = 62;
   const inTop = vTop + 2, inBottom = vBottom - 2, inH = inBottom - inTop;
   const surfAt = (r) => inBottom + (inTop + 2 - inBottom) * r;
   const rLo = 0.4, rHi = 1;
@@ -2186,52 +2186,41 @@ function SidebarVessel() {
         </linearGradient>
         <clipPath id="sv-clip"><rect x={vX + 2} y={inTop} width={vW - 4} height={inH} rx={(vW - 4) / 2} /></clipPath>
       </defs>
-      {/* ambient halo */}
       <circle cx={cx} cy="38" fill="url(#sv-halo)">
         <animate attributeName="r" values="28;36;28" dur="6000ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
-        <animate attributeName="opacity" values="0.10;0.20;0.10" dur="6000ms" repeatCount="indefinite" />
+        <animate attributeName="opacity" values="0.08;0.18;0.08" dur="6000ms" repeatCount="indefinite" />
       </circle>
-      {/* neck + crown valve */}
-      <line x1={cx} y1={vTop} x2={cx} y2="7" stroke="rgba(255,255,255,0.5)" strokeWidth="1" strokeLinecap="round" />
-      <circle cx={cx} cy="5.5" r="3" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="1" />
-      {/* luminous column, clipped */}
+      <line x1={cx} y1={vTop} x2={cx} y2="6" stroke="rgba(255,255,255,0.5)" strokeWidth="1" strokeLinecap="round" />
+      <circle cx={cx} cy="5" r="2.5" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="0.8" />
       <g clipPath="url(#sv-clip)">
         <rect x={vX + 2} width={vW - 4} fill="url(#sv-col)">
           <animate attributeName="y" values={`${surfY_lo};${surfY_hi};${surfY_lo}`} dur="10400ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
           <animate attributeName="height" values={`${colH_lo};${colH_hi};${colH_lo}`} dur="10400ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
         </rect>
-        {/* surface meniscus */}
         <ellipse cx={cx} rx={(vW - 6) / 2} fill="#eafff9" opacity="0.85">
           <animate attributeName="cy" values={`${surfY_lo};${surfY_hi};${surfY_lo}`} dur="10400ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
-          <animate attributeName="ry" values="2;3.5;2" dur="4800ms" repeatCount="indefinite" />
+          <animate attributeName="ry" values="1.5;3;1.5" dur="4800ms" repeatCount="indefinite" />
         </ellipse>
-        {/* rising motes */}
-        <Mote mx={cx - 4} r={1.3} top={inTop + 4} bottom={inBottom - 4} dur={3400} delay={0} />
-        <Mote mx={cx + 4} r={1.6} top={inTop + 4} bottom={inBottom - 4} dur={4000} delay={1200} />
-        <Mote mx={cx} r={1} top={inTop + 4} bottom={inBottom - 4} dur={3700} delay={2200} />
+        <Mote mx={cx - 3} r={1} top={inTop + 4} bottom={inBottom - 4} dur={3400} delay={0} />
+        <Mote mx={cx + 3} r={1.3} top={inTop + 4} bottom={inBottom - 4} dur={4000} delay={1200} />
+        <Mote mx={cx} r={0.8} top={inTop + 4} bottom={inBottom - 4} dur={3700} delay={2200} />
       </g>
-      {/* glass outline */}
       <rect x={vX} y={vTop} width={vW} height={vBottom - vTop} rx={vW / 2} fill="none" stroke="url(#sv-glass)" strokeWidth="1.2" />
-      {/* specular highlight */}
-      <line x1={vX + 4} y1={vTop + 8} x2={vX + 4} y2={vBottom - 8} stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" strokeLinecap="round" />
-      {/* measurement scale */}
-      <line x1={vX - 6} y1={inTop} x2={vX - 6} y2={inBottom} stroke="rgba(255,255,255,0.18)" strokeWidth="0.7" />
-      <line x1={vX - 8} y1={inTop} x2={vX - 4} y2={inTop} stroke="rgba(255,255,255,0.18)" strokeWidth="0.7" />
-      <line x1={vX - 7} y1={inTop + inH * 0.5} x2={vX - 5} y2={inTop + inH * 0.5} stroke="rgba(255,255,255,0.15)" strokeWidth="0.7" />
-      <line x1={vX - 8} y1={inBottom} x2={vX - 4} y2={inBottom} stroke="rgba(255,255,255,0.18)" strokeWidth="0.7" />
-      {/* level marker */}
-      <circle cx={vX - 6} r="1.5" fill="#5eead4">
+      <line x1={vX + 3.5} y1={vTop + 6} x2={vX + 3.5} y2={vBottom - 6} stroke="rgba(255,255,255,0.3)" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1={vX - 5} y1={inTop} x2={vX - 5} y2={inBottom} stroke="rgba(255,255,255,0.15)" strokeWidth="0.6" />
+      <line x1={vX - 7} y1={inTop} x2={vX - 3} y2={inTop} stroke="rgba(255,255,255,0.15)" strokeWidth="0.6" />
+      <line x1={vX - 6} y1={inTop + inH * 0.5} x2={vX - 4} y2={inTop + inH * 0.5} stroke="rgba(255,255,255,0.12)" strokeWidth="0.6" />
+      <line x1={vX - 7} y1={inBottom} x2={vX - 3} y2={inBottom} stroke="rgba(255,255,255,0.15)" strokeWidth="0.6" />
+      <circle cx={vX - 5} r="1.5" fill="#5eead4">
         <animate attributeName="cy" values={`${surfY_lo};${surfY_hi};${surfY_lo}`} dur="10400ms" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1;0.4 0 0.6 1" keyTimes="0;0.5;1" />
       </circle>
-      {/* pedestal */}
-      <line x1={cx - 14} y1="68" x2={cx + 14} y2="68" stroke="rgba(255,255,255,0.3)" strokeWidth="0.8" strokeLinecap="round" />
-      <line x1={vX + 4} y1={vBottom} x2={cx - 9} y2="68" stroke="rgba(255,255,255,0.22)" strokeWidth="0.8" />
-      <line x1={vX + vW - 4} y1={vBottom} x2={cx + 9} y2="68" stroke="rgba(255,255,255,0.22)" strokeWidth="0.8" />
-      {/* reflection */}
-      <ellipse cx={cx} cy="72" rx="14" ry="3" fill="#5eead4" opacity="0.08" />
-      {/* atmosphere particles */}
-      <Mote mx={cx - 22} r={1} top={16} bottom={56} dur={6000} delay={0} color="rgba(94,234,212,0.4)" />
-      <Mote mx={cx + 24} r={1.2} top={14} bottom={56} dur={7000} delay={1500} color="rgba(94,234,212,0.35)" />
+      <line x1={cx - 12} y1="68" x2={cx + 12} y2="68" stroke="rgba(255,255,255,0.25)" strokeWidth="0.7" strokeLinecap="round" />
+      <line x1={vX + 3} y1={vBottom} x2={cx - 8} y2="68" stroke="rgba(255,255,255,0.18)" strokeWidth="0.7" />
+      <line x1={vX + vW - 3} y1={vBottom} x2={cx + 8} y2="68" stroke="rgba(255,255,255,0.18)" strokeWidth="0.7" />
+      <ellipse cx={cx} cy="72" rx="12" ry="2.5" fill="#5eead4" opacity="0.06" />
+      <Mote mx={cx - 28} r={1} top={14} bottom={56} dur={6000} delay={0} color="rgba(94,234,212,0.35)" />
+      <Mote mx={cx + 30} r={1.2} top={12} bottom={56} dur={7000} delay={1500} color="rgba(94,234,212,0.3)" />
+      <Mote mx={cx - 36} r={0.8} top={20} bottom={50} dur={5400} delay={3000} color="rgba(94,234,212,0.25)" />
     </svg>
   );
 }
@@ -2288,33 +2277,30 @@ function SidebarNav({ items, active, onSelect, bottomItems }) {
   );
 }
 
-/* ─── Top Bar (teal gradient — sticky on scroll, with breadcrumb + search) ─── */
+/* ─── Top Bar (teal gradient — sticky, dark on both ends, modern) ─── */
 function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, children }) {
   return (
-    <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", fontFamily: "'DM Sans', system-ui, sans-serif", color: "#fff", position: "sticky", top: 0, zIndex: 90, boxShadow: "0 2px 16px rgba(11,59,56,0.35)" }}>
+    <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", fontFamily: "'DM Sans', system-ui, sans-serif", color: "#fff", position: "sticky", top: 0, zIndex: 90 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", height: 64 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: "#fff", letterSpacing: 0.5 }}>{title}</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 2 }}>{subtitle}</div>
-          </div>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", letterSpacing: 0.3 }}>{title}</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 2 }}>{subtitle}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {children}
-          <button className="refresh-btn" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", transition: "background 0.15s" }}>
+          <button className="refresh-btn" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", transition: "background 0.15s" }}>
             <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             <span className="refresh-label" style={{ display: refreshing ? "none" : undefined }}>Refresh</span>
             {refreshing && <svg className="refresh-icon-desktop spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
           </button>
-          <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.15)", margin: "0 4px" }} />
-          <button title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 12px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", transition: "background 0.15s" }}>
+          <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.1)", margin: "0 2px" }} />
+          <button title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 12px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", transition: "background 0.15s" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             <span className="refresh-label">Sign out</span>
           </button>
         </div>
       </div>
-      {/* Accent line */}
-      <div style={{ height: 2, background: "linear-gradient(90deg, rgba(94,234,212,0) 0%, rgba(94,234,212,0.4) 30%, rgba(94,234,212,0.6) 50%, rgba(94,234,212,0.4) 70%, rgba(94,234,212,0) 100%)" }} />
+      <div style={{ height: 1, background: "linear-gradient(90deg, rgba(94,234,212,0) 0%, rgba(94,234,212,0.5) 50%, rgba(94,234,212,0) 100%)" }} />
     </div>
   );
 }
@@ -2352,11 +2338,11 @@ function AnalyticsPage() {
 
 /* ─── Sidebar Styles ─── */
 const sidebarStyles = {
-  nav: { background: "linear-gradient(180deg, #0b3b38 0%, #0a3533 30%, #0f766e 100%)", display: "flex", flexDirection: "column", padding: 0, alignItems: "stretch", width: 180, minHeight: "100vh", position: "fixed", top: 0, left: 0, zIndex: 100, fontFamily: "'DM Sans', system-ui, sans-serif" },
+  nav: { background: "linear-gradient(180deg, #0b3b38 0%, #0a3533 40%, #0f766e 100%)", display: "flex", flexDirection: "column", padding: 0, alignItems: "stretch", width: 180, minHeight: "100vh", position: "fixed", top: 0, left: 0, zIndex: 100, fontFamily: "'DM Sans', system-ui, sans-serif", borderRight: "1px solid rgba(94,234,212,0.08)", boxShadow: "4px 0 24px rgba(11,59,56,0.25)" },
   items: { display: "flex", flexDirection: "column", gap: 1, padding: "4px 8px" },
   item: { display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, cursor: "pointer", transition: "background 0.15s", position: "relative" },
   itemActive: { background: "rgba(255,255,255,0.1)" },
-  divider: { height: 1, background: "rgba(255,255,255,0.08)", margin: "8px 16px" },
+  divider: { height: 1, background: "rgba(255,255,255,0.06)", margin: "8px 16px" },
 };
 function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRefresh, onLogout }) {
   const [tab, setTab] = useState("dashboard"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
