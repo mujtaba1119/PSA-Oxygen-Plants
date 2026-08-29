@@ -1381,11 +1381,11 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
         {/* Header */}
         <div style={{ display: "flex", borderBottom: "1px solid #e5e5e0", background: "#fafaf7", minWidth: 900 }}>
           <div style={{ flex: "0 0 48px", padding: "13px 0", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5 }}>#</div>
-          <div style={{ flex: "1 1 220px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5 }}>Site Name</div>
-          <div style={{ flex: "0 0 150px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5 }}>Service Provider</div>
-          <div style={{ flex: "0 0 140px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5 }}>Status</div>
-          <div style={{ flex: "1 1 200px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5 }}>Open Tickets</div>
-          <div style={{ flex: "1 1 200px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5 }}>Equipment / Notes</div>
+          <div style={{ flex: "1 1 220px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5, textAlign: "center" }}>Site Name</div>
+          <div style={{ flex: "0 0 150px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5, textAlign: "center" }}>Service Provider</div>
+          <div style={{ flex: "0 0 140px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5, textAlign: "center" }}>Status</div>
+          <div style={{ flex: "1 1 200px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5, textAlign: "center" }}>Open Tickets</div>
+          <div style={{ flex: "1 1 200px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5, textAlign: "center" }}>Equipment / Notes</div>
         </div>
         {/* Rows */}
         {sortedHospitals.map((h, i) => {
@@ -1395,43 +1395,44 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
             <div key={h}>
               <div onClick={() => setExpandedRow(expandedRow === h ? null : h)} style={{ display: "flex", alignItems: "center", borderBottom: "1px solid #f0f0ec", cursor: "pointer", transition: "background 0.12s", minWidth: 900 }} onMouseEnter={e => e.currentTarget.style.background = "#fafaf7"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                 <div style={{ flex: "0 0 48px", padding: "14px 0", textAlign: "center", fontSize: 12, fontWeight: 500, color: "#b0b5ba" }}>{i + 1}</div>
-                <div style={{ flex: "1 1 220px", padding: "14px 16px", fontSize: 13.5, fontWeight: 600, color: "#1a1d21" }}>{displayName(h)}</div>
-                <div style={{ flex: "0 0 150px", padding: "14px 16px", fontSize: 13, fontWeight: 400, color: "#5f6b7a" }}>{getProvider(h)}</div>
-                <div style={{ flex: "0 0 140px", padding: "14px 16px" }}>
-                  {isAdmin ? (
-                    statusEditing === h ? (
-                      <select style={{ fontSize: 12, padding: "4px 8px", borderRadius: 6, border: "1px solid #e5e5e0", background: "#fff", color: "#1a1d21" }} value={getSiteBaseStatus(h, siteNotes)} onChange={e => handleStatusChange(h, e.target.value)}>
+                <div style={{ flex: "1 1 220px", padding: "14px 16px", fontSize: 13.5, fontWeight: 600, color: "#1a1d21", textAlign: "center" }}>{displayName(h)}</div>
+                <div style={{ flex: "0 0 150px", padding: "14px 16px", fontSize: 13, fontWeight: 400, color: "#5f6b7a", textAlign: "center" }}>{getProvider(h)}</div>
+                <div style={{ flex: "0 0 140px", padding: "14px 16px", textAlign: "center" }}>
+                  {(() => {
+                    const statusMeta = {
+                      "Fully Functional": { label: "Functional", color: "#16a34a", dot: "#16a34a" },
+                      "Issues": { label: "Functional", color: "#b7920a", dot: "#b7920a" },
+                      "Non Functional": { label: "Non Functional", color: "#64748b", dot: "#94a3b8" },
+                      "Shut Down": { label: "Shut Down", color: "#7f1d1d", dot: "#7f1d1d" },
+                    };
+                    const m = statusMeta[siteStatus] || statusMeta["Non Functional"];
+                    const badge = (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 600, color: m.color }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: m.dot, flexShrink: 0 }} />
+                        {m.label}
+                      </span>
+                    );
+                    if (isAdmin && statusEditing === h) {
+                      return (<select style={{ fontSize: 12, padding: "4px 8px", borderRadius: 6, border: "1px solid #e5e5e0", background: "#fff", color: "#1a1d21" }} value={getSiteBaseStatus(h, siteNotes)} onChange={e => handleStatusChange(h, e.target.value)}>
                         <option value="Fully Functional">Fully Functional</option>
                         <option value="Non Functional">Non Functional</option>
                         <option value="Shut Down">Shut Down</option>
-                      </select>
-                    ) : (
-                      <div onClick={e => { e.stopPropagation(); setStatusEditing(h); }}>
-                        {siteStatus === "Fully Functional" && <span style={{ fontSize: 12.5, fontWeight: 600, color: "#16a34a" }}>Functional</span>}
-                        {siteStatus === "Issues" && <span style={{ fontSize: 12.5, fontWeight: 600, color: "#d97706" }}>Issues</span>}
-                        {siteStatus === "Non Functional" && <span style={{ fontSize: 12.5, fontWeight: 600, color: "#64748b" }}>Non Functional</span>}
-                        {siteStatus === "Shut Down" && <span style={{ fontSize: 12.5, fontWeight: 600, color: "#7f1d1d" }}>Shut Down</span>}
-                      </div>
-                    )
-                  ) : (
-                    <div>
-                      {siteStatus === "Fully Functional" && <span style={{ fontSize: 12.5, fontWeight: 600, color: "#16a34a" }}>Functional</span>}
-                      {siteStatus === "Issues" && <span style={{ fontSize: 12.5, fontWeight: 600, color: "#d97706" }}>Issues</span>}
-                      {siteStatus === "Non Functional" && <span style={{ fontSize: 12.5, fontWeight: 600, color: "#64748b" }}>Non Functional</span>}
-                      {siteStatus === "Shut Down" && <span style={{ fontSize: 12.5, fontWeight: 600, color: "#7f1d1d" }}>Shut Down</span>}
-                    </div>
-                  )}
+                      </select>);
+                    }
+                    if (isAdmin) return <div onClick={e => { e.stopPropagation(); setStatusEditing(h); }}>{badge}</div>;
+                    return badge;
+                  })()}
                 </div>
-                <div style={{ flex: "1 1 200px", padding: "14px 16px" }}>
+                <div style={{ flex: "1 1 200px", padding: "14px 16px", textAlign: "center" }}>
                   {open.length > 0 ? (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "center" }}>
                       {open.map(c => (
                         <span key={c.id} style={{ fontSize: 11.5, fontWeight: 500, color: "#5f6b7a", background: "#f4f4f0", padding: "3px 10px", borderRadius: 6 }}>{c.title.length > 28 ? c.title.slice(0, 28) + "\u2026" : c.title}</span>
                       ))}
                     </div>
                   ) : <span style={{ fontSize: 12, color: "#c4c8cc" }}>—</span>}
                 </div>
-                <div style={{ flex: "1 1 200px", padding: "14px 16px" }}>
+                <div style={{ flex: "1 1 200px", padding: "14px 16px", textAlign: "center" }}>
                   {(() => {
                     const noteKey = open.length > 0 ? open[0].id : null;
                     const cNote = noteKey ? getNoteForComplaint(h, noteKey) : (getNotesMap(h)._site || "");
@@ -1443,8 +1444,8 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                           <button style={{ ...styles.pwCancelBtn, fontSize: 10 }} onClick={() => setEditingNote(null)}>✕</button>
                         </div>);
                       }
-                      return (<div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontSize: 12.5, color: cNote ? "#5f6b7a" : "#c4c8cc", flex: 1 }}>{cNote || "—"}</span>
+                      return (<div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
+                        <span style={{ fontSize: 12.5, color: cNote ? "#5f6b7a" : "#c4c8cc" }}>{cNote || "—"}</span>
                         <button style={{ fontSize: 10.5, color: "#0d9488", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }} onClick={e => { e.stopPropagation(); setEditingNote(noteKey || h); setNoteText(cNote); }}>edit</button>
                       </div>);
                     }
