@@ -2201,7 +2201,7 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
         </div>
         {/* Curve cutout — fills with content bg color, sits inside the gradient div. No seam possible. */}
         <svg viewBox="0 0 1200 36" preserveAspectRatio="none" style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: 36, display: "block" }}>
-          <path d="M0,36 L0,18 C200,0 500,8 750,22 C1000,36 1200,34 1200,36 Z" fill="#f7f8fa"/>
+          <path d="M0,18 C200,36 500,28 750,14 C1000,0 1200,2 1200,0 L1200,36 L0,36 Z" fill="#f7f8fa"/>
         </svg>
       </div>
     </div>
