@@ -2203,7 +2203,7 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
       {/* Curved bottom edge — gradient-filled, starts deep on left (sidebar junction), sweeps across */}
       <svg viewBox="0 0 1200 30" preserveAspectRatio="none" style={{ display: "block", width: "100%", height: 30, marginTop: -1 }}>
         <defs><linearGradient id="topbar-curve-grad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#0b3b38"/><stop offset="0.5" stopColor="#0f766e"/><stop offset="1" stopColor="#0b3b38"/></linearGradient></defs>
-        <path d="M0,0 C0,24 400,30 700,18 S1200,6 1200,0 Z" fill="url(#topbar-curve-grad)"/>
+        <path d="M0,0 L0,18 C200,36 500,28 750,14 C1000,0 1200,2 1200,0 Z" fill="url(#topbar-curve-grad)"/>
       </svg>
     </div>
   );
