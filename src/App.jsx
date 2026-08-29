@@ -1274,15 +1274,15 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
           { label: "Resolved this week", value: resolvedThisWeek.length, tag: "Last 7 days", tagType: "green", accent: "#27ae60" },
           { label: "Attention needed", value: attentionSites.length, tag: issueSites.length > 0 ? `${issueSites.length} with issues` : null, tagType: "amber", accent: "#b7791f" },
         ].map((card, i) => (
-          <div key={i} style={{ background: "#fff", borderRadius: 14, padding: "20px 20px 18px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)", borderLeft: `3px solid ${card.accent}`, transition: "box-shadow 0.2s, transform 0.2s" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(15,118,110,0.1), 0 8px 24px rgba(15,23,25,0.06)"; e.currentTarget.style.transform = "translateY(-1px)"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)"; e.currentTarget.style.transform = "none"; }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>{card.label}</div>
+          <div key={i} style={{ background: "rgba(255,255,255,0.04)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 16, padding: "20px 20px 18px", border: "1px solid rgba(94,234,212,0.08)", borderLeft: `3px solid ${card.accent}`, transition: "box-shadow 0.2s, transform 0.2s" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 2px 12px rgba(94,234,212,0.08), 0 8px 24px rgba(0,0,0,0.2)"; e.currentTarget.style.transform = "translateY(-1px)"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = ""; e.currentTarget.style.transform = "none"; }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>{card.label}</div>
             <div style={{ fontSize: 28, fontWeight: 800, color: "#111", letterSpacing: "-0.03em", lineHeight: 1 }}>
-              {card.value}{card.sub && <span style={{ fontSize: 16, fontWeight: 500, color: "#aaa", marginLeft: 4 }}>{card.sub}</span>}
+              {card.value}{card.sub && <span style={{ fontSize: 16, fontWeight: 500, color: "rgba(255,255,255,0.3)", marginLeft: 4 }}>{card.sub}</span>}
             </div>
             {card.tag && (
               <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, marginTop: 10, padding: "3px 10px", borderRadius: 20,
-                background: card.tagType === "green" ? "#e8f5e9" : card.tagType === "red" ? "#fce8e8" : "#fff8e1",
-                color: card.tagType === "green" ? "#1b5e20" : card.tagType === "red" ? "#b71c1c" : "#7c6300" }}>
+                background: card.tagType === "green" ? "rgba(34,197,94,0.12)" : card.tagType === "red" ? "rgba(239,68,68,0.12)" : "rgba(245,158,11,0.12)",
+                color: card.tagType === "green" ? "#4ade80" : card.tagType === "red" ? "#f87171" : "#fbbf24" }}>
                 <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor" }} />
                 {card.tag}
               </div>
@@ -1347,39 +1347,39 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
 
         {/* Side Panel: Attention + Pipeline */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ background: "#fff", borderRadius: 14, padding: "18px 18px 14px", flex: 1, overflowY: "auto", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#8a9199", textTransform: "uppercase", marginBottom: 12 }}>Needs attention</div>
+          <div style={{ background: "rgba(255,255,255,0.03)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(94,234,212,0.06)", borderRadius: 16, padding: "18px 18px 14px", flex: 1, overflowY: "auto", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", marginBottom: 12 }}>Needs attention</div>
             {attentionSites.length > 0 ? attentionSites.map(h => {
               const s = getSiteDisplayStatus(h, complaints, siteNotes);
               const isDown = s === "Shut Down";
               const isNonFunc = s === "Non Functional";
               const dotColor = isDown ? "#c0392b" : isNonFunc ? "#868e96" : "#d9822b";
               return (
-                <div key={h} onClick={() => onViewSite(h)} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, marginBottom: 2, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "#f0fdfa"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                <div key={h} onClick={() => onViewSite(h)} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, marginBottom: 2, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(94,234,212,0.05)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, flexShrink: 0, boxShadow: `0 0 0 3px ${dotColor}22` }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#111", flex: 1 }}>{h}</span>
-                  <span style={{ fontSize: 10.5, color: "#8a9199", fontWeight: 500 }}>{s}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", flex: 1 }}>{h}</span>
+                  <span style={{ fontSize: 10.5, color: "rgba(255,255,255,0.35)", fontWeight: 500 }}>{s}</span>
                 </div>
               );
-            }) : <div style={{ fontSize: 13, color: "#8a9199", padding: "12px 0" }}>All sites operational</div>}
+            }) : <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", padding: "12px 0" }}>All sites operational</div>}
           </div>
-          <div style={{ background: "#fff", borderRadius: 14, padding: "18px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#8a9199", textTransform: "uppercase", marginBottom: 12 }}>Ticket pipeline</div>
+          <div style={{ background: "rgba(255,255,255,0.03)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(94,234,212,0.06)", borderRadius: 16, padding: "18px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", marginBottom: 12 }}>Ticket pipeline</div>
             {scoped.length > 0 ? (<>
-              <div style={{ display: "flex", height: 10, borderRadius: 6, overflow: "hidden", background: "#eef0f2", marginBottom: 12 }}>
+              <div style={{ display: "flex", height: 10, borderRadius: 6, overflow: "hidden", background: "rgba(255,255,255,0.06)", marginBottom: 12 }}>
                 {STAGE_META.filter(s => stageCounts[s.key] > 0).map(s => (
                   <div key={s.key} style={{ flex: `${stageCounts[s.key]} 0 0%`, background: s.color, transition: "flex 0.3s" }} />
                 ))}
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {STAGE_META.map(s => (
-                  <span key={s.key} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555", padding: "3px 8px", background: "#f7f8f9", borderRadius: 8 }}>
+                  <span key={s.key} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(255,255,255,0.5)", padding: "3px 8px", background: "rgba(255,255,255,0.06)", borderRadius: 8 }}>
                     <span style={{ width: 7, height: 7, borderRadius: "50%", background: s.color }} />
                     <strong style={{ color: "#111" }}>{stageCounts[s.key]}</strong> {statusLabel(s.key)}
                   </span>
                 ))}
               </div>
-            </>) : <div style={{ fontSize: 13, color: "#8a9199" }}>No tickets yet</div>}
+            </>) : <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>No tickets yet</div>}
           </div>
         </div>
       </div>
@@ -1387,8 +1387,8 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
       {/* Bottom: Provider breakdown + Recent activity */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         {showProviderBreakdown && (
-          <div style={{ background: "#fff", borderRadius: 14, padding: "20px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#8a9199", textTransform: "uppercase", marginBottom: 16 }}>By service provider</div>
+          <div style={{ background: "rgba(255,255,255,0.03)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(94,234,212,0.06)", borderRadius: 16, padding: "20px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", marginBottom: 16 }}>By service provider</div>
             {(() => {
               const rows = providerEntries.map(([provider, sites]) => {
                 const providerSites = sites.filter(s => hospitals.includes(s));
@@ -1399,34 +1399,34 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
               return rows.map(r => (
                 <div key={r.provider} style={{ marginBottom: 14 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>{r.provider}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>{r.provider}</span>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <span style={{ fontSize: 11, color: "#8a9199" }}>{r.siteCount} sites</span>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{r.siteCount} sites</span>
                       {r.openCount > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#d9822b" }}>{r.openCount} open</span>}
                     </div>
                   </div>
-                  <div style={{ height: 6, borderRadius: 3, background: "#eef0f2", overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${(r.siteCount / maxSites) * 100}%`, borderRadius: 3, background: "linear-gradient(90deg, #0f766e, #14b8a6)", transition: "width 0.4s ease" }} />
+                  <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${(r.siteCount / maxSites) * 100}%`, borderRadius: 3, background: "linear-gradient(90deg, #0f766e, #14b8a6)", boxShadow: "0 0 8px rgba(20,184,166,0.3)", transition: "width 0.4s ease" }} />
                   </div>
                 </div>
               ));
             })()}
           </div>
         )}
-        <div style={{ background: "#fff", borderRadius: 14, padding: "20px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#8a9199", textTransform: "uppercase", marginBottom: 16 }}>Recent activity</div>
+        <div style={{ background: "rgba(255,255,255,0.03)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(94,234,212,0.06)", borderRadius: 16, padding: "20px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", marginBottom: 16 }}>Recent activity</div>
           {resolvedThisWeek.length > 0 ? resolvedThisWeek.map((c, i) => (
-            <div key={c.id} onClick={() => onViewSite(c.hospital)} style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 10px", borderRadius: 10, marginBottom: 2, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "#f0fdfa"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+            <div key={c.id} onClick={() => onViewSite(c.hospital)} style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 10px", borderRadius: 10, marginBottom: 2, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(94,234,212,0.05)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
               <div style={{ position: "relative", flexShrink: 0, paddingTop: 2 }}>
-                <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#27ae60", display: "block", boxShadow: "0 0 0 3px #27ae6022" }} />
-                {i < resolvedThisWeek.length - 1 && <div style={{ position: "absolute", left: 4, top: 14, width: 2, height: 28, background: "#e8ebeb" }} />}
+                <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#27ae60", display: "block", boxShadow: "0 0 6px rgba(34,197,94,0.4)" }} />
+                {i < resolvedThisWeek.length - 1 && <div style={{ position: "absolute", left: 4, top: 14, width: 2, height: 28, background: "rgba(255,255,255,0.06)" }} />}
               </div>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>{c.title}</div>
-                <div style={{ fontSize: 11, color: "#8a9199", marginTop: 2 }}>{c.hospital} · {c.resolved_at ? new Date(c.resolved_at).toLocaleDateString() : ""}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{c.hospital} · {c.resolved_at ? new Date(c.resolved_at).toLocaleDateString() : ""}</div>
               </div>
             </div>
-          )) : <div style={{ fontSize: 13, color: "#8a9199", padding: "12px 0" }}>No recent resolutions</div>}
+          )) : <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", padding: "12px 0" }}>No recent resolutions</div>}
         </div>
       </div>
     </div>
@@ -2278,30 +2278,30 @@ function SidebarNav({ items, active, onSelect, bottomItems }) {
   );
 }
 
-/* ─── Top Bar (teal gradient — sticky, dark on both ends, modern) ─── */
+/* ─── Top Bar (glassmorphism — sticky, frosted glass) ─── */
 function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, children }) {
   return (
-    <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", fontFamily: "'DM Sans', system-ui, sans-serif", color: "#fff", position: "sticky", top: 0, zIndex: 90 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", height: 64 }}>
+    <div style={{ background: "rgba(11,59,56,0.5)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", fontFamily: "'DM Sans', system-ui, sans-serif", color: "#fff", position: "sticky", top: 0, zIndex: 90, borderBottom: "1px solid rgba(94,234,212,0.06)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", height: 60 }}>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", letterSpacing: 0.3 }}>{title}</div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 2 }}>{subtitle}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#fff", letterSpacing: 0.2 }}>{title}</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 2 }}>{subtitle}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {children}
-          <button className="refresh-btn" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", transition: "background 0.15s" }}>
+          <button className="refresh-btn" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "rgba(94,234,212,0.06)", border: "1px solid rgba(94,234,212,0.1)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", transition: "all 0.2s", backdropFilter: "blur(8px)" }}>
             <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             <span className="refresh-label" style={{ display: refreshing ? "none" : undefined }}>Refresh</span>
             {refreshing && <svg className="refresh-icon-desktop spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
           </button>
-          <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.1)", margin: "0 2px" }} />
-          <button title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 12px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", transition: "background 0.15s" }}>
+          <div style={{ width: 1, height: 20, background: "rgba(94,234,212,0.1)", margin: "0 2px" }} />
+          <button title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "rgba(94,234,212,0.06)", border: "1px solid rgba(94,234,212,0.1)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 12px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", transition: "all 0.2s", backdropFilter: "blur(8px)" }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             <span className="refresh-label">Sign out</span>
           </button>
         </div>
       </div>
-      <div style={{ height: 1, background: "linear-gradient(90deg, rgba(94,234,212,0) 0%, rgba(94,234,212,0.5) 50%, rgba(94,234,212,0) 100%)" }} />
+      <div style={{ height: 1, background: "linear-gradient(90deg, transparent, rgba(94,234,212,0.3), transparent)" }} />
     </div>
   );
 }
@@ -2339,11 +2339,11 @@ function AnalyticsPage() {
 
 /* ─── Sidebar Styles ─── */
 const sidebarStyles = {
-  nav: { background: "linear-gradient(180deg, #0b3b38 0%, #0a3533 40%, #0f766e 100%)", display: "flex", flexDirection: "column", padding: 0, alignItems: "stretch", width: 180, minHeight: "100vh", position: "fixed", top: 0, left: 0, zIndex: 100, fontFamily: "'DM Sans', system-ui, sans-serif", borderRight: "1px solid rgba(94,234,212,0.08)", boxShadow: "4px 0 24px rgba(11,59,56,0.25)" },
-  items: { display: "flex", flexDirection: "column", gap: 1, padding: "4px 8px" },
-  item: { display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, cursor: "pointer", transition: "background 0.15s", position: "relative" },
-  itemActive: { background: "rgba(255,255,255,0.1)" },
-  divider: { height: 1, background: "rgba(255,255,255,0.06)", margin: "8px 16px" },
+  nav: { background: "rgba(11,59,56,0.6)", backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)", display: "flex", flexDirection: "column", padding: 0, alignItems: "stretch", width: 180, minHeight: "100vh", position: "fixed", top: 0, left: 0, zIndex: 100, fontFamily: "'DM Sans', system-ui, sans-serif", borderRight: "1px solid rgba(94,234,212,0.08)" },
+  items: { display: "flex", flexDirection: "column", gap: 2, padding: "4px 8px" },
+  item: { display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, cursor: "pointer", transition: "all 0.2s", position: "relative" },
+  itemActive: { background: "rgba(94,234,212,0.1)", border: "1px solid rgba(94,234,212,0.12)" },
+  divider: { height: 1, background: "rgba(94,234,212,0.06)", margin: "8px 16px" },
 };
 
 /* ─── Equipment Data (36 sites × 15 equipment types, from Excel inventory) ─── */
@@ -2371,8 +2371,8 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111", margin: 0, letterSpacing: -0.3 }}>{displayName(selectedSite)}</h2>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
             <SiteStatusBadge status={siteStatus} />
-            <span style={{ fontSize: 12, color: "#8a9199" }}>{getProvider(selectedSite)}</span>
-            <span style={{ fontSize: 12, color: "#8a9199" }}>{Object.keys(equip).length} equipment</span>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{getProvider(selectedSite)}</span>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{Object.keys(equip).length} equipment</span>
             {siteComplaints.length > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#c0392b", background: "#fce8e8", padding: "2px 10px", borderRadius: 20 }}>{siteComplaints.length} open</span>}
           </div>
         </div>
@@ -2386,13 +2386,13 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
               {catItems.map(item => (
                 <div key={item.key} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", borderLeft: `3px solid ${gc.border}`, boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "#111", marginBottom: 6 }}>{item.label}</div>
-                  <div style={{ fontSize: 12, color: "#8a9199" }}>SN: <span style={{ color: C.tealDark, fontWeight: 700, fontFamily: "monospace" }}>{equip[item.key]}</span></div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>SN: <span style={{ color: C.tealDark, fontWeight: 700, fontFamily: "monospace" }}>{equip[item.key]}</span></div>
                 </div>
               ))}
             </div>
           </div>);
         })}
-        {Object.keys(equip).length === 0 && <div style={{ textAlign: "center", padding: "60px 24px", color: "#8a9199", fontSize: 14 }}>No equipment data available for this site.</div>}
+        {Object.keys(equip).length === 0 && <div style={{ textAlign: "center", padding: "60px 24px", color: "rgba(255,255,255,0.35)", fontSize: 14 }}>No equipment data available for this site.</div>}
       </div>
     );
   }
@@ -2401,7 +2401,7 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#8a9199", textTransform: "uppercase", marginBottom: 4 }}>Equipment inventory</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", marginBottom: 4 }}>Equipment inventory</div>
           <div style={{ fontSize: 13, color: "#555" }}>{ALL_HOSPITALS.length} sites · {Object.values(EQUIPMENT_DATA).reduce((s, e) => s + Object.keys(e).length, 0)} registered equipment</div>
         </div>
         <input style={{ padding: "8px 14px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", width: 220, background: "#fff", color: "#111" }} placeholder="Search sites..." value={search} onChange={e => setSearch(e.target.value)} onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.tealLight} />
@@ -2410,12 +2410,12 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
         {Object.entries(GROUPS).map(([provider, sites]) => sites.filter(s => filtered.includes(s)).map(h => {
           const equip = EQUIPMENT_DATA[h] || {}; const equipCount = Object.keys(equip).length;
           const status = getSiteDisplayStatus(h, complaints, siteNotes);
-          return (<div key={h} onClick={() => setSelectedSite(h)} style={{ background: "#fff", borderRadius: 14, padding: "18px 20px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)", cursor: "pointer", transition: "box-shadow 0.2s, transform 0.2s", borderLeft: `3px solid ${status === "Shut Down" ? "#c0392b" : status === "Non Functional" ? "#868e96" : "#0d9488"}` }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(15,118,110,0.12), 0 8px 24px rgba(15,23,25,0.06)"; e.currentTarget.style.transform = "translateY(-2px)"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)"; e.currentTarget.style.transform = "none"; }}>
+          return (<div key={h} onClick={() => setSelectedSite(h)} style={{ background: "#fff", borderRadius: 14, padding: "18px 20px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)", cursor: "pointer", transition: "box-shadow 0.2s, transform 0.2s", borderLeft: `3px solid ${status === "Shut Down" ? "#c0392b" : status === "Non Functional" ? "#868e96" : "#0d9488"}` }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(15,118,110,0.12), 0 8px 24px rgba(15,23,25,0.06)"; e.currentTarget.style.transform = "translateY(-2px)"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = ""; e.currentTarget.style.transform = "none"; }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div><div style={{ fontSize: 15, fontWeight: 700, color: "#111", marginBottom: 4 }}>{displayName(h)}</div><div style={{ fontSize: 11, color: "#8a9199" }}>{provider}</div></div>
+              <div><div style={{ fontSize: 15, fontWeight: 700, color: "#111", marginBottom: 4 }}>{displayName(h)}</div><div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{provider}</div></div>
               <SiteStatusBadge status={status} />
             </div>
-            <div style={{ display: "flex", gap: 16, marginTop: 12, fontSize: 11, color: "#555" }}>
+            <div style={{ display: "flex", gap: 16, marginTop: 12, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: equipCount > 0 ? "#0d9488" : "#ccc" }} />{equipCount} equipment</span>
               <span style={{ color: "#0d9488", fontWeight: 600 }}>View inventory &rarr;</span>
             </div>
@@ -2551,9 +2551,12 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <style>{`
-        
-        .sb-item:hover { background: rgba(255,255,255,0.06) !important; }
+        .sb-item:hover { background: rgba(94,234,212,0.06) !important; }
         .sb-item:hover span { color: rgba(255,255,255,0.85) !important; }
+        .glass-mesh-bg::before { content: ''; position: fixed; inset: 0; z-index: -1; background: radial-gradient(ellipse 600px 400px at 10% 20%, rgba(15,118,110,0.35), transparent), radial-gradient(ellipse 500px 500px at 80% 70%, rgba(20,184,166,0.2), transparent), radial-gradient(ellipse 400px 300px at 50% 40%, rgba(13,148,136,0.15), transparent); pointer-events: none; }
+        .glass-card { background: rgba(255,255,255,0.04) !important; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(94,234,212,0.08) !important; }
+        .glass-card:hover { background: rgba(255,255,255,0.06) !important; border-color: rgba(94,234,212,0.15) !important; }
+        .tb-glass:hover { background: rgba(94,234,212,0.12) !important; border-color: rgba(94,234,212,0.2) !important; }
         @keyframes refresh-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .spinning { animation: refresh-spin 0.7s linear infinite; transform-origin: center; }
         @media (max-width: 768px) {
@@ -2562,7 +2565,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} bottomItems={NAV_BOTTOM} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f4f6f7", minHeight: "100vh" }}>
+      <div className="main-area glass-mesh-bg" style={{ flex: 1, marginLeft: 180, background: "#071a18", minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${ALL_HOSPITALS.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
         </TopBar>
@@ -2823,9 +2826,11 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <style>{`
-        
-        .sb-item:hover { background: rgba(255,255,255,0.06) !important; }
+        .sb-item:hover { background: rgba(94,234,212,0.06) !important; }
         .sb-item:hover span { color: rgba(255,255,255,0.85) !important; }
+        .glass-mesh-bg::before { content: ''; position: fixed; inset: 0; z-index: -1; background: radial-gradient(ellipse 600px 400px at 10% 20%, rgba(15,118,110,0.35), transparent), radial-gradient(ellipse 500px 500px at 80% 70%, rgba(20,184,166,0.2), transparent), radial-gradient(ellipse 400px 300px at 50% 40%, rgba(13,148,136,0.15), transparent); pointer-events: none; }
+        .glass-card { background: rgba(255,255,255,0.04) !important; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(94,234,212,0.08) !important; }
+        .glass-card:hover { background: rgba(255,255,255,0.06) !important; border-color: rgba(94,234,212,0.15) !important; }
         @keyframes refresh-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .spinning { animation: refresh-spin 0.7s linear infinite; transform-origin: center; }
         @media (max-width: 768px) {
@@ -2834,7 +2839,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f4f6f7", minHeight: "100vh" }}>
+      <div className="main-area glass-mesh-bg" style={{ flex: 1, marginLeft: 180, background: "#071a18", minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${myHospitals.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
         </TopBar>
