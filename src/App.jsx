@@ -1266,39 +1266,34 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
 
   return (
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      {/* 4 Stat Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginBottom: 20 }}>
-        <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: "16px 18px" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: C.textLight, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Operational</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: C.black, letterSpacing: "-0.02em" }}>{funcCount} <span style={{ fontSize: 16, color: C.textLight, fontWeight: 600 }}>/ {hospitals.length}</span></div>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 600, marginTop: 5, padding: "2px 8px", borderRadius: 10, background: "#d4edda", color: "#1d6a38" }}>
-            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor" }} />
-            {hospitals.length > 0 ? Math.round(funcCount / hospitals.length * 100) : 0}% uptime
+      {/* 4 Stat Cards — elevated with subtle teal left accent */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 24 }}>
+        {[
+          { label: "Operational", value: funcCount, sub: `/ ${hospitals.length}`, tag: `${hospitals.length > 0 ? Math.round(funcCount / hospitals.length * 100) : 0}% uptime`, tagType: "green", accent: "#0d9488" },
+          { label: "Open tickets", value: scoped.filter(c => !isClosedStatus(c.status)).length, tag: shutdownSites.length > 0 ? `${shutdownSites.length} critical` : null, tagType: "red", accent: "#d9822b" },
+          { label: "Resolved this week", value: resolvedThisWeek.length, tag: "Last 7 days", tagType: "green", accent: "#27ae60" },
+          { label: "Attention needed", value: attentionSites.length, tag: issueSites.length > 0 ? `${issueSites.length} with issues` : null, tagType: "amber", accent: "#b7791f" },
+        ].map((card, i) => (
+          <div key={i} style={{ background: "#fff", borderRadius: 14, padding: "20px 20px 18px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)", borderLeft: `3px solid ${card.accent}`, transition: "box-shadow 0.2s, transform 0.2s" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(15,118,110,0.1), 0 8px 24px rgba(15,23,25,0.06)"; e.currentTarget.style.transform = "translateY(-1px)"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)"; e.currentTarget.style.transform = "none"; }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>{card.label}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "#111", letterSpacing: "-0.03em", lineHeight: 1 }}>
+              {card.value}{card.sub && <span style={{ fontSize: 16, fontWeight: 500, color: "#aaa", marginLeft: 4 }}>{card.sub}</span>}
+            </div>
+            {card.tag && (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, marginTop: 10, padding: "3px 10px", borderRadius: 20,
+                background: card.tagType === "green" ? "#e8f5e9" : card.tagType === "red" ? "#fce8e8" : "#fff8e1",
+                color: card.tagType === "green" ? "#1b5e20" : card.tagType === "red" ? "#b71c1c" : "#7c6300" }}>
+                <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor" }} />
+                {card.tag}
+              </div>
+            )}
           </div>
-        </div>
-        <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: "16px 18px" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: C.textLight, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Open tickets</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: C.black }}>{scoped.filter(c => !isClosedStatus(c.status)).length}</div>
-          {shutdownSites.length > 0 && <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 600, marginTop: 5, padding: "2px 8px", borderRadius: 10, background: "#f8d7da", color: "#993333" }}>
-            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor" }} />{shutdownSites.length} critical</div>}
-        </div>
-        <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: "16px 18px" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: C.textLight, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Resolved this week</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: C.black }}>{resolvedThisWeek.length}</div>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 600, marginTop: 5, padding: "2px 8px", borderRadius: 10, background: "#d4edda", color: "#1d6a38" }}>
-            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor" }} />Last 7 days</div>
-        </div>
-        <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: "16px 18px" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: C.textLight, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>Sites needing attention</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: C.black }}>{attentionSites.length}</div>
-          {issueSites.length > 0 && <div style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10.5, fontWeight: 600, marginTop: 5, padding: "2px 8px", borderRadius: 10, background: "#fff3cd", color: "#856404" }}>
-            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor" }} />{issueSites.length} with issues</div>}
-        </div>
+        ))}
       </div>
 
       {/* Map + Side Panel */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 14, marginBottom: 18 }}>
-        <div className={mapTheme === "dark" ? "dark-map-mode" : ""} style={{ borderRadius: 0, overflow: "hidden", border: `1px solid ${C.borderLight}`, height: 380, position: "relative" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 16, marginBottom: 22 }}>
+        <div className={mapTheme === "dark" ? "dark-map-mode" : ""} style={{ borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)", height: 400, position: "relative" }}>
           <style>{`
             .leaflet-control-attribution {
               font-size: 9px !important;
@@ -1312,7 +1307,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
           `}</style>
           <button
             onClick={() => setMapTheme(t => t === "light" ? "dark" : "light")}
-            style={{ position: "absolute", top: 10, right: 10, zIndex: 1000, fontSize: 11.5, fontWeight: 600, padding: "6px 12px", borderRadius: 7, border: "none", cursor: "pointer", color: mapTheme === "light" ? "#fff" : "#1a2332", background: mapTheme === "light" ? "#1a2332" : "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.25)" }}
+            style={{ position: "absolute", top: 10, right: 10, zIndex: 1000, fontSize: 11.5, fontWeight: 600, padding: "6px 14px", borderRadius: 10, border: "none", cursor: "pointer", color: mapTheme === "light" ? "#fff" : "#1a2332", background: mapTheme === "light" ? "#1a2332" : "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
           >
             {mapTheme === "light" ? "🌙 Dark" : "☀️ Light"}
           </button>
@@ -1351,48 +1346,49 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
         </div>
 
         {/* Side Panel: Attention + Pipeline */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: 14, flex: 1, overflowY: "auto" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: C.textLight, textTransform: "uppercase", marginBottom: 10 }}>Needs attention</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ background: "#fff", borderRadius: 14, padding: "18px 18px 14px", flex: 1, overflowY: "auto", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#8a9199", textTransform: "uppercase", marginBottom: 12 }}>Needs attention</div>
             {attentionSites.length > 0 ? attentionSites.map(h => {
               const s = getSiteDisplayStatus(h, complaints, siteNotes);
               const isDown = s === "Shut Down";
               const isNonFunc = s === "Non Functional";
+              const dotColor = isDown ? "#c0392b" : isNonFunc ? "#868e96" : "#d9822b";
               return (
-                <div key={h} onClick={() => onViewSite(h)} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8, padding: "5px 0" }} onMouseEnter={e => e.currentTarget.querySelector(".at-n").style.color = C.teal} onMouseLeave={e => e.currentTarget.querySelector(".at-n").style.color = C.black}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: isDown ? "#c0392b" : isNonFunc ? "#868e96" : "#f0932b", flexShrink: 0 }} />
-                  <span className="at-n" style={{ fontSize: 12, fontWeight: 600, color: C.black, flex: 1, transition: "color .12s" }}>{h}</span>
-                  <span style={{ fontSize: 10, color: C.textLight }}>{s}</span>
+                <div key={h} onClick={() => onViewSite(h)} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, marginBottom: 2, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "#f0fdfa"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, flexShrink: 0, boxShadow: `0 0 0 3px ${dotColor}22` }} />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#111", flex: 1 }}>{h}</span>
+                  <span style={{ fontSize: 10.5, color: "#8a9199", fontWeight: 500 }}>{s}</span>
                 </div>
               );
-            }) : <div style={{ fontSize: 12, color: C.textLight }}>All sites operational</div>}
+            }) : <div style={{ fontSize: 13, color: "#8a9199", padding: "12px 0" }}>All sites operational</div>}
           </div>
-          <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: 14 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: C.textLight, textTransform: "uppercase", marginBottom: 10 }}>Ticket pipeline</div>
+          <div style={{ background: "#fff", borderRadius: 14, padding: "18px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#8a9199", textTransform: "uppercase", marginBottom: 12 }}>Ticket pipeline</div>
             {scoped.length > 0 ? (<>
-              <div style={{ display: "flex", height: 8, overflow: "hidden", background: C.borderLight, marginBottom: 8 }}>
+              <div style={{ display: "flex", height: 10, borderRadius: 6, overflow: "hidden", background: "#eef0f2", marginBottom: 12 }}>
                 {STAGE_META.filter(s => stageCounts[s.key] > 0).map(s => (
-                  <div key={s.key} style={{ flex: `${stageCounts[s.key]} 0 0%`, background: s.color }} />
+                  <div key={s.key} style={{ flex: `${stageCounts[s.key]} 0 0%`, background: s.color, transition: "flex 0.3s" }} />
                 ))}
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {STAGE_META.map(s => (
-                  <span key={s.key} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: C.textMid }}>
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: s.color }} />
-                    {stageCounts[s.key]} {statusLabel(s.key)}
+                  <span key={s.key} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555", padding: "3px 8px", background: "#f7f8f9", borderRadius: 8 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: s.color }} />
+                    <strong style={{ color: "#111" }}>{stageCounts[s.key]}</strong> {statusLabel(s.key)}
                   </span>
                 ))}
               </div>
-            </>) : <div style={{ fontSize: 12, color: C.textLight }}>No tickets yet</div>}
+            </>) : <div style={{ fontSize: 13, color: "#8a9199" }}>No tickets yet</div>}
           </div>
         </div>
       </div>
 
       {/* Bottom: Provider breakdown + Recent activity */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         {showProviderBreakdown && (
-          <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: 16 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: C.textLight, textTransform: "uppercase", marginBottom: 10 }}>By service provider</div>
+          <div style={{ background: "#fff", borderRadius: 14, padding: "20px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#8a9199", textTransform: "uppercase", marginBottom: 16 }}>By service provider</div>
             {(() => {
               const rows = providerEntries.map(([provider, sites]) => {
                 const providerSites = sites.filter(s => hospitals.includes(s));
@@ -1401,30 +1397,36 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
               });
               const maxSites = Math.max(1, ...rows.map(r => r.siteCount));
               return rows.map(r => (
-                <div key={r.provider}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: C.black }}>{r.provider}</span>
-                    <span style={{ fontSize: 10, color: C.textLight }}>{r.siteCount} sites · {r.openCount} open</span>
+                <div key={r.provider} style={{ marginBottom: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#111" }}>{r.provider}</span>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <span style={{ fontSize: 11, color: "#8a9199" }}>{r.siteCount} sites</span>
+                      {r.openCount > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#d9822b" }}>{r.openCount} open</span>}
+                    </div>
                   </div>
-                  <div style={{ height: 5, background: C.borderLight, marginBottom: 12 }}>
-                    <div style={{ height: "100%", width: `${(r.siteCount / maxSites) * 100}%`, background: `linear-gradient(90deg, ${C.tealDark}, #14b8a6)` }} />
+                  <div style={{ height: 6, borderRadius: 3, background: "#eef0f2", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${(r.siteCount / maxSites) * 100}%`, borderRadius: 3, background: "linear-gradient(90deg, #0f766e, #14b8a6)", transition: "width 0.4s ease" }} />
                   </div>
                 </div>
               ));
             })()}
           </div>
         )}
-        <div style={{ background: C.white, border: `1px solid ${C.borderLight}`, padding: 16 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", color: C.textLight, textTransform: "uppercase", marginBottom: 10 }}>Recent activity</div>
-          {resolvedThisWeek.length > 0 ? resolvedThisWeek.map(c => (
-            <div key={c.id} onClick={() => onViewSite(c.hospital)} style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#27ae60", marginTop: 5, flexShrink: 0 }} />
+        <div style={{ background: "#fff", borderRadius: 14, padding: "20px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#8a9199", textTransform: "uppercase", marginBottom: 16 }}>Recent activity</div>
+          {resolvedThisWeek.length > 0 ? resolvedThisWeek.map((c, i) => (
+            <div key={c.id} onClick={() => onViewSite(c.hospital)} style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 10px", borderRadius: 10, marginBottom: 2, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "#f0fdfa"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              <div style={{ position: "relative", flexShrink: 0, paddingTop: 2 }}>
+                <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#27ae60", display: "block", boxShadow: "0 0 0 3px #27ae6022" }} />
+                {i < resolvedThisWeek.length - 1 && <div style={{ position: "absolute", left: 4, top: 14, width: 2, height: 28, background: "#e8ebeb" }} />}
+              </div>
               <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: C.black }}>{c.title}</div>
-                <div style={{ fontSize: 10, color: C.textLight }}>{c.hospital} · {c.resolved_at ? new Date(c.resolved_at).toLocaleDateString() : ""}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>{c.title}</div>
+                <div style={{ fontSize: 11, color: "#8a9199", marginTop: 2 }}>{c.hospital} · {c.resolved_at ? new Date(c.resolved_at).toLocaleDateString() : ""}</div>
               </div>
             </div>
-          )) : <div style={{ fontSize: 12, color: C.textLight }}>No recent resolutions</div>}
+          )) : <div style={{ fontSize: 13, color: "#8a9199", padding: "12px 0" }}>No recent resolutions</div>}
         </div>
       </div>
     </div>
@@ -2271,23 +2273,23 @@ function SidebarNav({ items, active, onSelect, bottomItems }) {
   );
 }
 
-/* ─── Top Bar (teal gradient — same as original hero, inside sidebar layout) ─── */
+/* ─── Top Bar (teal gradient — sticky on scroll) ─── */
 function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, children }) {
   return (
-    <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", fontFamily: "'DM Sans', system-ui, sans-serif", color: "#fff" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 24px 18px", minHeight: 56 }}>
+    <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", fontFamily: "'DM Sans', system-ui, sans-serif", color: "#fff", position: "sticky", top: 0, zIndex: 90, boxShadow: "0 2px 12px rgba(11,59,56,0.3)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 28px 16px", minHeight: 56 }}>
         <div>
           <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", letterSpacing: 1.5, textTransform: "uppercase" }}>{title}</div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.75)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 3 }}>{subtitle}</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 3 }}>{subtitle}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {children}
-          <button className="refresh-btn" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 12.5, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>
+          <button className="refresh-btn" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 12.5, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>
             <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             <span className="refresh-label" style={{ display: refreshing ? "none" : undefined }}>Refresh</span>
             {refreshing && <svg className="refresh-icon-desktop spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
           </button>
-          <button title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+          <button title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
           </button>
         </div>
@@ -2473,11 +2475,11 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} bottomItems={NAV_BOTTOM} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area" style={{ flex: 1, marginLeft: 64, background: C.bg, minHeight: "100vh" }}>
+      <div className="main-area" style={{ flex: 1, marginLeft: 64, background: "#f4f6f7", minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${ALL_HOSPITALS.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
         </TopBar>
-        <main style={{ maxWidth: 1020, margin: "0 auto", padding: "24px 24px" }}>
+        <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px" }}>
           <div key={tab} className="scale-in">
           {tab === "dashboard" && <HomeTab hospitals={ALL_HOSPITALS} groups={GROUPS} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "sites" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
@@ -2743,11 +2745,11 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area" style={{ flex: 1, marginLeft: 64, background: C.bg, minHeight: "100vh" }}>
+      <div className="main-area" style={{ flex: 1, marginLeft: 64, background: "#f4f6f7", minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${myHospitals.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
         </TopBar>
-        <main style={{ maxWidth: 1020, margin: "0 auto", padding: "24px 24px" }}>
+        <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px" }}>
           <div key={tab} className="scale-in">
           {tab === "dashboard" && <HomeTab hospitals={myHospitals} groups={myGroups} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "sites" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
