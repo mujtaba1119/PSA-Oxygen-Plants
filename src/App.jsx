@@ -1380,101 +1380,29 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
       </div>
 
       {/* Site tiles — dark teal background with header inside */}
-      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", padding: "14px", borderRadius: 14 }}>
-
-      {/* Column headers */}
-      <div style={{ display: "flex", background: "rgba(255,255,255,0.06)", borderRadius: 10, padding: 0, marginBottom: 6, border: "1px solid rgba(255,255,255,0.08)", minWidth: 900 }}>
-        <div style={{ flex: "0 0 40px", padding: "12px 0", textAlign: "center", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1 }}>#</div>
-        <div style={{ flex: "1 1 200px", padding: "12px 16px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Site</div>
-        <div style={{ flex: "0 0 160px", padding: "12px 16px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Service Provider</div>
-        <div style={{ flex: "0 0 130px", padding: "12px 16px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Status</div>
-        <div style={{ flex: "1 1 200px", padding: "12px 16px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Open Tickets</div>
-        <div style={{ flex: "1 1 160px", padding: "12px 16px", fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 1, textAlign: "center" }}>Notes</div>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", padding: "16px", borderRadius: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
         {sortedHospitals.map((h, i) => {
           const open = openComplaints(h);
           const siteStatus = getSiteDisplayStatus(h, complaints, siteNotes);
           const isShutDown = siteStatus === "Shut Down";
           return (
-            <div key={h}>
-            <div onClick={() => setExpandedRow(expandedRow === h ? null : h)} style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.06)", border: isShutDown ? "1px solid rgba(140,40,40,0.4)" : "1px solid rgba(255,255,255,0.08)", borderRadius: 10, cursor: "pointer", transition: "all 0.2s", minWidth: 900 }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.2)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}>
-              <div style={{ flex: "0 0 40px", padding: "14px 0", textAlign: "center", fontSize: 12, fontWeight: 600, color: "#fff" }}>{i + 1}</div>
-              <div style={{ flex: "1 1 200px", padding: "14px 16px", textAlign: "center" }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#fff" }}>{displayName(h)}</span>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginLeft: 8, transform: expandedRow === h ? "rotate(180deg)" : "none", transition: "transform 0.18s", display: "inline-block" }}>▾</span>
+            <div key={h} onClick={() => onViewSite ? onViewSite(h) : setExpandedRow(expandedRow === h ? null : h)} style={{ background: "rgba(255,255,255,0.06)", border: isShutDown ? "1px solid rgba(140,40,40,0.4)" : "1px solid rgba(255,255,255,0.08)", borderRadius: 12, cursor: "pointer", transition: "all 0.2s", padding: "18px 16px 14px", display: "flex", flexDirection: "column", gap: 10 }} onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.25)"; }} onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "none"; }}>
+              <div style={{ marginBottom: 2 }}>
+                <SiteStatusBadge status={siteStatus} />
               </div>
-              <div style={{ flex: "0 0 160px", padding: "14px 16px", textAlign: "center", fontSize: 12.5, fontWeight: 500, color: "#fff" }}>{getProvider(h)}</div>
-              <div style={{ flex: "0 0 130px", padding: "14px 16px", textAlign: "center" }}>
-                {isAdmin ? (
-                  statusEditing === h ? (
-                    <select style={{ fontSize: 11, padding: "4px 8px", borderRadius: 20, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.08)", color: "#e8eaed" }} value={getSiteBaseStatus(h, siteNotes)} onChange={e => handleStatusChange(h, e.target.value)}>
-                      <option value="Fully Functional">Fully Functional</option>
-                      <option value="Non Functional">Non Functional</option>
-                      <option value="Shut Down">Shut Down</option>
-                    </select>
-                  ) : (
-                    <div onClick={e => { e.stopPropagation(); setStatusEditing(h); }}><SiteStatusBadge status={siteStatus} /></div>
-                  )
-                ) : (
-                  <SiteStatusBadge status={siteStatus} />
-                )}
-              </div>
-              <div style={{ flex: "1 1 200px", padding: "14px 16px", textAlign: "center" }}>
-                {open.length > 0 ? (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "center" }}>
-                    {open.map(c => {
-                      const sevColor = c.severity === "Critical" ? "#ff6b6b" : c.severity === "High" ? "#5eead4" : "#cbd5e1";
-                      return <span key={c.id} style={{ fontSize: 11, fontWeight: 600, color: sevColor, background: `${sevColor}18`, padding: "3px 10px", borderRadius: 8, border: `1px solid ${sevColor}33` }}>{c.title.length > 25 ? c.title.slice(0, 25) + "\u2026" : c.title}</span>;
-                    })}
-                  </div>
-                ) : <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>—</span>}
-              </div>
-              <div style={{ flex: "1 1 160px", padding: "14px 16px", textAlign: "center" }}>
-                {(() => {
-                  const noteKey = open.length > 0 ? open[0].id : null;
-                  const cNote = noteKey ? getNoteForComplaint(h, noteKey) : "";
-                  if (isAdmin) {
-                    if (editingNote === (noteKey || h)) {
-                      return (<div style={{ display: "flex", gap: 4, justifyContent: "center" }} onClick={e => e.stopPropagation()}>
-                        <input style={{ ...styles.pwInput, width: 120, fontSize: 11 }} value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote(h, noteKey)} />
-                        <button style={{ ...styles.pwSaveBtn, fontSize: 10, padding: "3px 8px" }} onClick={() => saveNote(h, noteKey)}>✓</button>
-                        <button style={{ ...styles.pwCancelBtn, fontSize: 10 }} onClick={() => setEditingNote(null)}>✕</button>
-                      </div>);
-                    }
-                    return (<div style={{ display: "flex", alignItems: "center", gap: 4, justifyContent: "center" }}>
-                      <span style={{ fontSize: 12, color: cNote ? "#fff" : "rgba(255,255,255,0.4)" }}>{cNote || "—"}</span>
-                      <button style={{ fontSize: 10, color: "#2dd4a8", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }} onClick={e => { e.stopPropagation(); setEditingNote(noteKey || h); setNoteText(cNote); }}>edit</button>
-                    </div>);
-                  }
-                  return <span style={{ fontSize: 12, color: cNote ? "#fff" : "rgba(255,255,255,0.4)" }}>{cNote || "—"}</span>;
-                })()}
-              </div>
-            </div>
-            {expandedRow === h && (
-              <div className="fade-in" style={{ background: "rgba(255,255,255,0.03)", padding: "16px 24px", borderRadius: "0 0 10px 10px", marginTop: -2, border: "1px solid rgba(255,255,255,0.06)", borderTop: "none" }}>
-                <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: "rgba(255,255,255,0.5)", marginBottom: 10 }}>Complaint Details — {displayName(h)}</div>
-                {open.length > 0 ? open.map(c => (
-                  <div key={c.id} style={{ background: "rgba(255,255,255,0.05)", borderRadius: 8, padding: "12px 16px", marginBottom: 8, border: "1px solid rgba(255,255,255,0.08)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: C.red }}>{c.title}</span>
-                      <span style={{ fontSize: 11, color: C.textLight }}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</span>
-                    </div>
-                    <p style={{ fontSize: 12, color: C.textMid, margin: 0, lineHeight: 1.6 }}>{c.description}</p>
-                    {getNoteForComplaint(h, c.id) && <div style={{ fontSize: 11, color: C.textMid, marginTop: 6, paddingTop: 6, borderTop: "1px solid #eee" }}>Note: {getNoteForComplaint(h, c.id)}</div>}
-                  </div>
-                )) : <p style={{ fontSize: 12, color: C.textLight }}>No open complaints for this site.</p>}
-                {onViewSite && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onViewSite(h); }}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 12.5, fontWeight: 700, color: "#2dd4a8", background: "rgba(45,212,168,0.1)", border: "1px solid rgba(45,212,168,0.2)", borderRadius: 10, padding: "9px 16px", cursor: "pointer" }}
-                  >
-                    View all tickets for this site <span style={{ fontSize: 14 }}>→</span>
-                  </button>
-                )}
-              </div>
-            )}
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#fff", lineHeight: 1.3 }}>{displayName(h)}</div>
+              <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.5)" }}>{getProvider(h)}</div>
+              {open.length > 0 ? (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                  {open.slice(0, 2).map(c => {
+                    const sevColor = c.severity === "Critical" ? "#ff6b6b" : c.severity === "High" ? "#5eead4" : "#cbd5e1";
+                    return <span key={c.id} style={{ fontSize: 10, fontWeight: 600, color: sevColor, background: `${sevColor}18`, padding: "2px 8px", borderRadius: 6, border: `1px solid ${sevColor}33` }}>{c.title.length > 22 ? c.title.slice(0, 22) + "\u2026" : c.title}</span>;
+                  })}
+                  {open.length > 2 && <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>+{open.length - 2} more</span>}
+                </div>
+              ) : null}
+              <div style={{ fontSize: 11.5, fontWeight: 600, color: "#2dd4a8", marginTop: "auto" }}>View details →</div>
             </div>
           );
         })}
