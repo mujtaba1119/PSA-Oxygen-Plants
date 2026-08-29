@@ -1370,7 +1370,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
   const [expandedRow, setExpandedRow] = useState(null);
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <div style={{ marginBottom: 18 }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: C.teal, textTransform: "uppercase", marginBottom: 6 }}>Site directory</div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
@@ -1408,11 +1408,11 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
         {sortedHospitals.map((h, i) => {
           const open = openComplaints(h);
           const siteStatus = getSiteDisplayStatus(h, complaints, siteNotes);
-          const rowBg = i % 2 === 0 ? C.white : "#f6faf9";
+          const rowBg = i % 2 === 0 ? "rgba(240,253,250,0.5)" : "rgba(230,248,243,0.6)";
           const isShutDown = siteStatus === "Shut Down";
           return (
             <div key={h} style={{ cursor: "pointer" }} onClick={() => setExpandedRow(expandedRow === h ? null : h)}>
-            <div style={{ ...styles.overviewRow, background: rowBg, borderLeft: isShutDown ? "3px solid #c0392b" : "3px solid transparent", transition: "background 0.18s ease" }} onMouseEnter={e => e.currentTarget.style.background = C.tealBg} onMouseLeave={e => e.currentTarget.style.background = rowBg}>
+            <div style={{ ...styles.overviewRow, background: rowBg, borderLeft: isShutDown ? "3px solid #c0392b" : "3px solid transparent", transition: "background 0.18s ease" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(204,251,241,0.5)"} onMouseLeave={e => e.currentTarget.style.background = rowBg}>
               <div style={{ ...styles.ovCell, ...styles.ovCellSr, color: C.textLight, fontWeight: 500, fontSize: 12 }}>{i + 1}</div>
               <div style={{ ...styles.ovCell, ...styles.ovCellSite, display: "flex", flexDirection: "row", alignItems: "center", gap: 10 }}>
                 <span style={{ width: 26, height: 26, borderRadius: 8, background: providerAvatarColor(getProvider(h)), color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{initialsFor(displayName(h))}</span>
@@ -1493,7 +1493,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
               </div>
             </div>
             {expandedRow === h && (
-              <div className="fade-in" style={{ background: "#f5f5f5", padding: "16px 24px", borderBottom: `1px solid #eee` }}>
+              <div className="fade-in" style={{ background: "rgba(230,248,243,0.7)", padding: "16px 24px", borderBottom: "1px solid #d5ece5" }}>
                 <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: C.textLight, marginBottom: 10 }}>Complaint Details — {displayName(h)}</div>
                 {open.length > 0 ? open.map(c => (
                   <div key={c.id} style={{ background: C.white, borderRadius: 8, padding: "12px 16px", marginBottom: 8, border: `1px solid #eee` }}>
@@ -2854,9 +2854,9 @@ const styles = {
   commentInputRow: { display: "flex", gap: 8, marginTop: 12 },
   commentInput: { flex: 1, padding: "11px 14px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", background: C.white, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' },
   commentSendBtn: { fontSize: 12, fontWeight: 700, color: C.white, background: C.teal, border: "none", borderRadius: 10, padding: "10px 24px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase", boxShadow: "0 3px 8px rgba(13,148,136,0.25)" },
-  overviewTable: { background: C.white, borderRadius: 16, border: "1px solid #e8ebeb", overflow: "auto", WebkitOverflowScrolling: "touch", boxShadow: "0 1px 2px rgba(15,23,25,0.04), 0 8px 24px rgba(15,23,25,0.05)" },
-  overviewHeaderRow: { display: "flex", padding: "0", background: "#fafbfb", borderBottom: "1px solid #eef0f0", fontWeight: 700, fontSize: 10.5, color: "#9aa1a6", gap: 0, minWidth: 900, letterSpacing: 1, textTransform: "uppercase", position: "sticky", top: 0, zIndex: 2 },
-  overviewRow: { display: "flex", padding: "0", borderBottom: "1px solid #eef0f0", gap: 0, alignItems: "stretch", minWidth: 900, transition: "background 0.15s" },
+  overviewTable: { background: "linear-gradient(135deg, #edf7f4, #f2faf8)", borderRadius: 16, border: "1px solid #d5ece5", overflow: "auto", WebkitOverflowScrolling: "touch" },
+  overviewHeaderRow: { display: "flex", padding: "0", background: "rgba(13,148,136,0.08)", borderBottom: "1px solid #d5ece5", fontWeight: 700, fontSize: 10.5, color: "#0f766e", gap: 0, minWidth: 900, letterSpacing: 1, textTransform: "uppercase", position: "sticky", top: 0, zIndex: 2 },
+  overviewRow: { display: "flex", padding: "0", borderBottom: "1px solid #ddf0eb", gap: 0, alignItems: "stretch", minWidth: 900, transition: "background 0.15s" },
   ovCell: { padding: "16px 16px", fontSize: 13, display: "flex", flexDirection: "column", justifyContent: "center" },
   ovCellHeader: { padding: "13px 16px", fontSize: 10.5, display: "flex", alignItems: "center", justifyContent: "flex-start" },
   ovCellSr: { width: 40, flexShrink: 0, justifyContent: "center", alignItems: "center" },
