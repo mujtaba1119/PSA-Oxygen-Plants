@@ -2176,11 +2176,11 @@ function SidebarNav({ items, active, onSelect, bottomItems }) {
   );
 }
 
-/* ─── Top Bar (teal gradient, dark both ends, curved bottom, ZeBeyond pills) ─── */
+/* ─── Top Bar (teal gradient, curved bottom, ZeBeyond pill buttons) ─── */
 function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, children }) {
   return (
     <div style={{ position: "sticky", top: 0, zIndex: 90, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", color: "#fff" }}>
+      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", color: "#fff", paddingBottom: 4, position: "relative" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", height: 64 }}>
           <div>
             <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", letterSpacing: 0.1 }}>{title}</div>
@@ -2188,20 +2188,20 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {children}
-            <button className="refresh-btn tb-glass" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.85)", borderRadius: 40, cursor: "pointer", padding: "9px 18px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 12.5, fontWeight: 600, letterSpacing: 0.2, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+            <button className="refresh-btn tb-glass" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.18)", color: "#fff", borderRadius: 40, cursor: "pointer", padding: "9px 20px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 13, fontWeight: 600, letterSpacing: 0.3, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
               <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
               {!refreshing && "Refresh"}
               {refreshing && <svg className="spinning" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
             </button>
-            <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.1)" }} />
-            <button className="tb-glass" title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ width: 40, height: 40, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <button className="tb-glass" title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.18)", color: "#fff", borderRadius: 40, cursor: "pointer", padding: "9px 20px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 13, fontWeight: 600, letterSpacing: 0.3, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Sign Out
             </button>
           </div>
         </div>
       </div>
-      {/* Curved bottom edge — gradient-filled, starts deep on left (sidebar junction), sweeps across */}
-      <svg viewBox="0 0 1200 30" preserveAspectRatio="none" style={{ display: "block", width: "100%", height: 30, marginTop: -1 }}>
+      {/* Curved bottom — overlaps into the bar by 4px to eliminate any seam */}
+      <svg viewBox="0 0 1200 36" preserveAspectRatio="none" style={{ display: "block", width: "100%", height: 36, marginTop: -5, position: "relative" }}>
         <defs><linearGradient id="topbar-curve-grad" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stopColor="#0b3b38"/><stop offset="0.5" stopColor="#0f766e"/><stop offset="1" stopColor="#0b3b38"/></linearGradient></defs>
         <path d="M0,0 L0,18 C200,36 500,28 750,14 C1000,0 1200,2 1200,0 Z" fill="url(#topbar-curve-grad)"/>
       </svg>
