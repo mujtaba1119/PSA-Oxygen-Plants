@@ -1383,7 +1383,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
           <div style={{ flex: "0 0 48px", padding: "14px 0", textAlign: "center", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8 }}>#</div>
           <div style={{ flex: "1 1 220px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Site Name</div>
           <div style={{ flex: "0 0 150px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Service Provider</div>
-          <div style={{ flex: "0 0 140px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Status</div>
+          <div style={{ flex: "0 0 160px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Status</div>
           <div style={{ flex: "1 1 200px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Open Tickets</div>
           <div style={{ flex: "1 1 200px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Equipment / Notes</div>
         </div>
@@ -1397,7 +1397,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                 <div style={{ flex: "0 0 48px", padding: "14px 0", textAlign: "center", fontSize: 12, fontWeight: 500, color: "#b0b5ba" }}>{i + 1}</div>
                 <div style={{ flex: "1 1 220px", padding: "14px 16px", fontSize: 13.5, fontWeight: 600, color: "#1a1d21", textAlign: "center" }}>{displayName(h)}</div>
                 <div style={{ flex: "0 0 150px", padding: "14px 16px", fontSize: 13, fontWeight: 400, color: "#5f6b7a", textAlign: "center" }}>{getProvider(h)}</div>
-                <div style={{ flex: "0 0 140px", padding: "14px 16px", textAlign: "center" }}>
+                <div style={{ flex: "0 0 160px", padding: "14px 16px", textAlign: "center" }}>
                   {(() => {
                     const statusMeta = {
                       "Fully Functional": { label: "Fully Functional", color: "#16a34a", dot: "#16a34a" },
@@ -1408,7 +1408,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                     };
                     const m = statusMeta[siteStatus] || statusMeta["Non Functional"];
                     const badge = (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 600, color: m.color }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 600, color: m.color, whiteSpace: "nowrap" }}>
                         <span style={{ width: 8, height: 8, borderRadius: "50%", background: m.dot, flexShrink: 0 }} />
                         {m.label}
                       </span>
