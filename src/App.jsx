@@ -1372,8 +1372,17 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
   return (
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>Sites</div>
-        <div style={{ fontSize: 13, color: "#8a9199", marginTop: 4 }}>{funcCount} of {hospitals.length} fully functional · {allOpen} open ticket{allOpen === 1 ? "" : "s"}</div>
+        <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>Site Status</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#0f766e", background: "#e6f5f0", padding: "4px 12px", borderRadius: 20 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#16a34a" }} />
+            {funcCount} of {hospitals.length} fully functional
+          </span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: allOpen > 0 ? "#b45309" : "#5f6b7a", background: allOpen > 0 ? "#fef3e2" : "#f4f4f0", padding: "4px 12px", borderRadius: 20 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: allOpen > 0 ? "#d97706" : "#94a3b8" }} />
+            {allOpen} open ticket{allOpen === 1 ? "" : "s"}
+          </span>
+        </div>
       </div>
 
       {/* Clean light table */}
@@ -1456,7 +1465,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
               </div>
               {expandedRow === h && (
                 <div className="fade-in" style={{ background: "#fafaf7", padding: "16px 24px", borderBottom: "1px solid #e5e5e0" }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: "#8a9199", marginBottom: 10 }}>Complaint Details — {displayName(h)}</div>
+                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: "#8a9199", marginBottom: 10 }}>Open Tickets — {displayName(h)}</div>
                   {open.length > 0 ? open.map(c => (
                     <div key={c.id} style={{ background: "#fff", borderRadius: 8, padding: "12px 16px", marginBottom: 8, border: "1px solid #e5e5e0" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -1990,7 +1999,7 @@ function SidebarIcon({ name, size = 20 }) {
   const s = { width: size, height: size, strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", fill: "none", stroke: "currentColor" };
   const paths = {
     dashboard: <svg viewBox="0 0 24 24" style={s}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="4" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="11" width="7" height="10" rx="1"/></svg>,
-    sites: <svg viewBox="0 0 24 24" style={s}><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>,
+    sites: <svg viewBox="0 0 24 24" style={s}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
     tickets: <svg viewBox="0 0 24 24" style={s}><path d="M15 5v2"/><path d="M15 11v2"/><path d="M15 17v2"/><path d="M5 5h14a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2H5a2 2 0 01-2-2v-3a2 2 0 000-4V7a2 2 0 012-2z"/></svg>,
     maintenance: <svg viewBox="0 0 24 24" style={s}><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>,
     analytics: <svg viewBox="0 0 24 24" style={s}><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>,
@@ -2394,7 +2403,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 
   const NAV_ITEMS = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
-    { id: "sites", icon: "sites", label: "Sites" },
+    { id: "sites", icon: "sites", label: "Site Status" },
     { id: "equipment", icon: "equipment", label: "Equipment" },
     { id: "tickets", icon: "tickets", label: "Tickets" },
     { id: "submit", icon: "submit", label: "Submit" },
@@ -2407,7 +2416,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   ];
 
   const PAGE_TITLES = {
-    dashboard: "Dashboard", sites: "Sites", equipment: "Equipment", tickets: "Tickets", submit: "Submit Ticket",
+    dashboard: "Dashboard", sites: "Site Status", equipment: "Equipment", tickets: "Tickets", submit: "Submit Ticket",
     maintenance: "Maintenance", analytics: "Analytics", users: "Users", emails: "Emails"
   };
 
@@ -2674,7 +2683,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
 
   const NAV_ITEMS = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
-    { id: "sites", icon: "sites", label: "Sites" },
+    { id: "sites", icon: "sites", label: "Site Status" },
     { id: "equipment", icon: "equipment", label: "Equipment" },
     { id: "tickets", icon: "tickets", label: "Tickets" },
     { id: "maintenance", icon: "maintenance", label: "Maintenance" },
@@ -2682,7 +2691,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
   ];
 
   const PAGE_TITLES = {
-    dashboard: "Dashboard", sites: "Sites", equipment: "Equipment", tickets: "Tickets",
+    dashboard: "Dashboard", sites: "Site Status", equipment: "Equipment", tickets: "Tickets",
     maintenance: "Maintenance", analytics: "Analytics"
   };
 
