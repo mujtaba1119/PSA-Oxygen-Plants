@@ -2138,8 +2138,131 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
 }
 
 /* ─── Admin Dashboard ─── */
+
+/* ─── Sidebar Navigation Icons (hand-drawn SVG, matching existing stroke style) ─── */
+function SidebarIcon({ name, size = 20 }) {
+  const s = { width: size, height: size, strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", fill: "none", stroke: "currentColor" };
+  const paths = {
+    dashboard: <svg viewBox="0 0 24 24" style={s}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="4" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="11" width="7" height="10" rx="1"/></svg>,
+    sites: <svg viewBox="0 0 24 24" style={s}><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>,
+    tickets: <svg viewBox="0 0 24 24" style={s}><path d="M15 5v2"/><path d="M15 11v2"/><path d="M15 17v2"/><path d="M5 5h14a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2H5a2 2 0 01-2-2v-3a2 2 0 000-4V7a2 2 0 012-2z"/></svg>,
+    maintenance: <svg viewBox="0 0 24 24" style={s}><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>,
+    analytics: <svg viewBox="0 0 24 24" style={s}><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>,
+    users: <svg viewBox="0 0 24 24" style={s}><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
+    emails: <svg viewBox="0 0 24 24" style={s}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-8.97 5.7a1.94 1.94 0 01-2.06 0L2 7"/></svg>,
+    submit: <svg viewBox="0 0 24 24" style={s}><path d="M12 5v14"/><path d="M5 12h14"/></svg>,
+    settings: <svg viewBox="0 0 24 24" style={s}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33h.08a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.08a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>,
+    refresh: <svg viewBox="0 0 24 24" style={s}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>,
+    bell: <svg viewBox="0 0 24 24" style={s}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,
+    signout: <svg viewBox="0 0 24 24" style={s}><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+  };
+  return paths[name] || null;
+}
+
+/* ─── Sidebar Navigation ─── */
+function SidebarNav({ items, active, onSelect, bottomItems }) {
+  return (
+    <nav className="sidebar-nav" style={sidebarStyles.nav}>
+      <div style={sidebarStyles.logo}>
+        <span style={sidebarStyles.logoText}>O<sub style={{ fontSize: 10, fontWeight: 700 }}>₂</sub></span>
+      </div>
+      <div style={sidebarStyles.items}>
+        {items.map(item => (
+          <div key={item.id} className="sb-item" onClick={() => onSelect(item.id)} style={{ ...sidebarStyles.item, ...(active === item.id ? sidebarStyles.itemActive : {}) }} title={item.label}>
+            <div style={{ color: active === item.id ? "#5eead4" : "rgba(255,255,255,0.45)", transition: "color 0.15s" }}>
+              <SidebarIcon name={item.icon} />
+            </div>
+            <span className="sb-tip" style={sidebarStyles.tip}>{item.label}</span>
+          </div>
+        ))}
+      </div>
+      {bottomItems && bottomItems.length > 0 && (
+        <>
+          <div style={sidebarStyles.divider} />
+          <div style={sidebarStyles.items}>
+            {bottomItems.map(item => (
+              <div key={item.id} className="sb-item" onClick={() => onSelect(item.id)} style={{ ...sidebarStyles.item, ...(active === item.id ? sidebarStyles.itemActive : {}) }} title={item.label}>
+                <div style={{ color: active === item.id ? "#5eead4" : "rgba(255,255,255,0.45)", transition: "color 0.15s" }}>
+                  <SidebarIcon name={item.icon} />
+                </div>
+                <span className="sb-tip" style={sidebarStyles.tip}>{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <div style={{ flex: 1 }} />
+    </nav>
+  );
+}
+
+/* ─── Top Bar (replaces old hero header — compact, inside sidebar layout) ─── */
+function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, children }) {
+  return (
+    <>
+      <div style={{ height: 3, background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 24px", background: "#fff", borderBottom: "1px solid #e0e0e0", minHeight: 52, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#111", letterSpacing: 0.3 }}>{title}</div>
+          <div style={{ fontSize: 11, color: "#999", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 1 }}>{subtitle}</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {children}
+          <button title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center", border: "none", background: "transparent", cursor: "pointer", borderRadius: 6, transition: "background .15s", color: "#0f766e" }} onMouseEnter={e => e.currentTarget.style.background = "#f0fdfa"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+            <svg className={refreshing ? "spinning" : ""} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          </button>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#0f766e", letterSpacing: 0.5, textTransform: "uppercase", padding: "6px 14px", border: "1px solid #ccfbf1", background: "#f0fdfa" }}>{user.role === "admin" ? "Admin" : user.name}</span>
+          <button onClick={onLogout} style={{ fontSize: 11, fontWeight: 600, color: "#fff", background: "#111", border: "none", padding: "7px 16px", cursor: "pointer", letterSpacing: 1, textTransform: "uppercase" }}>Sign out</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ─── Placeholder pages for Maintenance and Analytics ─── */
+function MaintenancePage() {
+  return (
+    <div style={{ textAlign: "center", padding: "80px 24px" }}>
+      <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.15 }}>
+        <SidebarIcon name="maintenance" size={64} />
+      </div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, color: C.black, margin: "0 0 8px" }}>Maintenance Records</h2>
+      <p style={{ fontSize: 14, color: C.textLight, maxWidth: 400, margin: "0 auto", lineHeight: 1.6 }}>
+        Preventive and corrective maintenance records for each site will be managed here. Track running hours, parts replaced, and upload PDF service reports.
+      </p>
+      <div style={{ marginTop: 24, padding: "14px 24px", background: C.tealBg, border: `1px solid ${C.tealLight}`, display: "inline-block", fontSize: 12, fontWeight: 600, color: C.tealDark, letterSpacing: 0.5 }}>COMING SOON</div>
+    </div>
+  );
+}
+
+function AnalyticsPage() {
+  return (
+    <div style={{ textAlign: "center", padding: "80px 24px" }}>
+      <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.15 }}>
+        <SidebarIcon name="analytics" size={64} />
+      </div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, color: C.black, margin: "0 0 8px" }}>Analytics & Insights</h2>
+      <p style={{ fontSize: 14, color: C.textLight, maxWidth: 400, margin: "0 auto", lineHeight: 1.6 }}>
+        Data visualization and analysis — resolution time trends, failure rates by equipment type, provider performance comparison, and site uptime tracking.
+      </p>
+      <div style={{ marginTop: 24, padding: "14px 24px", background: C.tealBg, border: `1px solid ${C.tealLight}`, display: "inline-block", fontSize: 12, fontWeight: 600, color: C.tealDark, letterSpacing: 0.5 }}>COMING SOON</div>
+    </div>
+  );
+}
+
+/* ─── Sidebar Styles ─── */
+const sidebarStyles = {
+  nav: { background: "linear-gradient(180deg, #062825 0%, #0b3b38 40%, #0f766e 100%)", display: "flex", flexDirection: "column", padding: "14px 0", gap: 2, alignItems: "center", width: 54, minHeight: "100vh", position: "fixed", top: 0, left: 0, zIndex: 100 },
+  logo: { width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18 },
+  logoText: { fontSize: 18, fontWeight: 800, color: "#5eead4", letterSpacing: -1, fontFamily: "'DM Sans', system-ui, sans-serif" },
+  items: { display: "flex", flexDirection: "column", gap: 2, alignItems: "center" },
+  item: { width: 38, height: 38, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 0.15s", position: "relative" },
+  itemActive: { background: "rgba(255,255,255,0.12)" },
+  tip: { display: "none", position: "absolute", left: 48, top: "50%", transform: "translateY(-50%)", background: "#0b3b38", border: "1px solid #14b8a6", padding: "4px 10px", borderRadius: 6, fontSize: 11, color: "#ccfbf1", whiteSpace: "nowrap", fontWeight: 600, zIndex: 10, pointerEvents: "none", letterSpacing: 0.3, fontFamily: "'DM Sans', system-ui, sans-serif" },
+  divider: { width: 22, height: 1, background: "rgba(255,255,255,0.12)", margin: "8px 0" },
+};
 function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRefresh, onLogout }) {
-  const [tab, setTab] = useState("home"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
+  const [tab, setTab] = useState("dashboard"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const [editingUser, setEditingUser] = useState(null); const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
   const [adminHospital, setAdminHospital] = useState(ALL_HOSPITALS[0]); const [adminTitle, setAdminTitle] = useState(""); const [adminDesc, setAdminDesc] = useState(""); const [adminDate, setAdminDate] = useState("");
@@ -2148,12 +2271,12 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const [searchTerm, setSearchTerm] = useState("");
   const [adminFiles, setAdminFiles] = useState([]);
   const [pendingFocus, setPendingFocus] = useState(null);
+  const [adminSeverity, setAdminSeverity] = useState("");
   const handleNotifFocus = (info) => {
-    setTab("complaints");
+    setTab("tickets");
     setSelected(info.hospital);
     setPendingFocus({ complaintId: info.complaintId, isComment: info.isComment, commentText: info.commentText });
   };
-
 
   const totalComplaints = complaints.length; const totalOpen = complaints.filter(c => !isClosedStatus(c.status)).length;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
@@ -2218,7 +2341,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
     }
   };
 
-  const submitAdminComplaint = async () => { if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return; setAdminSubmitting(true); const savedFiles = [...adminFiles]; const r = await insertComplaint(adminHospital, adminTitle.trim(), adminDesc.trim(), adminDate || null, null); if (r) { if (savedFiles.length > 0) await adminDoUpload(r.id, savedFiles); notifyUsers("new_complaint", `New Complaint: ${adminHospital}`, adminTitle.trim(), adminHospital, r.id, user.id).catch(() => {}); setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminFiles([]); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); } setAdminSubmitting(false); };
+  const submitAdminComplaint = async () => { if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return; setAdminSubmitting(true); const savedFiles = [...adminFiles]; const sev = adminSeverity || getDefaultSeverity(adminTitle.trim()); const r = await insertComplaint(adminHospital, adminTitle.trim(), adminDesc.trim(), adminDate || null, null, sev); if (r) { if (savedFiles.length > 0) await adminDoUpload(r.id, savedFiles); notifyUsers("new_complaint", `New Complaint: ${adminHospital}`, adminTitle.trim(), adminHospital, r.id, user.id).catch(() => {}); setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminFiles([]); setAdminSeverity(""); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); } setAdminSubmitting(false); };
   const handleAddUser = async () => {
     if (!newUserName.trim() || !newUserPw.trim() || addingUser) return;
     if (newUserPw.trim().length < 8) { alert("Password must be at least 8 characters"); return; }
@@ -2238,112 +2361,103 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 
   const filteredCompanyUsers = searchTerm ? companyUsers.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()) || (u.company || "").toLowerCase().includes(searchTerm.toLowerCase()) || (u.email || "").toLowerCase().includes(searchTerm.toLowerCase())) : companyUsers;
 
-
   const adminFuncCount = ALL_HOSPITALS.filter(h => isFunctional(h, complaints, siteNotes)).length;
   const adminResolved = complaints.filter(c => isClosedStatus(c.status)).length;
 
+  const NAV_ITEMS = [
+    { id: "dashboard", icon: "dashboard", label: "Dashboard" },
+    { id: "sites", icon: "sites", label: "Sites" },
+    { id: "tickets", icon: "tickets", label: "Tickets" },
+    { id: "submit", icon: "submit", label: "Submit" },
+    { id: "maintenance", icon: "maintenance", label: "Maintenance" },
+    { id: "analytics", icon: "analytics", label: "Analytics" },
+  ];
+  const NAV_BOTTOM = [
+    { id: "users", icon: "users", label: "Users" },
+    { id: "emails", icon: "emails", label: "Emails" },
+  ];
+
+  const PAGE_TITLES = {
+    dashboard: "Dashboard", sites: "Sites", tickets: "Tickets", submit: "Submit Ticket",
+    maintenance: "Maintenance", analytics: "Analytics", users: "Users", emails: "Emails"
+  };
+
   return (
-    <div style={{ ...styles.shell, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
-      {/* Teal gradient hero header */}
-      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "20px 24px 24px", color: "#fff" }}>
-        <div style={{ maxWidth: 980, margin: "0 auto" }}>
-          <div style={{ marginTop: 4, marginBottom: 4 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.22)", padding: "4px 12px", borderRadius: 20 }}>Management</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 12 }}>
-            <div style={{ fontSize: 17, letterSpacing: 2, opacity: 0.9, fontWeight: 800, textTransform: "uppercase" }}>Project Status</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
-              <button className="refresh-btn" title="Refresh" aria-label="Refresh" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 12.5, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }} onClick={handleRefresh}>
-                <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                <span className="refresh-label" style={{ display: refreshing ? "none" : undefined }}>Refresh</span>
-                {refreshing && <svg className="refresh-icon-desktop spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
-              </button>
-              <button title="Sign Out" aria-label="Sign Out" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={onLogout}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-              </button>
+    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <style>{`
+        .sb-item:hover .sb-tip { display: block !important; }
+        .sb-item:hover { background: rgba(255,255,255,0.08) !important; }
+        .sb-item:hover svg, .sb-item:hover div { color: rgba(255,255,255,0.85) !important; }
+        @keyframes refresh-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .spinning { animation: refresh-spin 0.7s linear infinite; transform-origin: center; }
+        @media (max-width: 768px) {
+          .sidebar-nav { display: none !important; }
+          .main-area { margin-left: 0 !important; }
+        }
+      `}</style>
+      <SidebarNav items={NAV_ITEMS} bottomItems={NAV_BOTTOM} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
+      <div className="main-area" style={{ flex: 1, marginLeft: 54, background: C.bg, minHeight: "100vh" }}>
+        <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${ALL_HOSPITALS.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
+          <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
+        </TopBar>
+        <main style={{ maxWidth: 1020, margin: "0 auto", padding: "24px 24px" }}>
+          <div key={tab} className="scale-in">
+          {tab === "dashboard" && <HomeTab hospitals={ALL_HOSPITALS} groups={GROUPS} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
+          {tab === "sites" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
+          {tab === "tickets" && !selected && (<>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+              <button style={styles.tabActionBtn} onClick={() => downloadCSV(complaints, "All Tickets Data")}>↓ Download Data</button>
             </div>
-          </div>
-          <div style={{ display: "flex", alignItems: "baseline", marginTop: 10, gap: 10 }}>
-            <span style={{ fontSize: 48, fontWeight: 800, lineHeight: 1 }}>{adminFuncCount}</span>
-            <span style={{ fontSize: 18, fontWeight: 600, opacity: 0.8 }}>of {ALL_HOSPITALS.length}</span>
-            <span style={{ fontSize: 15, fontWeight: 600, opacity: 0.9 }}>Plants Functional</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", marginTop: 18, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 16, padding: "14px 8px" }}>
-            <div style={{ flex: 1, textAlign: "center" }}>
-              <div style={{ fontSize: 22, fontWeight: 800 }}>{totalOpen}</div>
-              <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 3 }}>Open Tickets</div>
-            </div>
-            <div style={{ width: 1, height: 34, background: "rgba(255,255,255,0.18)" }} />
-            <div style={{ flex: 1, textAlign: "center" }}>
-              <div style={{ fontSize: 22, fontWeight: 800 }}>{adminResolved}</div>
-              <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 3 }}>Resolved</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s", position: "relative" }}>
-        {["home","overview","complaints","submit","users","emails"].map(t => (<button key={t} className="tab-btn" style={tab === t ? styles.tabActive : styles.tabInactive} onClick={() => { setTab(t); setSelected(null); }}>{t === "home" ? "Home" : t === "overview" ? "Overview" : t === "complaints" ? "Tickets" : t === "submit" ? "Submit" : t === "users" ? "Users" : "Emails"}</button>))}
-        {tab === "complaints" && !selected && <button className="tab-download-btn" style={styles.tabActionBtn} onClick={() => downloadCSV(complaints, "All Tickets Data")}>↓ Download Data</button>}
-      </div>
-      <main className="main-responsive" style={styles.main}>
-        <div key={tab} className="scale-in">
-        {tab === "home" && <HomeTab hospitals={ALL_HOSPITALS} groups={GROUPS} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("complaints"); setSelected(h); }} />}
-        {tab === "overview" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} onViewSite={(h) => { setTab("complaints"); setSelected(h); }} />}
-        {tab === "complaints" && !selected && (<GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} />)}
-        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canComment={true} isAdmin={true} onBack={() => setSelected(null)} onAssign={handleAssign} onLogVisit={handleLogVisit} onMarkResolved={handleMarkResolved} onVerify={handleVerify} onRejectVerify={handleRejectVerify} onDelete={handleDelete} onRefresh={onRefresh} staffOptions={staffOptions} focusInfo={pendingFocus} />)}
-        {tab === "submit" && (
-          <section style={{ maxWidth: 640, margin: "0 auto", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
-            <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.tealLight}`, boxShadow: "0 4px 16px rgba(15,118,110,0.08)", overflow: "hidden" }}>
-              <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "18px 22px" }}>
-                <div style={{ fontSize: 11, letterSpacing: 1.4, opacity: 0.85, fontWeight: 700, textTransform: "uppercase", color: "#fff" }}>New Ticket</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", marginTop: 2 }}>Submit on Behalf of a Hospital</div>
-              </div>
-              <div style={{ padding: 22 }}>
-                <label style={styles.fieldLabel}>Hospital</label>
-                <select style={{ ...styles.tealInput, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h}</option>)}</select>
-
-                <label style={styles.fieldLabel}>Issue Type</label>
-                <ComplaintTypeSelect value={adminTitle} onChange={e => setAdminTitle(e.target.value)} style={styles.tealInput} />
-
-                <label style={styles.fieldLabel}>Description</label>
-                <textarea style={{ ...styles.tealInput, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} />
-
-                <label style={styles.fieldLabel}>Date (leave empty for today)</label>
-                <input style={styles.tealInput} type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} />
-
-                <label style={styles.fieldLabel}>Attachments (optional)</label>
-                <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", border: `1.5px dashed ${C.teal}`, borderRadius: 12, background: C.tealBg, color: C.tealDark, fontSize: 13.5, fontWeight: 600, cursor: "pointer", marginBottom: 12 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.tealDark} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  Add photos or PDF
-                  <input type="file" accept="image/*,application/pdf" multiple style={{ display: "none" }} onChange={e => setAdminFiles(prev => [...prev, ...Array.from(e.target.files)])} />
-                </label>
-                {adminFiles.length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
-                    {adminFiles.map((f, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: "6px 10px", fontSize: 12, color: C.tealDark }}>
-                        <span style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
-                        <span style={{ cursor: "pointer", fontWeight: 700, color: C.red }} onClick={() => setAdminFiles(prev => prev.filter((_, idx) => idx !== i))}>✕</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <button style={{ width: "100%", padding: "14px 0", fontSize: 14, fontWeight: 700, color: "#fff", background: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? "#9db8b4" : C.teal, border: "none", borderRadius: 12, cursor: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? "not-allowed" : "pointer", letterSpacing: 0.5, textTransform: "uppercase", boxShadow: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? "none" : "0 4px 12px rgba(13,148,136,0.3)" }} onClick={submitAdminComplaint} disabled={!adminTitle.trim() || !adminDesc.trim() || adminSubmitting}>{adminSubmitting ? "Submitting…" : "Submit Ticket"}</button>
-
-                {adminSuccess && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14, padding: "14px 16px", background: "#e6f7ee", border: "1px solid #a7e3c4", borderRadius: 12 }}>
-                    <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#27ae60", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} />
+          </>)}
+          {tab === "tickets" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canComment={true} isAdmin={true} onBack={() => setSelected(null)} onAssign={handleAssign} onLogVisit={handleLogVisit} onMarkResolved={handleMarkResolved} onVerify={handleVerify} onRejectVerify={handleRejectVerify} onDelete={handleDelete} onRefresh={onRefresh} staffOptions={staffOptions} focusInfo={pendingFocus} />)}
+          {tab === "submit" && (
+            <section style={{ maxWidth: 640, margin: "0 auto" }}>
+              <div style={{ background: C.white, borderRadius: 16, border: `1px solid ${C.tealLight}`, boxShadow: "0 4px 16px rgba(15,118,110,0.08)", overflow: "hidden" }}>
+                <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "18px 22px" }}>
+                  <div style={{ fontSize: 11, letterSpacing: 1.4, opacity: 0.85, fontWeight: 700, textTransform: "uppercase", color: "#fff" }}>New Ticket</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", marginTop: 2 }}>Submit on Behalf of a Hospital</div>
+                </div>
+                <div style={{ padding: 22 }}>
+                  <label style={styles.fieldLabel}>Hospital</label>
+                  <select style={{ ...styles.tealInput, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h}</option>)}</select>
+                  <label style={styles.fieldLabel}>Issue Type</label>
+                  <ComplaintTypeSelect value={adminTitle} onChange={e => { setAdminTitle(e.target.value); setAdminSeverity(getDefaultSeverity(e.target.value)); }} style={styles.tealInput} />
+                  <label style={styles.fieldLabel}>Description</label>
+                  <textarea style={{ ...styles.tealInput, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} />
+                  <label style={styles.fieldLabel}>Date (leave empty for today)</label>
+                  <input style={styles.tealInput} type="date" value={adminDate} onChange={e => setAdminDate(e.target.value)} />
+                  <label style={styles.fieldLabel}>Attachments (optional)</label>
+                  <label style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px", border: `1.5px dashed ${C.teal}`, borderRadius: 12, background: C.tealBg, color: C.tealDark, fontSize: 13.5, fontWeight: 600, cursor: "pointer", marginBottom: 12 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.tealDark} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Add photos or PDF
+                    <input type="file" accept="image/*,application/pdf" multiple style={{ display: "none" }} onChange={e => setAdminFiles(prev => [...prev, ...Array.from(e.target.files)])} />
+                  </label>
+                  {adminFiles.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+                      {adminFiles.map((f, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: "6px 10px", fontSize: 12, color: C.tealDark }}>
+                          <span style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                          <span style={{ cursor: "pointer", fontWeight: 700, color: C.red }} onClick={() => setAdminFiles(prev => prev.filter((_, idx) => idx !== i))}>✕</span>
+                        </div>
+                      ))}
                     </div>
-                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "#166534" }}>Ticket submitted for {adminHospital}</div>
-                  </div>
-                )}
+                  )}
+                  <button style={{ width: "100%", padding: "14px 0", fontSize: 14, fontWeight: 700, color: "#fff", background: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? "#9db8b4" : C.teal, border: "none", borderRadius: 12, cursor: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? "not-allowed" : "pointer", letterSpacing: 0.5, textTransform: "uppercase", boxShadow: (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) ? "none" : "0 4px 12px rgba(13,148,136,0.3)" }} onClick={submitAdminComplaint} disabled={!adminTitle.trim() || !adminDesc.trim() || adminSubmitting}>{adminSubmitting ? "Submitting…" : "Submit Ticket"}</button>
+                  {adminSuccess && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 14, padding: "14px 16px", background: "#e6f7ee", border: "1px solid #a7e3c4", borderRadius: 12 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: "50%", background: "#27ae60", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      </div>
+                      <div style={{ fontSize: 13.5, fontWeight: 700, color: "#166534" }}>Ticket submitted for {adminHospital}</div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </section>
-        )}
-        {tab === "users" && (<>
+            </section>
+          )}
+          {tab === "maintenance" && <MaintenancePage />}
+          {tab === "analytics" && <AnalyticsPage />}
           {/* Add User Form */}
           <div style={styles.formSection}>
             <h2 style={styles.sectionTitle}>Add New User</h2>
@@ -2488,19 +2602,20 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
             <button style={{ ...styles.deleteBtn, fontSize: 12 }} onClick={async () => { if (window.confirm("Delete ALL notifications for ALL users? This cannot be undone.")) { await dbWrite({ action: "reset_all_notifications" }); alert("All notifications cleared."); } }}>RESET ALL NOTIFICATIONS</button>
           </div>
         </>)}
-        </div>
-      </main>
-      <PartnerFooter />
+          </div>
+        </main>
+        <PartnerFooter />
+      </div>
     </div>
   );
 }
 
-/* ─── Company Dashboard ─── */
+/* ─── Company Dashboard (Sidebar Layout) ─── */
 function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLogout }) {
-  const [tab, setTab] = useState("home"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
+  const [tab, setTab] = useState("dashboard"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const [pendingFocus, setPendingFocus] = useState(null);
   const handleNotifFocus = (info) => {
-    setTab("complaints");
+    setTab("tickets");
     setSelected(info.hospital);
     setPendingFocus({ complaintId: info.complaintId, isComment: info.isComment, commentText: info.commentText });
   };
@@ -2521,71 +2636,59 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
   const handleVerify = async (id) => { await verifyComplaint(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, c.hospital, id, notifyTarget).catch(() => {}); } await onRefresh(); };
   const handleRejectVerify = async (id) => { await rejectVerification(id); await insertComment(id, user.name, "company", "Verification rejected — ticket reopened."); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, c.title, c.hospital, id, notifyTarget).catch(() => {}); } await onRefresh(); };
   const staffOptions = (users || []).filter(u => u.role === "company" && (u.company_role === "engineer" || u.company_role === "technician" || u.company_role === "manager"));
-  // For the hero + stats
   const funcCount = myHospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
-  const resolvedCount = myComplaints.filter(c => isClosedStatus(c.status)).length;
+
+  const NAV_ITEMS = [
+    { id: "dashboard", icon: "dashboard", label: "Dashboard" },
+    { id: "sites", icon: "sites", label: "Sites" },
+    { id: "tickets", icon: "tickets", label: "Tickets" },
+    { id: "maintenance", icon: "maintenance", label: "Maintenance" },
+    { id: "analytics", icon: "analytics", label: "Analytics" },
+  ];
+
+  const PAGE_TITLES = {
+    dashboard: "Dashboard", sites: "Sites", tickets: "Tickets",
+    maintenance: "Maintenance", analytics: "Analytics"
+  };
 
   return (
-    <div style={{ ...styles.shell, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
-      {/* Teal gradient hero header */}
-      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "20px 24px 24px", color: "#fff" }}>
-        <div style={{ maxWidth: 980, margin: "0 auto" }}>
-          {/* header row: title left, actions right */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-            <div style={{ fontSize: 17, letterSpacing: 2, opacity: 0.9, fontWeight: 800, textTransform: "uppercase" }}>Project Status</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("complaints"); setSelected(h); }} complaints={complaints} light={true} />
-              <button className="refresh-btn" title="Refresh" aria-label="Refresh" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 12.5, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }} onClick={handleRefresh}>
-                <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                <span className="refresh-label" style={{ display: refreshing ? "none" : undefined }}>Refresh</span>
-                {refreshing && <svg className="refresh-icon-desktop spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
-              </button>
-              <button title="Sign Out" aria-label="Sign Out" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }} onClick={onLogout}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-              </button>
+    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <style>{`
+        .sb-item:hover .sb-tip { display: block !important; }
+        .sb-item:hover { background: rgba(255,255,255,0.08) !important; }
+        .sb-item:hover svg, .sb-item:hover div { color: rgba(255,255,255,0.85) !important; }
+        @keyframes refresh-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .spinning { animation: refresh-spin 0.7s linear infinite; transform-origin: center; }
+        @media (max-width: 768px) {
+          .sidebar-nav { display: none !important; }
+          .main-area { margin-left: 0 !important; }
+        }
+      `}</style>
+      <SidebarNav items={NAV_ITEMS} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
+      <div className="main-area" style={{ flex: 1, marginLeft: 54, background: C.bg, minHeight: "100vh" }}>
+        <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${myHospitals.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
+          <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
+        </TopBar>
+        <main style={{ maxWidth: 1020, margin: "0 auto", padding: "24px 24px" }}>
+          <div key={tab} className="scale-in">
+          {tab === "dashboard" && <HomeTab hospitals={myHospitals} groups={myGroups} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
+          {tab === "sites" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
+          {tab === "tickets" && !selected && (<>
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
+              <button style={styles.tabActionBtn} onClick={() => downloadCSV(myComplaints, "All Tickets Data")}>↓ Download Data</button>
             </div>
+            <GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} />
+          </>)}
+          {tab === "tickets" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onAssign={handleAssign} onLogVisit={handleLogVisit} onMarkResolved={handleMarkResolved} onVerify={handleVerify} onRejectVerify={handleRejectVerify} onDelete={() => {}} onRefresh={onRefresh} staffOptions={staffOptions} focusInfo={pendingFocus} />)}
+          {tab === "maintenance" && <MaintenancePage />}
+          {tab === "analytics" && <AnalyticsPage />}
           </div>
-          {/* hero metric */}
-          <div style={{ display: "flex", alignItems: "baseline", marginTop: 10, gap: 10 }}>
-            <span style={{ fontSize: 48, fontWeight: 800, lineHeight: 1 }}>{funcCount}</span>
-            <span style={{ fontSize: 18, fontWeight: 600, opacity: 0.8 }}>of {myHospitals.length}</span>
-            <span style={{ fontSize: 15, fontWeight: 600, opacity: 0.9 }}>Plants Functional</span>
-          </div>
-          {/* stats strip */}
-          <div style={{ display: "flex", alignItems: "center", marginTop: 18, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 16, padding: "14px 8px" }}>
-            <div style={{ flex: 1, textAlign: "center" }}>
-              <div style={{ fontSize: 22, fontWeight: 800 }}>{totalOpen}</div>
-              <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 3 }}>Open Tickets</div>
-            </div>
-            <div style={{ width: 1, height: 34, background: "rgba(255,255,255,0.18)" }} />
-            <div style={{ flex: 1, textAlign: "center" }}>
-              <div style={{ fontSize: 22, fontWeight: 800 }}>{resolvedCount}</div>
-              <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginTop: 3 }}>Resolved</div>
-            </div>
-          </div>
-        </div>
+        </main>
+        <PartnerFooter />
       </div>
-
-      <div className="slide-down tab-bar-responsive" style={{ ...styles.tabBar, animationDelay: "0.15s", position: "relative" }}>
-        <button className="tab-btn" style={tab === "home" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("home"); setSelected(null); }}>Home</button>
-        <button className="tab-btn" style={tab === "overview" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("overview"); setSelected(null); }}>Overview</button>
-        <button className="tab-btn" style={tab === "complaints" ? styles.tabActive : styles.tabInactive} onClick={() => { setTab("complaints"); setSelected(null); }}>Tickets</button>
-        {tab === "complaints" && !selected && <button className="tab-download-btn" style={styles.tabActionBtn} onClick={() => downloadCSV(myComplaints, "All Tickets Data")}>↓ Download Data</button>}
-      </div>
-      <main className="main-responsive" style={styles.main}>
-        <div key={tab} className="scale-in">
-        {tab === "home" && <HomeTab hospitals={myHospitals} groups={myGroups} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("complaints"); setSelected(h); }} />}
-        {tab === "overview" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} onViewSite={(h) => { setTab("complaints"); setSelected(h); }} />}
-        {tab === "complaints" && !selected && (<GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} />)}
-        {tab === "complaints" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onAssign={handleAssign} onLogVisit={handleLogVisit} onMarkResolved={handleMarkResolved} onVerify={handleVerify} onRejectVerify={handleRejectVerify} onDelete={() => {}} onRefresh={onRefresh} staffOptions={staffOptions} focusInfo={pendingFocus} />)}
-        </div>
-      </main>
-      <PartnerFooter />
     </div>
   );
 }
-
-/* ─── Styles ─── */
 const C = { bg: "#f0f2f4", white: "#ffffff", black: "#111111", text: "#111111", textMid: "#555555", textLight: "#999999", border: "#d0d0d0", borderLight: "#e0e0e0", red: "#c0392b", green: "#27ae60", teal: "#0d9488", tealDark: "#0f766e", tealLight: "#ccfbf1", tealBg: "#f0fdfa" };
 const styles = {
   formSectionTeal: { background: C.white, borderRadius: 18, padding: 28, marginBottom: 28, border: `1px solid ${C.borderLight}`, boxShadow: "0 4px 16px rgba(15,118,110,0.08)" },
