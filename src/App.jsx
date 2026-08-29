@@ -1375,8 +1375,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
         <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>Site Status</div>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#0f766e", background: "#e6f5f0", padding: "4px 12px", borderRadius: 20 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#16a34a" }} />
-            {funcCount} of {hospitals.length} fully functional
+            {funcCount} of {hospitals.length} Plants functional
           </span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: allOpen > 0 ? "#b45309" : "#5f6b7a", background: allOpen > 0 ? "#fef3e2" : "#f4f4f0", padding: "4px 12px", borderRadius: 20 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: allOpen > 0 ? "#d97706" : "#94a3b8" }} />
@@ -1394,7 +1393,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
           <div style={{ flex: "0 0 150px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Service Provider</div>
           <div style={{ flex: "0 0 160px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Status</div>
           <div style={{ flex: "1 1 200px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Open Tickets</div>
-          <div style={{ flex: "1 1 200px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Equipment / Notes</div>
+          <div style={{ flex: "1 1 280px", padding: "14px 16px", fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, textAlign: "center" }}>Equipment / Notes</div>
         </div>
         {/* Rows */}
         {sortedHospitals.map((h, i) => {
@@ -1435,31 +1434,48 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                 </div>
                 <div style={{ flex: "1 1 200px", padding: "14px 16px", textAlign: "center" }}>
                   {open.length > 0 ? (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4, justifyContent: "center" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       {open.map(c => (
-                        <span key={c.id} style={{ fontSize: 11.5, fontWeight: 500, color: "#5f6b7a", background: "#f4f4f0", padding: "3px 10px", borderRadius: 6 }}>{c.title.length > 28 ? c.title.slice(0, 28) + "\u2026" : c.title}</span>
+                        <span key={c.id} style={{ fontSize: 11.5, fontWeight: 500, color: "#5f6b7a", background: "#f4f4f0", padding: "5px 10px", borderRadius: 6, minHeight: 30, display: "flex", alignItems: "center", justifyContent: "center" }}>{c.title.length > 28 ? c.title.slice(0, 28) + "\u2026" : c.title}</span>
                       ))}
                     </div>
                   ) : <span style={{ fontSize: 12, color: "#c4c8cc" }}>—</span>}
                 </div>
-                <div style={{ flex: "1 1 200px", padding: "14px 16px", textAlign: "center" }}>
+                <div style={{ flex: "1 1 280px", padding: "14px 16px", textAlign: "center" }}>
                   {(() => {
-                    const noteKey = open.length > 0 ? open[0].id : null;
-                    const cNote = noteKey ? getNoteForComplaint(h, noteKey) : (getNotesMap(h)._site || "");
-                    if (isAdmin) {
-                      if (editingNote === (noteKey || h)) {
-                        return (<div style={{ display: "flex", gap: 4 }} onClick={e => e.stopPropagation()}>
-                          <input style={{ ...styles.pwInput, width: "100%", fontSize: 12 }} value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote(h, noteKey)} />
-                          <button style={{ ...styles.pwSaveBtn, fontSize: 10, padding: "3px 8px" }} onClick={() => saveNote(h, noteKey)}>✓</button>
-                          <button style={{ ...styles.pwCancelBtn, fontSize: 10 }} onClick={() => setEditingNote(null)}>✕</button>
+                    if (open.length === 0) {
+                      const cNote = getNotesMap(h)._site || "";
+                      if (isAdmin) {
+                        if (editingNote === h) {
+                          return (<div style={{ display: "flex", gap: 4 }} onClick={e => e.stopPropagation()}>
+                            <input style={{ ...styles.pwInput, width: "100%", fontSize: 12 }} value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote(h, null)} />
+                            <button style={{ ...styles.pwSaveBtn, fontSize: 10, padding: "3px 8px" }} onClick={() => saveNote(h, null)}>✓</button>
+                            <button style={{ ...styles.pwCancelBtn, fontSize: 10 }} onClick={() => setEditingNote(null)}>✕</button>
+                          </div>);
+                        }
+                        return (<div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
+                          <span style={{ fontSize: 12.5, color: cNote ? "#5f6b7a" : "#c4c8cc" }}>{cNote || "—"}</span>
+                          <button style={{ fontSize: 10.5, color: "#0d9488", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }} onClick={e => { e.stopPropagation(); setEditingNote(h); setNoteText(cNote); }}>edit</button>
                         </div>);
                       }
-                      return (<div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
-                        <span style={{ fontSize: 12.5, color: cNote ? "#5f6b7a" : "#c4c8cc" }}>{cNote || "—"}</span>
-                        <button style={{ fontSize: 10.5, color: "#0d9488", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }} onClick={e => { e.stopPropagation(); setEditingNote(noteKey || h); setNoteText(cNote); }}>edit</button>
-                      </div>);
+                      return <span style={{ fontSize: 12.5, color: cNote ? "#5f6b7a" : "#c4c8cc" }}>{cNote || "—"}</span>;
                     }
-                    return <span style={{ fontSize: 12.5, color: cNote ? "#5f6b7a" : "#c4c8cc" }}>{cNote || "—"}</span>;
+                    return (<div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {open.map(c => {
+                        const cNote = getNoteForComplaint(h, c.id);
+                        if (isAdmin && editingNote === c.id) {
+                          return (<div key={c.id} style={{ display: "flex", gap: 4, minHeight: 30, alignItems: "center" }} onClick={e => e.stopPropagation()}>
+                            <input style={{ ...styles.pwInput, width: "100%", fontSize: 12 }} value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote(h, c.id)} />
+                            <button style={{ ...styles.pwSaveBtn, fontSize: 10, padding: "3px 8px" }} onClick={() => saveNote(h, c.id)}>✓</button>
+                            <button style={{ ...styles.pwCancelBtn, fontSize: 10 }} onClick={() => setEditingNote(null)}>✕</button>
+                          </div>);
+                        }
+                        return (<div key={c.id} style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "center", minHeight: 30 }}>
+                          <span style={{ fontSize: 12, color: cNote ? "#5f6b7a" : "#c4c8cc" }}>{cNote || "—"}</span>
+                          {isAdmin && <button style={{ fontSize: 10.5, color: "#0d9488", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }} onClick={e => { e.stopPropagation(); setEditingNote(c.id); setNoteText(cNote); }}>edit</button>}
+                        </div>);
+                      })}
+                    </div>);
                   })()}
                 </div>
               </div>
