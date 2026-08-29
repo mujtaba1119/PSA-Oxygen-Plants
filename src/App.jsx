@@ -1380,7 +1380,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
       </div>
 
       {/* Table area — dark teal background */}
-      <div style={{ background: "radial-gradient(ellipse 900px 500px at 0% 0%, rgba(11,59,56,0.9), transparent 55%), radial-gradient(ellipse 700px 600px at 100% 100%, rgba(15,86,80,0.5), transparent 50%), #0c2421", margin: "0 -32px", padding: "20px 32px 28px", borderRadius: 20 }}>
+      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", padding: "20px 24px 24px", borderRadius: 16 }}>
       {/* Header tile */}
       <div style={{ display: "flex", background: "rgba(255,255,255,0.06)", borderRadius: 14, padding: 0, marginBottom: 8, border: "1px solid rgba(255,255,255,0.08)", minWidth: 900 }}>
         <div style={{ flex: "0 0 40px", padding: "12px 0", textAlign: "center", fontSize: 10, fontWeight: 700, color: "#0f766e", textTransform: "uppercase", letterSpacing: 1 }}>#</div>
