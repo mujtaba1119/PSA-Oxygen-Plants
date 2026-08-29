@@ -543,12 +543,12 @@ function NotificationBell({ user, onNavigate, onFocusComplaint, light, complaint
 
   return (
     <div ref={bellRef} style={{ position: "relative" }}>
-      <button onClick={handleOpen} style={{ background: light ? "rgba(255,255,255,0.15)" : "none", border: light ? "1px solid rgba(255,255,255,0.25)" : "1px solid " + C.border, borderRadius: 10, cursor: "pointer", padding: "8px 10px", position: "relative", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={light ? "#ffffff" : C.tealDark} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <button onClick={handleOpen} style={{ width: 38, height: 38, background: light ? "rgba(255,255,255,0.08)" : "none", border: light ? "1px solid rgba(255,255,255,0.15)" : "1px solid " + C.border, borderRadius: "50%", cursor: "pointer", position: "relative", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={light ? "#ffffff" : C.tealDark} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
-        {unread > 0 && <span style={{ position: "absolute", top: -5, right: -5, background: "#c0392b", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: "50%", width: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", border: light ? "2px solid #0d9488" : "2px solid #fff" }}>{unread > 9 ? "9+" : unread}</span>}
+        {unread > 0 && <span style={{ position: "absolute", top: -3, right: -3, background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: "50%", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", border: light ? "2px solid #0b3b38" : "2px solid #fff" }}>{unread > 9 ? "9+" : unread}</span>}
       </button>
       {open && createPortal(<>
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998, background: "rgba(0,0,0,0.1)" }} onClick={() => setOpen(false)} />
@@ -2278,29 +2278,34 @@ function SidebarNav({ items, active, onSelect, bottomItems }) {
   );
 }
 
-/* ─── Top Bar (teal gradient, curved corner, seamless blend with sidebar) ─── */
+/* ─── Top Bar (wavy teal, dark both ends, redesigned buttons) ─── */
 function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, children }) {
   return (
-    <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", fontFamily: "'DM Sans', system-ui, sans-serif", color: "#fff", position: "sticky", top: 0, zIndex: 90, borderBottomLeftRadius: 22, boxShadow: "0 4px 20px rgba(11,59,56,0.25)" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", height: 64 }}>
-        <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", letterSpacing: 0.2 }}>{title}</div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 2 }}>{subtitle}</div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {children}
-          <button className="refresh-btn tb-glass" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", transition: "all 0.2s" }}>
-            <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            <span className="refresh-label" style={{ display: refreshing ? "none" : undefined }}>Refresh</span>
-            {refreshing && <svg className="refresh-icon-desktop spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
-          </button>
-          <div style={{ width: 1, height: 22, background: "rgba(255,255,255,0.18)", margin: "0 2px" }} />
-          <button className="tb-glass" title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 12px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", transition: "all 0.2s" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-            <span className="refresh-label">Sign out</span>
-          </button>
+    <div style={{ position: "sticky", top: 0, zIndex: 90, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 45%, #0b3b38 100%)", color: "#fff" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", height: 64 }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", letterSpacing: 0.2 }}>{title}</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 2 }}>{subtitle}</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {children}
+            <button className="refresh-btn tb-glass" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.9)", borderRadius: 12, cursor: "pointer", padding: "8px 16px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600, letterSpacing: 0.2, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+              <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              {!refreshing && "Refresh"}
+              {refreshing && <svg className="spinning" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
+            </button>
+            <div style={{ width: 1, height: 26, background: "rgba(255,255,255,0.12)" }} />
+            <button className="tb-glass" title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ width: 38, height: 38, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            </button>
+          </div>
         </div>
       </div>
+      {/* Wavy bottom edge */}
+      <svg viewBox="0 0 1200 22" preserveAspectRatio="none" style={{ display: "block", width: "100%", height: 22, marginTop: -1 }}>
+        <path d="M0,0 C200,22 400,22 600,11 C800,0 1000,0 1200,11 L1200,0 L0,0 Z" fill="#0b3b38" />
+      </svg>
     </div>
   );
 }
@@ -2566,7 +2571,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
       <SidebarNav items={NAV_ITEMS} bottomItems={NAV_BOTTOM} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
       <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f6f7f9", minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${ALL_HOSPITALS.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
-          <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
+          <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} light={true} />
         </TopBar>
         <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px" }}>
           <div key={tab} className="scale-in">
@@ -2840,7 +2845,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
       <SidebarNav items={NAV_ITEMS} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
       <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f6f7f9", minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${myHospitals.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
-          <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
+          <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} light={true} />
         </TopBar>
         <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px" }}>
           <div key={tab} className="scale-in">
