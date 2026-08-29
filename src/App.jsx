@@ -1402,7 +1402,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
           const siteStatus = getSiteDisplayStatus(h, complaints, siteNotes);
           return (
             <div key={h}>
-              <div onClick={() => setExpandedRow(expandedRow === h ? null : h)} style={{ display: "flex", alignItems: "center", borderBottom: "1px solid #f0f0ec", cursor: "pointer", transition: "background 0.12s", minWidth: 900 }} onMouseEnter={e => e.currentTarget.style.background = "#fafaf7"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+              <div onClick={() => setExpandedRow(expandedRow === h ? null : h)} style={{ display: "flex", alignItems: "center", borderBottom: "1px solid transparent", borderImage: "linear-gradient(90deg, #0b3b38, #0f766e, #0b3b38) 1", cursor: "pointer", transition: "background 0.12s", minWidth: 900 }} onMouseEnter={e => e.currentTarget.style.background = "#fafaf7"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                 <div style={{ flex: "0 0 48px", padding: "14px 0", textAlign: "center", fontSize: 12, fontWeight: 500, color: "#b0b5ba" }}>{i + 1}</div>
                 <div style={{ flex: "1 1 220px", padding: "14px 16px", fontSize: 13.5, fontWeight: 600, color: "#1a1d21", textAlign: "center" }}>{displayName(h)}</div>
                 <div style={{ flex: "0 0 150px", padding: "14px 16px", fontSize: 13, fontWeight: 400, color: "#5f6b7a", textAlign: "center" }}>{getProvider(h)}</div>
@@ -1476,7 +1476,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                     </div>
                   )) : <p style={{ fontSize: 12, color: "#8a9199" }}>No open complaints for this site.</p>}
                   {onViewSite && (
-                    <button onClick={(e) => { e.stopPropagation(); onViewSite(h); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 6, fontSize: 12.5, fontWeight: 700, color: "#fff", background: "#0d9488", border: "none", borderRadius: 8, padding: "9px 18px", cursor: "pointer" }}>
+                    <button onClick={(e) => { e.stopPropagation(); onViewSite(h); }} style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 6, fontSize: 12, fontWeight: 700, color: "#062825", background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)", border: "none", borderRadius: 10, padding: "9px 18px", cursor: "pointer", letterSpacing: 0.3 }}>
                       View all tickets <span style={{ fontSize: 14 }}>→</span>
                     </button>
                   )}
