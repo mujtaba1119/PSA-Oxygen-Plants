@@ -1380,12 +1380,12 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
       <div style={{ background: "#fff", borderRadius: 12, border: "1px solid #e5e5e0", overflow: "hidden" }}>
         {/* Header */}
         <div style={{ display: "flex", borderBottom: "1px solid #e5e5e0", background: "#fafaf7", minWidth: 900 }}>
-          <div style={{ flex: "0 0 48px", padding: "13px 0", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#8a9199" }}>#</div>
-          <div style={{ flex: "1 1 220px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199" }}>Site Name</div>
-          <div style={{ flex: "0 0 150px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199" }}>Service Provider</div>
-          <div style={{ flex: "0 0 140px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199" }}>Status</div>
-          <div style={{ flex: "1 1 200px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199" }}>Open Tickets</div>
-          <div style={{ flex: "0 0 80px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textAlign: "center" }}></div>
+          <div style={{ flex: "0 0 48px", padding: "13px 0", textAlign: "center", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5 }}>#</div>
+          <div style={{ flex: "1 1 220px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5 }}>Site Name</div>
+          <div style={{ flex: "0 0 150px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5 }}>Service Provider</div>
+          <div style={{ flex: "0 0 140px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5 }}>Status</div>
+          <div style={{ flex: "1 1 200px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5 }}>Open Tickets</div>
+          <div style={{ flex: "1 1 200px", padding: "13px 16px", fontSize: 11, fontWeight: 600, color: "#8a9199", textTransform: "uppercase", letterSpacing: 0.5 }}>Equipment / Notes</div>
         </div>
         {/* Rows */}
         {sortedHospitals.map((h, i) => {
@@ -1431,8 +1431,25 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                     </div>
                   ) : <span style={{ fontSize: 12, color: "#c4c8cc" }}>—</span>}
                 </div>
-                <div style={{ flex: "0 0 80px", padding: "14px 16px", textAlign: "center" }}>
-                  <span style={{ fontSize: 11.5, fontWeight: 600, color: "#0d9488" }}>View →</span>
+                <div style={{ flex: "1 1 200px", padding: "14px 16px" }}>
+                  {(() => {
+                    const noteKey = open.length > 0 ? open[0].id : null;
+                    const cNote = noteKey ? getNoteForComplaint(h, noteKey) : (getNotesMap(h)._site || "");
+                    if (isAdmin) {
+                      if (editingNote === (noteKey || h)) {
+                        return (<div style={{ display: "flex", gap: 4 }} onClick={e => e.stopPropagation()}>
+                          <input style={{ ...styles.pwInput, width: "100%", fontSize: 12 }} value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote(h, noteKey)} />
+                          <button style={{ ...styles.pwSaveBtn, fontSize: 10, padding: "3px 8px" }} onClick={() => saveNote(h, noteKey)}>✓</button>
+                          <button style={{ ...styles.pwCancelBtn, fontSize: 10 }} onClick={() => setEditingNote(null)}>✕</button>
+                        </div>);
+                      }
+                      return (<div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 12.5, color: cNote ? "#5f6b7a" : "#c4c8cc", flex: 1 }}>{cNote || "—"}</span>
+                        <button style={{ fontSize: 10.5, color: "#0d9488", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }} onClick={e => { e.stopPropagation(); setEditingNote(noteKey || h); setNoteText(cNote); }}>edit</button>
+                      </div>);
+                    }
+                    return <span style={{ fontSize: 12.5, color: cNote ? "#5f6b7a" : "#c4c8cc" }}>{cNote || "—"}</span>;
+                  })()}
                 </div>
               </div>
               {expandedRow === h && (
