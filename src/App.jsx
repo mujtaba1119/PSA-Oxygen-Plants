@@ -2152,9 +2152,9 @@ function SidebarIcon({ name, size = 20 }) {
 
 /* ─── Compact Vessel Animation for Sidebar (full replica of login vessel) ─── */
 function SidebarVessel() {
-  const VW = 64, VH = 80;
+  const VW = 100, VH = 90;
   const cx = VW / 2;
-  const vW = 26, vX = cx - vW / 2;
+  const vW = 30, vX = cx - vW / 2;
   const vTop = 14, vBottom = 62;
   const inTop = vTop + 2, inBottom = vBottom - 2, inH = inBottom - inTop;
   const surfAt = (r) => inBottom + (inTop + 2 - inBottom) * r;
@@ -2240,60 +2240,81 @@ function SidebarVessel() {
 function SidebarNav({ items, active, onSelect, bottomItems }) {
   return (
     <nav className="sidebar-nav" style={sidebarStyles.nav}>
-      <div style={{ marginBottom: 10 }}>
+      {/* Vessel + Brand */}
+      <div style={{ padding: "6px 0 18px", display: "flex", flexDirection: "column", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 8, width: "100%" }}>
         <SidebarVessel />
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#5eead4", letterSpacing: 2, textTransform: "uppercase", marginTop: 2 }}>OxyTrack</div>
       </div>
+      {/* Main nav items */}
       <div style={sidebarStyles.items}>
-        {items.map(item => (
-          <div key={item.id} className="sb-item" onClick={() => onSelect(item.id)} style={{ ...sidebarStyles.item, ...(active === item.id ? sidebarStyles.itemActive : {}) }} title={item.label}>
-            <div style={{ color: active === item.id ? "#5eead4" : "rgba(255,255,255,0.45)", transition: "color 0.15s" }}>
-              <SidebarIcon name={item.icon} />
+        {items.map(item => {
+          const isActive = active === item.id;
+          return (
+            <div key={item.id} className="sb-item" onClick={() => onSelect(item.id)} style={{ ...sidebarStyles.item, ...(isActive ? sidebarStyles.itemActive : {}) }}>
+              {isActive && <div style={{ position: "absolute", left: 0, top: 6, bottom: 6, width: 3, borderRadius: "0 3px 3px 0", background: "#5eead4" }} />}
+              <div style={{ color: isActive ? "#5eead4" : "rgba(255,255,255,0.4)", transition: "color 0.15s", flexShrink: 0 }}>
+                <SidebarIcon name={item.icon} />
+              </div>
+              <span style={{ fontSize: 11.5, fontWeight: isActive ? 700 : 500, color: isActive ? "#fff" : "rgba(255,255,255,0.55)", transition: "color 0.15s", letterSpacing: 0.2 }}>{item.label}</span>
             </div>
-            <span className="sb-tip" style={sidebarStyles.tip}>{item.label}</span>
-          </div>
-        ))}
+          );
+        })}
       </div>
       {bottomItems && bottomItems.length > 0 && (
         <>
           <div style={sidebarStyles.divider} />
           <div style={sidebarStyles.items}>
-            {bottomItems.map(item => (
-              <div key={item.id} className="sb-item" onClick={() => onSelect(item.id)} style={{ ...sidebarStyles.item, ...(active === item.id ? sidebarStyles.itemActive : {}) }} title={item.label}>
-                <div style={{ color: active === item.id ? "#5eead4" : "rgba(255,255,255,0.45)", transition: "color 0.15s" }}>
-                  <SidebarIcon name={item.icon} />
+            {bottomItems.map(item => {
+              const isActive = active === item.id;
+              return (
+                <div key={item.id} className="sb-item" onClick={() => onSelect(item.id)} style={{ ...sidebarStyles.item, ...(isActive ? sidebarStyles.itemActive : {}) }}>
+                  {isActive && <div style={{ position: "absolute", left: 0, top: 6, bottom: 6, width: 3, borderRadius: "0 3px 3px 0", background: "#5eead4" }} />}
+                  <div style={{ color: isActive ? "#5eead4" : "rgba(255,255,255,0.4)", transition: "color 0.15s", flexShrink: 0 }}>
+                    <SidebarIcon name={item.icon} />
+                  </div>
+                  <span style={{ fontSize: 11.5, fontWeight: isActive ? 700 : 500, color: isActive ? "#fff" : "rgba(255,255,255,0.55)", transition: "color 0.15s", letterSpacing: 0.2 }}>{item.label}</span>
                 </div>
-                <span className="sb-tip" style={sidebarStyles.tip}>{item.label}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
       <div style={{ flex: 1 }} />
+      {/* Bottom: version tag */}
+      <div style={{ padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", width: "100%", textAlign: "center" }}>
+        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", letterSpacing: 1, textTransform: "uppercase" }}>oxytrack.pk</div>
+      </div>
     </nav>
   );
 }
 
-/* ─── Top Bar (teal gradient — sticky on scroll) ─── */
+/* ─── Top Bar (teal gradient — sticky on scroll, with breadcrumb + search) ─── */
 function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, children }) {
   return (
-    <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", fontFamily: "'DM Sans', system-ui, sans-serif", color: "#fff", position: "sticky", top: 0, zIndex: 90, boxShadow: "0 2px 12px rgba(11,59,56,0.3)" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 28px 16px", minHeight: 56 }}>
-        <div>
-          <div style={{ fontSize: 16, fontWeight: 800, color: "#fff", letterSpacing: 1.5, textTransform: "uppercase" }}>{title}</div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 3 }}>{subtitle}</div>
+    <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", fontFamily: "'DM Sans', system-ui, sans-serif", color: "#fff", position: "sticky", top: 0, zIndex: 90, boxShadow: "0 2px 16px rgba(11,59,56,0.35)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", height: 64 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "#fff", letterSpacing: 0.5 }}>{title}</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 2 }}>{subtitle}</div>
+          </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {children}
-          <button className="refresh-btn" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 12.5, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase" }}>
-            <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          <button className="refresh-btn" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 14px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", transition: "background 0.15s" }}>
+            <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             <span className="refresh-label" style={{ display: refreshing ? "none" : undefined }}>Refresh</span>
-            {refreshing && <svg className="refresh-icon-desktop spinning" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
+            {refreshing && <svg className="refresh-icon-desktop spinning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
           </button>
-          <button title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 10px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.15)", margin: "0 4px" }} />
+          <button title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", borderRadius: 10, cursor: "pointer", padding: "8px 12px", lineHeight: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 11, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", transition: "background 0.15s" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span className="refresh-label">Sign out</span>
           </button>
         </div>
       </div>
+      {/* Accent line */}
+      <div style={{ height: 2, background: "linear-gradient(90deg, rgba(94,234,212,0) 0%, rgba(94,234,212,0.4) 30%, rgba(94,234,212,0.6) 50%, rgba(94,234,212,0.4) 70%, rgba(94,234,212,0) 100%)" }} />
     </div>
   );
 }
@@ -2331,14 +2352,11 @@ function AnalyticsPage() {
 
 /* ─── Sidebar Styles ─── */
 const sidebarStyles = {
-  nav: { background: "linear-gradient(180deg, #0b3b38 0%, #0a3533 30%, #0f766e 100%)", display: "flex", flexDirection: "column", padding: "0 0 14px", gap: 2, alignItems: "center", width: 64, minHeight: "100vh", position: "fixed", top: 0, left: 0, zIndex: 100 },
-  logo: { width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 18 },
-  logoText: { fontSize: 18, fontWeight: 800, color: "#5eead4", letterSpacing: -1, fontFamily: "'DM Sans', system-ui, sans-serif" },
-  items: { display: "flex", flexDirection: "column", gap: 2, alignItems: "center" },
-  item: { width: 42, height: 42, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "background 0.15s", position: "relative" },
-  itemActive: { background: "rgba(255,255,255,0.12)" },
-  tip: { display: "none", position: "absolute", left: 54, top: "50%", transform: "translateY(-50%)", background: "#0b3b38", border: "1px solid #14b8a6", padding: "4px 10px", borderRadius: 6, fontSize: 11, color: "#ccfbf1", whiteSpace: "nowrap", fontWeight: 600, zIndex: 10, pointerEvents: "none", letterSpacing: 0.3, fontFamily: "'DM Sans', system-ui, sans-serif" },
-  divider: { width: 28, height: 1, background: "rgba(255,255,255,0.12)", margin: "8px 0" },
+  nav: { background: "linear-gradient(180deg, #0b3b38 0%, #0a3533 30%, #0f766e 100%)", display: "flex", flexDirection: "column", padding: 0, alignItems: "stretch", width: 180, minHeight: "100vh", position: "fixed", top: 0, left: 0, zIndex: 100, fontFamily: "'DM Sans', system-ui, sans-serif" },
+  items: { display: "flex", flexDirection: "column", gap: 1, padding: "4px 8px" },
+  item: { display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, cursor: "pointer", transition: "background 0.15s", position: "relative" },
+  itemActive: { background: "rgba(255,255,255,0.1)" },
+  divider: { height: 1, background: "rgba(255,255,255,0.08)", margin: "8px 16px" },
 };
 function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRefresh, onLogout }) {
   const [tab, setTab] = useState("dashboard"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
@@ -2464,9 +2482,9 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <style>{`
-        .sb-item:hover .sb-tip { display: block !important; }
-        .sb-item:hover { background: rgba(255,255,255,0.08) !important; }
-        .sb-item:hover svg, .sb-item:hover div { color: rgba(255,255,255,0.85) !important; }
+        
+        .sb-item:hover { background: rgba(255,255,255,0.06) !important; }
+        .sb-item:hover span { color: rgba(255,255,255,0.85) !important; }
         @keyframes refresh-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .spinning { animation: refresh-spin 0.7s linear infinite; transform-origin: center; }
         @media (max-width: 768px) {
@@ -2475,7 +2493,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} bottomItems={NAV_BOTTOM} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area" style={{ flex: 1, marginLeft: 64, background: "#f4f6f7", minHeight: "100vh" }}>
+      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f4f6f7", minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${ALL_HOSPITALS.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
         </TopBar>
@@ -2734,9 +2752,9 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <style>{`
-        .sb-item:hover .sb-tip { display: block !important; }
-        .sb-item:hover { background: rgba(255,255,255,0.08) !important; }
-        .sb-item:hover svg, .sb-item:hover div { color: rgba(255,255,255,0.85) !important; }
+        
+        .sb-item:hover { background: rgba(255,255,255,0.06) !important; }
+        .sb-item:hover span { color: rgba(255,255,255,0.85) !important; }
         @keyframes refresh-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .spinning { animation: refresh-spin 0.7s linear infinite; transform-origin: center; }
         @media (max-width: 768px) {
@@ -2745,7 +2763,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area" style={{ flex: 1, marginLeft: 64, background: "#f4f6f7", minHeight: "100vh" }}>
+      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f4f6f7", minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${myHospitals.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} />
         </TopBar>
