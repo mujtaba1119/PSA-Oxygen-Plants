@@ -1275,8 +1275,8 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
           { label: "Attention needed", value: attentionSites.length, tag: issueSites.length > 0 ? `${issueSites.length} with issues` : null, tagType: "amber", accent: "#b7791f" },
         ].map((card, i) => (
           <div key={i} style={{ background: "rgba(255,255,255,0.04)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderRadius: 16, padding: "20px 20px 18px", border: "1px solid rgba(94,234,212,0.08)", borderLeft: `3px solid ${card.accent}`, transition: "box-shadow 0.2s, transform 0.2s" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 2px 12px rgba(94,234,212,0.08), 0 8px 24px rgba(0,0,0,0.2)"; e.currentTarget.style.transform = "translateY(-1px)"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = ""; e.currentTarget.style.transform = "none"; }}>
-            <div style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.4)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>{card.label}</div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: "#111", letterSpacing: "-0.03em", lineHeight: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 500, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>{card.label}</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1 }}>
               {card.value}{card.sub && <span style={{ fontSize: 16, fontWeight: 500, color: "rgba(255,255,255,0.3)", marginLeft: 4 }}>{card.sub}</span>}
             </div>
             {card.tag && (
@@ -1348,7 +1348,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
         {/* Side Panel: Attention + Pipeline */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ background: "rgba(255,255,255,0.03)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(94,234,212,0.06)", borderRadius: 16, padding: "18px 18px 14px", flex: 1, overflowY: "auto", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", marginBottom: 12 }}>Needs attention</div>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.6)", textTransform: "uppercase", marginBottom: 12 }}>Needs attention</div>
             {attentionSites.length > 0 ? attentionSites.map(h => {
               const s = getSiteDisplayStatus(h, complaints, siteNotes);
               const isDown = s === "Shut Down";
@@ -1358,13 +1358,13 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
                 <div key={h} onClick={() => onViewSite(h)} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, marginBottom: 2, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(94,234,212,0.05)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, flexShrink: 0, boxShadow: `0 0 0 3px ${dotColor}22` }} />
                   <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.85)", flex: 1 }}>{h}</span>
-                  <span style={{ fontSize: 10.5, color: "rgba(255,255,255,0.35)", fontWeight: 500 }}>{s}</span>
+                  <span style={{ fontSize: 10.5, color: "rgba(255,255,255,0.6)", fontWeight: 500 }}>{s}</span>
                 </div>
               );
-            }) : <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", padding: "12px 0" }}>All sites operational</div>}
+            }) : <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", padding: "12px 0" }}>All sites operational</div>}
           </div>
           <div style={{ background: "rgba(255,255,255,0.03)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(94,234,212,0.06)", borderRadius: 16, padding: "18px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", marginBottom: 12 }}>Ticket pipeline</div>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.6)", textTransform: "uppercase", marginBottom: 12 }}>Ticket pipeline</div>
             {scoped.length > 0 ? (<>
               <div style={{ display: "flex", height: 10, borderRadius: 6, overflow: "hidden", background: "rgba(255,255,255,0.06)", marginBottom: 12 }}>
                 {STAGE_META.filter(s => stageCounts[s.key] > 0).map(s => (
@@ -1375,11 +1375,11 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
                 {STAGE_META.map(s => (
                   <span key={s.key} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(255,255,255,0.5)", padding: "3px 8px", background: "rgba(255,255,255,0.06)", borderRadius: 8 }}>
                     <span style={{ width: 7, height: 7, borderRadius: "50%", background: s.color }} />
-                    <strong style={{ color: "#111" }}>{stageCounts[s.key]}</strong> {statusLabel(s.key)}
+                    <strong style={{ color: "rgba(255,255,255,0.9)" }}>{stageCounts[s.key]}</strong> {statusLabel(s.key)}
                   </span>
                 ))}
               </div>
-            </>) : <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>No tickets yet</div>}
+            </>) : <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)" }}>No tickets yet</div>}
           </div>
         </div>
       </div>
@@ -1388,7 +1388,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         {showProviderBreakdown && (
           <div style={{ background: "rgba(255,255,255,0.03)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(94,234,212,0.06)", borderRadius: 16, padding: "20px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", marginBottom: 16 }}>By service provider</div>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.6)", textTransform: "uppercase", marginBottom: 16 }}>By service provider</div>
             {(() => {
               const rows = providerEntries.map(([provider, sites]) => {
                 const providerSites = sites.filter(s => hospitals.includes(s));
@@ -1401,7 +1401,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>{r.provider}</span>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{r.siteCount} sites</span>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>{r.siteCount} sites</span>
                       {r.openCount > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#d9822b" }}>{r.openCount} open</span>}
                     </div>
                   </div>
@@ -1414,7 +1414,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
           </div>
         )}
         <div style={{ background: "rgba(255,255,255,0.03)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(94,234,212,0.06)", borderRadius: 16, padding: "20px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", marginBottom: 16 }}>Recent activity</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.6)", textTransform: "uppercase", marginBottom: 16 }}>Recent activity</div>
           {resolvedThisWeek.length > 0 ? resolvedThisWeek.map((c, i) => (
             <div key={c.id} onClick={() => onViewSite(c.hospital)} style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 10px", borderRadius: 10, marginBottom: 2, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(94,234,212,0.05)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
               <div style={{ position: "relative", flexShrink: 0, paddingTop: 2 }}>
@@ -1422,11 +1422,11 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
                 {i < resolvedThisWeek.length - 1 && <div style={{ position: "absolute", left: 4, top: 14, width: 2, height: 28, background: "rgba(255,255,255,0.06)" }} />}
               </div>
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#111" }}>{c.title}</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{c.hospital} · {c.resolved_at ? new Date(c.resolved_at).toLocaleDateString() : ""}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.9)" }}>{c.title}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 2 }}>{c.hospital} · {c.resolved_at ? new Date(c.resolved_at).toLocaleDateString() : ""}</div>
               </div>
             </div>
-          )) : <div style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", padding: "12px 0" }}>No recent resolutions</div>}
+          )) : <div style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", padding: "12px 0" }}>No recent resolutions</div>}
         </div>
       </div>
     </div>
@@ -2371,8 +2371,8 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111", margin: 0, letterSpacing: -0.3 }}>{displayName(selectedSite)}</h2>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
             <SiteStatusBadge status={siteStatus} />
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{getProvider(selectedSite)}</span>
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>{Object.keys(equip).length} equipment</span>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{getProvider(selectedSite)}</span>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{Object.keys(equip).length} equipment</span>
             {siteComplaints.length > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#c0392b", background: "#fce8e8", padding: "2px 10px", borderRadius: 20 }}>{siteComplaints.length} open</span>}
           </div>
         </div>
@@ -2386,13 +2386,13 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
               {catItems.map(item => (
                 <div key={item.key} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", borderLeft: `3px solid ${gc.border}`, boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "#111", marginBottom: 6 }}>{item.label}</div>
-                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)" }}>SN: <span style={{ color: C.tealDark, fontWeight: 700, fontFamily: "monospace" }}>{equip[item.key]}</span></div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>SN: <span style={{ color: C.tealDark, fontWeight: 700, fontFamily: "monospace" }}>{equip[item.key]}</span></div>
                 </div>
               ))}
             </div>
           </div>);
         })}
-        {Object.keys(equip).length === 0 && <div style={{ textAlign: "center", padding: "60px 24px", color: "rgba(255,255,255,0.35)", fontSize: 14 }}>No equipment data available for this site.</div>}
+        {Object.keys(equip).length === 0 && <div style={{ textAlign: "center", padding: "60px 24px", color: "rgba(255,255,255,0.6)", fontSize: 14 }}>No equipment data available for this site.</div>}
       </div>
     );
   }
@@ -2401,7 +2401,7 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase", marginBottom: 4 }}>Equipment inventory</div>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.6)", textTransform: "uppercase", marginBottom: 4 }}>Equipment inventory</div>
           <div style={{ fontSize: 13, color: "#555" }}>{ALL_HOSPITALS.length} sites · {Object.values(EQUIPMENT_DATA).reduce((s, e) => s + Object.keys(e).length, 0)} registered equipment</div>
         </div>
         <input style={{ padding: "8px 14px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", width: 220, background: "#fff", color: "#111" }} placeholder="Search sites..." value={search} onChange={e => setSearch(e.target.value)} onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.tealLight} />
@@ -2412,7 +2412,7 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
           const status = getSiteDisplayStatus(h, complaints, siteNotes);
           return (<div key={h} onClick={() => setSelectedSite(h)} style={{ background: "#fff", borderRadius: 14, padding: "18px 20px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)", cursor: "pointer", transition: "box-shadow 0.2s, transform 0.2s", borderLeft: `3px solid ${status === "Shut Down" ? "#c0392b" : status === "Non Functional" ? "#868e96" : "#0d9488"}` }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(15,118,110,0.12), 0 8px 24px rgba(15,23,25,0.06)"; e.currentTarget.style.transform = "translateY(-2px)"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = ""; e.currentTarget.style.transform = "none"; }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div><div style={{ fontSize: 15, fontWeight: 700, color: "#111", marginBottom: 4 }}>{displayName(h)}</div><div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{provider}</div></div>
+              <div><div style={{ fontSize: 15, fontWeight: 700, color: "#111", marginBottom: 4 }}>{displayName(h)}</div><div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>{provider}</div></div>
               <SiteStatusBadge status={status} />
             </div>
             <div style={{ display: "flex", gap: 16, marginTop: 12, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
@@ -2549,7 +2549,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   };
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif", background: "radial-gradient(ellipse 600px 400px at 10% 20%, rgba(15,118,110,0.35), transparent), radial-gradient(ellipse 500px 500px at 80% 70%, rgba(20,184,166,0.2), transparent), radial-gradient(ellipse 400px 300px at 50% 40%, rgba(13,148,136,0.15), transparent), #071a18" }}>
+    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif", background: "radial-gradient(ellipse 900px 600px at 5% 0%, rgba(20,184,166,0.32), transparent 55%), radial-gradient(ellipse 800px 700px at 95% 90%, rgba(15,118,110,0.35), transparent 55%), radial-gradient(ellipse 700px 500px at 60% 30%, rgba(13,148,136,0.18), transparent 60%), radial-gradient(ellipse 600px 800px at 30% 100%, rgba(20,184,166,0.15), transparent 55%), #0a221f" }}>
       <style>{`
         .sb-item:hover { background: rgba(94,234,212,0.06) !important; }
         .sb-item:hover span { color: rgba(255,255,255,0.85) !important; }
@@ -2824,7 +2824,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
   };
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif", background: "radial-gradient(ellipse 600px 400px at 10% 20%, rgba(15,118,110,0.35), transparent), radial-gradient(ellipse 500px 500px at 80% 70%, rgba(20,184,166,0.2), transparent), radial-gradient(ellipse 400px 300px at 50% 40%, rgba(13,148,136,0.15), transparent), #071a18" }}>
+    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'DM Sans', system-ui, sans-serif", background: "radial-gradient(ellipse 900px 600px at 5% 0%, rgba(20,184,166,0.32), transparent 55%), radial-gradient(ellipse 800px 700px at 95% 90%, rgba(15,118,110,0.35), transparent 55%), radial-gradient(ellipse 700px 500px at 60% 30%, rgba(13,148,136,0.18), transparent 60%), radial-gradient(ellipse 600px 800px at 30% 100%, rgba(20,184,166,0.15), transparent 55%), #0a221f" }}>
       <style>{`
         .sb-item:hover { background: rgba(94,234,212,0.06) !important; }
         .sb-item:hover span { color: rgba(255,255,255,0.85) !important; }
