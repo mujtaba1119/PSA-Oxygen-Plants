@@ -2183,7 +2183,7 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
       <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", color: "#fff", position: "relative", paddingBottom: 30 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", height: 64 }}>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", letterSpacing: 0.1 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", letterSpacing: 1.5, textTransform: "uppercase" }}>
               {typeof title === "string" && title.includes("Oxygen") ? (<>
                 {title.split("Oxygen")[0]}<span style={{ background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>Oxygen</span>{title.split("Oxygen")[1]}
               </>) : title}
