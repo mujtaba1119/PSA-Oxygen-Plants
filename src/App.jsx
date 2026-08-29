@@ -1266,167 +1266,65 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
 
   return (
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      {/* 4 Stat Cards — elevated with subtle teal left accent */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 24 }}>
+      {/* 4 Stat Cards — white with gradient top accent lines (ZeBeyond style) */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 26 }}>
         {[
-          { label: "Operational", value: funcCount, sub: `/ ${hospitals.length}`, tag: `${hospitals.length > 0 ? Math.round(funcCount / hospitals.length * 100) : 0}% uptime`, tagType: "green", accent: "#0d9488" },
-          { label: "Open tickets", value: scoped.filter(c => !isClosedStatus(c.status)).length, tag: shutdownSites.length > 0 ? `${shutdownSites.length} critical` : null, tagType: "red", accent: "#d9822b" },
-          { label: "Resolved this week", value: resolvedThisWeek.length, tag: "Last 7 days", tagType: "green", accent: "#27ae60" },
-          { label: "Attention needed", value: attentionSites.length, tag: issueSites.length > 0 ? `${issueSites.length} with issues` : null, tagType: "amber", accent: "#b7791f" },
+          { label: "Operational", value: funcCount, sub: `/ ${hospitals.length}`, tag: `${hospitals.length > 0 ? Math.round(funcCount / hospitals.length * 100) : 0}% uptime`, tagType: "green", gradient: "linear-gradient(90deg, #0f766e, #2dd4a8)" },
+          { label: "Open tickets", value: scoped.filter(c => !isClosedStatus(c.status)).length, tag: shutdownSites.length > 0 ? `${shutdownSites.length} critical` : null, tagType: "red", gradient: "linear-gradient(90deg, #d97706, #f59e0b)" },
+          { label: "Resolved this week", value: resolvedThisWeek.length, tag: "Last 7 days", tagType: "green", gradient: "linear-gradient(90deg, #16a34a, #22c55e)" },
+          { label: "Attention needed", value: attentionSites.length, tag: issueSites.length > 0 ? `${issueSites.length} with issues` : null, tagType: "amber", gradient: "linear-gradient(90deg, #dc2626, #ef4444)" },
         ].map((card, i) => (
-          <div key={i} style={{ background: "#fff", borderRadius: 14, padding: "20px 20px 18px", border: "1px solid #e6eaef", borderLeft: `3px solid ${card.accent}`, boxShadow: "0 1px 3px rgba(15,23,42,0.05)", transition: "box-shadow 0.2s, transform 0.2s" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(15,118,110,0.08)"; e.currentTarget.style.transform = "translateY(-1px)"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,42,0.05)"; e.currentTarget.style.transform = "none"; }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>{card.label}</div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>
+          <div key={i} style={{ background: "#fff", borderRadius: 16, padding: "22px", border: "1px solid #e8ecf0", position: "relative", overflow: "hidden", boxShadow: "0 1px 3px rgba(15,23,42,0.05)", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(15,118,110,0.08)"; e.currentTarget.style.transform = "translateY(-1px)"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,42,0.05)"; e.currentTarget.style.transform = "none"; }}>
+            <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 3, borderRadius: "0 0 3px 3px", background: card.gradient }} />
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>{card.label}</div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>
               {card.value}{card.sub && <span style={{ fontSize: 16, fontWeight: 500, color: "#cbd5e1", marginLeft: 4 }}>{card.sub}</span>}
             </div>
             {card.tag && (
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, marginTop: 10, padding: "3px 10px", borderRadius: 20,
-                background: card.tagType === "green" ? "#e7f6ee" : card.tagType === "red" ? "#fbeaea" : "#fdf3e0",
-                color: card.tagType === "green" ? "#1b7a45" : card.tagType === "red" ? "#b52d2d" : "#946200" }}>
-                <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor" }} />
-                {card.tag}
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, marginTop: 10, padding: "4px 12px", borderRadius: 20, background: card.tagType === "green" ? "#ecfdf5" : card.tagType === "red" ? "#fef2f2" : "#fffbeb", color: card.tagType === "green" ? "#16a34a" : card.tagType === "red" ? "#dc2626" : "#d97706" }}>
+                <span style={{ width: 5, height: 5, borderRadius: "50%", background: "currentColor" }} />{card.tag}
               </div>
             )}
           </div>
         ))}
       </div>
-
-      {/* Map + Side Panel */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 16, marginBottom: 22 }}>
-        <div className={mapTheme === "dark" ? "dark-map-mode" : ""} style={{ borderRadius: 14, overflow: "hidden", border: "1px solid #e6eaef", boxShadow: "0 1px 3px rgba(15,23,42,0.05)", height: 400, position: "relative" }}>
-          <style>{`
-            .leaflet-control-attribution {
-              font-size: 9px !important;
-              padding: 0 4px !important;
-              background: rgba(255,255,255,0.55) !important;
-              line-height: 1.4 !important;
-            }
-            .dark-map-mode .leaflet-tile-pane {
-              filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
-            }
-          `}</style>
-          <button
-            onClick={() => setMapTheme(t => t === "light" ? "dark" : "light")}
-            style={{ position: "absolute", top: 10, right: 10, zIndex: 1000, fontSize: 11.5, fontWeight: 600, padding: "6px 14px", borderRadius: 10, border: "none", cursor: "pointer", color: mapTheme === "light" ? "#fff" : "#1a2332", background: mapTheme === "light" ? "#1a2332" : "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}
-          >
-            {mapTheme === "light" ? "🌙 Dark" : "☀️ Light"}
-          </button>
+      {/* Map + Mint-tinted Side Panel */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 14, marginBottom: 24 }}>
+        <div className={mapTheme === "dark" ? "dark-map-mode" : ""} style={{ borderRadius: 16, overflow: "hidden", border: "1px solid #e8ecf0", boxShadow: "0 1px 3px rgba(15,23,42,0.05)", height: 400, position: "relative", background: "#fff" }}>
+          <button onClick={() => setMapTheme(mapTheme === "light" ? "dark" : "light")} style={{ position: "absolute", top: 10, right: 10, zIndex: 1000, fontSize: 11.5, fontWeight: 600, padding: "6px 14px", borderRadius: 10, border: "none", cursor: "pointer", color: mapTheme === "light" ? "#fff" : "#1a2332", background: mapTheme === "light" ? "#1a2332" : "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>{mapTheme === "light" ? "Dark" : "Light"}</button>
           <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              subdomains="abc"
-              maxZoom={19}
-            />
-            {pkBoundary && (
-              <GeoJSON data={pkBoundary} style={{ color: mapTheme === "dark" ? "#5eead4" : "#0f766e", weight: 2, fillOpacity: 0, dashArray: "4 3" }} />
-            )}
-            {mappedSites.map(h => (
-              <Marker key={h} position={SITE_COORDS[h]} icon={makePinIcon(pinColor(h))}>
-                <Tooltip direction="top" offset={[0, -34]} opacity={1}>
-                  <span style={{ fontWeight: 600 }}>{h}</span>
-                </Tooltip>
-                <Popup>
-                  <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif", minWidth: 170 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "#1a2332", marginBottom: 6 }}>{h}</div>
-                    <span style={{ display: "inline-block", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 10, color: "#fff", background: pinColor(h) }}>
-                      {getSiteDisplayStatus(h, complaints, siteNotes)}
-                    </span>
-                    <button
-                      onClick={() => onViewSite(h)}
-                      style={{ display: "block", width: "100%", marginTop: 10, fontSize: 12.5, fontWeight: 600, color: "#fff", background: "#0f766e", border: "none", borderRadius: 7, padding: "7px 10px", cursor: "pointer" }}
-                    >
-                      View site →
-                    </button>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
+            <TileLayer url={mapTheme === "dark" ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"} attribution="CartoDB" />
+            {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: C.teal, weight: 1.5, fillColor: C.tealLight, fillOpacity: mapTheme === "dark" ? 0.08 : 0.15 }} />}
+            {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); return (<Marker key={h} position={c} icon={makePinIcon(s)}><Popup><div style={{ fontFamily: "'DM Sans',sans-serif", minWidth: 160 }}><div style={{ fontWeight: 700, fontSize: 14, color: "#1a2332", marginBottom: 6 }}>{displayName(h)}</div><SiteStatusBadge status={s} /><div style={{ fontSize: 11, color: "#666", marginTop: 6 }}>{getProvider(h)}</div><button onClick={() => onViewSite(h)} style={{ marginTop: 8, fontSize: 11, fontWeight: 600, color: C.teal, background: "none", border: "none", cursor: "pointer", padding: 0 }}>View details →</button></div></Popup><Tooltip direction="top" offset={[0, -10]}>{displayName(h)}</Tooltip></Marker>); })}
           </MapContainer>
         </div>
-
-        {/* Side Panel: Attention + Pipeline */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ background: "#fff", border: "1px solid #e6eaef", borderRadius: 14, padding: "18px 18px 14px", flex: 1, overflowY: "auto", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", marginBottom: 12 }}>Needs attention</div>
-            {attentionSites.length > 0 ? attentionSites.map(h => {
-              const s = getSiteDisplayStatus(h, complaints, siteNotes);
-              const isDown = s === "Shut Down";
-              const isNonFunc = s === "Non Functional";
-              const dotColor = isDown ? "#c0392b" : isNonFunc ? "#868e96" : "#d9822b";
-              return (
-                <div key={h} onClick={() => onViewSite(h)} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, marginBottom: 2, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "#f0fdfa"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, flexShrink: 0, boxShadow: `0 0 0 3px ${dotColor}22` }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#0f172a", flex: 1 }}>{h}</span>
-                  <span style={{ fontSize: 10.5, color: "#94a3b8", fontWeight: 500 }}>{s}</span>
-                </div>
-              );
-            }) : <div style={{ fontSize: 13, color: "#94a3b8", padding: "12px 0" }}>All sites operational</div>}
+          <div style={{ background: "linear-gradient(135deg, #f0fdfa, #f7fdfb)", border: "1px solid #d5f0ea", borderRadius: 16, padding: "18px 18px 14px", flex: 1, overflowY: "auto" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#0f766e", textTransform: "uppercase", marginBottom: 12 }}>Needs attention</div>
+            {attentionSites.length > 0 ? attentionSites.map(h => { const s = getSiteDisplayStatus(h, complaints, siteNotes); const isDown = s === "Shut Down"; const isNonFunc = s === "Non Functional"; const dotColor = isDown ? "#c0392b" : isNonFunc ? "#868e96" : "#d9822b"; return (
+              <div key={h} onClick={() => onViewSite(h)} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 10, marginBottom: 2, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(13,148,136,0.06)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, flexShrink: 0, boxShadow: `0 0 6px ${dotColor}` }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#0f172a", flex: 1 }}>{h}</span>
+                <span style={{ fontSize: 11, color: "#94a3b8" }}>{s}</span>
+              </div>); }) : <div style={{ fontSize: 13, color: "#94a3b8", padding: "12px 0" }}>All sites operational</div>}
           </div>
-          <div style={{ background: "#fff", border: "1px solid #e6eaef", borderRadius: 14, padding: "18px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", marginBottom: 12 }}>Ticket pipeline</div>
-            {scoped.length > 0 ? (<>
-              <div style={{ display: "flex", height: 10, borderRadius: 6, overflow: "hidden", background: "#eef1f4", marginBottom: 12 }}>
-                {STAGE_META.filter(s => stageCounts[s.key] > 0).map(s => (
-                  <div key={s.key} style={{ flex: `${stageCounts[s.key]} 0 0%`, background: s.color, transition: "flex 0.3s" }} />
-                ))}
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {STAGE_META.map(s => (
-                  <span key={s.key} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "rgba(255,255,255,0.5)", padding: "3px 8px", background: "#eef1f4", borderRadius: 8 }}>
-                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: s.color }} />
-                    <strong style={{ color: "#0f172a" }}>{stageCounts[s.key]}</strong> {statusLabel(s.key)}
-                  </span>
-                ))}
-              </div>
-            </>) : <div style={{ fontSize: 13, color: "#94a3b8" }}>No tickets yet</div>}
+          <div style={{ background: "linear-gradient(135deg, #f0fdfa, #f7fdfb)", border: "1px solid #d5f0ea", borderRadius: 16, padding: "18px" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#0f766e", textTransform: "uppercase", marginBottom: 12 }}>Ticket pipeline</div>
+            {scoped.length > 0 ? (<><div style={{ display: "flex", height: 7, borderRadius: 4, overflow: "hidden", background: "#e8ecf0", marginBottom: 12 }}>{STAGE_META.filter(s => stageCounts[s.key] > 0).map(s => (<div key={s.key} style={{ flex: `${stageCounts[s.key]} 0 0%`, background: s.color }} />))}</div><div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{STAGE_META.map(s => (<span key={s.key} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#64748b", padding: "4px 10px", background: "#f1f5f9", borderRadius: 8 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: s.color }} /><strong style={{ color: "#0f172a" }}>{stageCounts[s.key]}</strong> {statusLabel(s.key)}</span>))}</div></>) : <div style={{ fontSize: 13, color: "#94a3b8" }}>No tickets yet</div>}
           </div>
         </div>
       </div>
-
-      {/* Bottom: Provider breakdown + Recent activity */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        {showProviderBreakdown && (
-          <div style={{ background: "#fff", border: "1px solid #e6eaef", borderRadius: 14, padding: "20px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", marginBottom: 16 }}>By service provider</div>
-            {(() => {
-              const rows = providerEntries.map(([provider, sites]) => {
-                const providerSites = sites.filter(s => hospitals.includes(s));
-                const openCount = complaints.filter(c => providerSites.includes(c.hospital) && !isClosedStatus(c.status)).length;
-                return { provider, siteCount: providerSites.length, openCount };
-              });
-              const maxSites = Math.max(1, ...rows.map(r => r.siteCount));
-              return rows.map(r => (
-                <div key={r.provider} style={{ marginBottom: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{r.provider}</span>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <span style={{ fontSize: 11, color: "#94a3b8" }}>{r.siteCount} sites</span>
-                      {r.openCount > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#d9822b" }}>{r.openCount} open</span>}
-                    </div>
-                  </div>
-                  <div style={{ height: 6, borderRadius: 3, background: "#eef1f4", overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${(r.siteCount / maxSites) * 100}%`, borderRadius: 3, background: "linear-gradient(90deg, #0f766e, #14b8a6)", boxShadow: "0 0 8px rgba(20,184,166,0.3)", transition: "width 0.4s ease" }} />
-                  </div>
-                </div>
-              ));
-            })()}
+      {/* Dark bottom strip (ZeBeyond case-study pattern) */}
+      <div style={{ background: "#0e1013", margin: "0 -32px", padding: "28px 32px", borderRadius: "24px 24px 0 0" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          {showProviderBreakdown && (<div style={{ background: "#161a1e", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "20px" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", marginBottom: 16 }}>By service provider</div>
+            {(() => { const rows = providerEntries.map(([provider, sites]) => { const providerSites = sites.filter(s => hospitals.includes(s)); const openCount = complaints.filter(c => providerSites.includes(c.hospital) && !isClosedStatus(c.status)).length; return { provider, siteCount: providerSites.length, openCount }; }); const maxSites = Math.max(1, ...rows.map(r => r.siteCount)); return rows.map(r => (<div key={r.provider} style={{ marginBottom: 16 }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}><span style={{ fontSize: 13, fontWeight: 700, color: "#e8eaed" }}>{r.provider}</span><div style={{ display: "flex", gap: 8 }}><span style={{ fontSize: 12, color: "#6b7280" }}>{r.siteCount} sites</span>{r.openCount > 0 && <span style={{ fontSize: 12, fontWeight: 600, color: "#f59e0b" }}>{r.openCount} open</span>}</div></div><div style={{ height: 5, borderRadius: 3, background: "rgba(255,255,255,0.06)" }}><div style={{ height: "100%", width: `${(r.siteCount / maxSites) * 100}%`, borderRadius: 3, background: "linear-gradient(90deg, #0f766e, #2dd4a8)", boxShadow: "0 0 10px rgba(45,212,168,0.25)", transition: "width 0.4s ease" }} /></div></div>)); })()}
+          </div>)}
+          <div style={{ background: "#161a1e", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "20px" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", marginBottom: 16 }}>Recent activity</div>
+            {resolvedThisWeek.length > 0 ? resolvedThisWeek.map((c, i) => (<div key={c.id} onClick={() => onViewSite(c.hospital)} style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 12, padding: "8px 10px", borderRadius: 10, marginBottom: 2, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}><span style={{ width: 10, height: 10, borderRadius: "50%", background: "#22c55e", display: "block", boxShadow: "0 0 6px rgba(34,197,94,0.4)", marginTop: 4, flexShrink: 0 }} /><div><div style={{ fontSize: 13, fontWeight: 600, color: "#e8eaed" }}>{c.title}</div><div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>{c.hospital} · {c.resolved_at ? new Date(c.resolved_at).toLocaleDateString() : ""}</div></div></div>)) : <div style={{ fontSize: 13, color: "#6b7280", padding: "12px 0" }}>No recent resolutions</div>}
           </div>
-        )}
-        <div style={{ background: "#fff", border: "1px solid #e6eaef", borderRadius: 14, padding: "20px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", marginBottom: 16 }}>Recent activity</div>
-          {resolvedThisWeek.length > 0 ? resolvedThisWeek.map((c, i) => (
-            <div key={c.id} onClick={() => onViewSite(c.hospital)} style={{ cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 12, padding: "10px 10px", borderRadius: 10, marginBottom: 2, transition: "background 0.15s" }} onMouseEnter={e => e.currentTarget.style.background = "#f0fdfa"} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-              <div style={{ position: "relative", flexShrink: 0, paddingTop: 2 }}>
-                <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#27ae60", display: "block", boxShadow: "0 0 6px rgba(34,197,94,0.4)" }} />
-                {i < resolvedThisWeek.length - 1 && <div style={{ position: "absolute", left: 4, top: 14, width: 2, height: 28, background: "#eef1f4" }} />}
-              </div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{c.title}</div>
-                <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>{c.hospital} · {c.resolved_at ? new Date(c.resolved_at).toLocaleDateString() : ""}</div>
-              </div>
-            </div>
-          )) : <div style={{ fontSize: 13, color: "#94a3b8", padding: "12px 0" }}>No recent resolutions</div>}
         </div>
       </div>
     </div>
@@ -2278,34 +2176,30 @@ function SidebarNav({ items, active, onSelect, bottomItems }) {
   );
 }
 
-/* ─── Top Bar (wavy teal, dark both ends, redesigned buttons) ─── */
+/* ─── Top Bar (teal gradient, dark both ends, ZeBeyond-style pills, wavy edge) ─── */
 function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, children }) {
   return (
     <div style={{ position: "sticky", top: 0, zIndex: 90, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 45%, #0b3b38 100%)", color: "#fff" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 28px", height: 64 }}>
+      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", color: "#fff", boxShadow: "0 4px 24px rgba(11,59,56,0.3)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", height: 64 }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#fff", letterSpacing: 0.2 }}>{title}</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 2 }}>{subtitle}</div>
+            <div style={{ fontSize: 17, fontWeight: 700, color: "#fff", letterSpacing: 0.1 }}>{title}</div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", letterSpacing: 0.5, textTransform: "uppercase", marginTop: 2 }}>{subtitle}</div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {children}
-            <button className="refresh-btn tb-glass" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.9)", borderRadius: 12, cursor: "pointer", padding: "8px 16px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 600, letterSpacing: 0.2, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+            <button className="refresh-btn tb-glass" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.85)", borderRadius: 40, cursor: "pointer", padding: "9px 18px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7, fontSize: 12.5, fontWeight: 600, letterSpacing: 0.2, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
               <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
               {!refreshing && "Refresh"}
               {refreshing && <svg className="spinning" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
             </button>
-            <div style={{ width: 1, height: 26, background: "rgba(255,255,255,0.12)" }} />
-            <button className="tb-glass" title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ width: 38, height: 38, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <div style={{ width: 1, height: 28, background: "rgba(255,255,255,0.1)" }} />
+            <button className="tb-glass" title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ width: 40, height: 40, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
             </button>
           </div>
         </div>
       </div>
-      {/* Wavy bottom edge */}
-      <svg viewBox="0 0 1200 22" preserveAspectRatio="none" style={{ display: "block", width: "100%", height: 22, marginTop: -1 }}>
-        <path d="M0,0 C200,22 400,22 600,11 C800,0 1000,0 1200,11 L1200,0 L0,0 Z" fill="#0b3b38" />
-      </svg>
     </div>
   );
 }
@@ -2558,9 +2452,9 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         .sb-item:hover { background: rgba(94,234,212,0.06) !important; }
         .sb-item:hover span { color: rgba(255,255,255,0.85) !important; }
         
-        .glass-card { background: rgba(255,255,255,0.04) !important; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(94,234,212,0.08) !important; }
-        .glass-card:hover { background: rgba(255,255,255,0.06) !important; border-color: rgba(94,234,212,0.15) !important; }
-        .tb-glass:hover { background: rgba(94,234,212,0.12) !important; border-color: rgba(94,234,212,0.2) !important; }
+        
+        
+        .tb-glass:hover { background: rgba(255,255,255,0.12) !important; border-color: rgba(255,255,255,0.25) !important; }
         @keyframes refresh-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .spinning { animation: refresh-spin 0.7s linear infinite; transform-origin: center; }
         @media (max-width: 768px) {
@@ -2569,7 +2463,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} bottomItems={NAV_BOTTOM} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f6f7f9", minHeight: "100vh" }}>
+      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f7f8fa", minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${ALL_HOSPITALS.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} light={true} />
         </TopBar>
@@ -2833,8 +2727,8 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
         .sb-item:hover { background: rgba(94,234,212,0.06) !important; }
         .sb-item:hover span { color: rgba(255,255,255,0.85) !important; }
         
-        .glass-card { background: rgba(255,255,255,0.04) !important; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(94,234,212,0.08) !important; }
-        .glass-card:hover { background: rgba(255,255,255,0.06) !important; border-color: rgba(94,234,212,0.15) !important; }
+        
+        
         @keyframes refresh-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .spinning { animation: refresh-spin 0.7s linear infinite; transform-origin: center; }
         @media (max-width: 768px) {
@@ -2843,7 +2737,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f6f7f9", minHeight: "100vh" }}>
+      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f7f8fa", minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${myHospitals.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} light={true} />
         </TopBar>
