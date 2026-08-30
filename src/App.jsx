@@ -180,7 +180,7 @@ function serialGroupsFor(hospital, complaintType) {
   const equip = EQUIPMENT_DATA[hospital] || {};
   return groups.map(g => ({
     label: g.label,
-    options: g.keys.filter(k => equip[k]).map((k, i) => ({ key: k, label: `${g.label} ${i + 1}`, serial: equip[k] }))
+    options: g.keys.filter(k => equip[k]).map((k, i) => ({ key: k, label: g.label, serial: equip[k] }))
   })).filter(g => g.options.length > 0);
 }
 // Flat list of all serial options for a type (used to know if the picker should show at all).
@@ -1891,24 +1891,47 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
           {expanded && (
           <div style={{ padding: 16 }}>
             <p style={styles.cardDesc}>{cleanDescription(c.description)}</p>
-            {c.submitted_by && <p style={{ fontSize: 12.5, color: C.tealDark, fontWeight: 600, marginTop: 10 }}>👤 {c.submitted_by}</p>}
-            {hasAssignees(c) && <div style={{ marginTop: 10 }}><AssignedTag complaint={c} isAdmin={isAdmin} onRemove={handleRemoveAssignee} /></div>}
-            <div style={{ marginTop: 12, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 11, display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
-              <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Ticket Opened: </span><span style={{ color: C.black, fontWeight: 700 }}>{new Date(c.created_at).toLocaleDateString("en-PK", dateFmt)}</span></div>
-              {c.assigned_at && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Assignment Date: </span><span style={{ color: "#5b3a9c", fontWeight: 700 }}>{new Date(c.assigned_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
-              {hasVisits(c) && (
-                <div style={{ fontSize: 12.5, display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
-                  <span style={{ color: C.textMid, fontWeight: 600 }}>{effStatus === "In Progress" ? (visitDates(c).length > 1 ? "Visit Dates: " : "Visit Date: ") : "Visit Scheduled: "}</span>
-                  {visitDates(c).map((d, i) => (
-                    <span key={d} style={{ color: "#c47f1e", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3 }}>
-                      {i > 0 && <span style={{ color: C.textMid, fontWeight: 400 }}>,</span>}{new Date(d).toLocaleDateString("en-PK", dateFmt)}
-                      {isAdmin && <button title="Undo this visit" onClick={() => handleRemoveVisit(d)} style={{ border: "none", background: "none", cursor: "pointer", color: "#c0392b", fontWeight: 700, fontSize: 11, padding: "0 2px" }}>✕</button>}
+            {/* Submitted by + assigned staff row */}
+            {(c.submitted_by || hasAssignees(c)) && (
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
+                {c.submitted_by && (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "#5f6b7a", background: "#f4f4f0", padding: "4px 11px", borderRadius: 20 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8a9199" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    {c.submitted_by}
+                  </span>
+                )}
+                {hasAssignees(c) && <AssignedTag complaint={c} isAdmin={isAdmin} onRemove={handleRemoveAssignee} />}
+              </div>
+            )}
+            {/* Lifecycle milestone strip */}
+            <div style={{ marginTop: 12, background: "#fafbfb", border: "1px solid #eef1f0", borderRadius: 12, padding: "12px 14px", display: "flex", flexWrap: "wrap", gap: 18 }}>
+              {(() => {
+                const milestones = [];
+                milestones.push({ label: "Opened", value: new Date(c.created_at).toLocaleDateString("en-PK", dateFmt), color: "#0f766e", dot: "#0d9488" });
+                if (c.assigned_at) milestones.push({ label: "Assigned", value: new Date(c.assigned_at).toLocaleDateString("en-PK", dateFmt), color: "#5b3a9c", dot: "#7c5cbf" });
+                if (hasVisits(c)) milestones.push({ label: effStatus === "In Progress" ? (visitDates(c).length > 1 ? "Visits" : "Visit") : "Visit Scheduled", value: visitDates(c).map(d => new Date(d).toLocaleDateString("en-PK", dateFmt)).join(", "), color: "#b45309", dot: "#d97706", visitList: true });
+                if ((c.status === "Resolved" || c.status === "Verified") && c.resolved_at) milestones.push({ label: "Resolved", value: new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt), color: "#16a34a", dot: "#16a34a" });
+                if (c.status === "Verified" && c.verified_at) milestones.push({ label: "Verified", value: new Date(c.verified_at).toLocaleDateString("en-PK", dateFmt), color: "#16a34a", dot: "#16a34a" });
+                return milestones.map((m, i) => (
+                  <div key={i} style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: m.dot, flexShrink: 0 }} />
+                      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: "#8a9199" }}>{m.label}</span>
+                    </div>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: m.color, paddingLeft: 11, display: "inline-flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                      {m.visitList
+                        ? visitDates(c).map((d, vi) => (
+                            <span key={d} style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+                              {vi > 0 && <span style={{ color: "#c4c8cc", fontWeight: 400 }}>·</span>}
+                              {new Date(d).toLocaleDateString("en-PK", dateFmt)}
+                              {isAdmin && <button title="Undo this visit" onClick={() => handleRemoveVisit(d)} style={{ border: "none", background: "none", cursor: "pointer", color: "#c0392b", fontWeight: 700, fontSize: 11, padding: "0 1px" }}>✕</button>}
+                            </span>
+                          ))
+                        : m.value}
                     </span>
-                  ))}
-                </div>
-              )}
-              {(c.status === "Resolved" || c.status === "Verified") && c.resolved_at && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Resolved Date: </span><span style={{ color: "#276749", fontWeight: 700 }}>{new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
-              {c.status === "Verified" && c.verified_at && <div style={{ fontSize: 12.5 }}><span style={{ color: C.textMid, fontWeight: 600 }}>Verified Date: </span><span style={{ color: "#276749", fontWeight: 700 }}>{new Date(c.verified_at).toLocaleDateString("en-PK", dateFmt)}</span></div>}
+                  </div>
+                ));
+              })()}
             </div>
             <AttachmentViewer attachments={c.attachments} />
             {canAssign && availableStaff.length > 0 && (
