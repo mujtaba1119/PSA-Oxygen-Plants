@@ -2440,68 +2440,142 @@ const EQUIP_CATEGORIES = [
 const EQUIP_GROUP_COLORS = { "Oxygen Generators": { border: "#0d9488", text: "#0f766e" }, "Air Compressors": { border: "#0d9488", text: "#0f766e" }, "Air Dryers": { border: "#0d9488", text: "#0f766e" }, "Other Equipments": { border: "#0d9488", text: "#0f766e" } };
 const EQUIP_ICONS = { oxyswing_a: "oxyswing", oxyswing_b: "oxyswing", comp1: "compressor", comp2: "compressor", comp3: "compressor", comp4: "compressor", dryer1: "dryer", dryer2: "dryer", dryer3: "dryer", dryer4: "dryer", hpox: "hpox", oxycheck: "oxycheck", css: "css", medgas: "medgas", generator: "generator" };
 
-function EquipmentTab({ hospitals, complaints, siteNotes }) {
+function EquipmentTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
   const [selectedSite, setSelectedSite] = useState(null);
   const [selectedEquip, setSelectedEquip] = useState(null); // { key, label, serial }
   const [search, setSearch] = useState("");
-  // Equipment history view — a table of all tickets that referenced this unit's serial number.
+  const [addingMaint, setAddingMaint] = useState(false);
+  const [maintType, setMaintType] = useState("Warranty Maintenance");
+  const [maintDate, setMaintDate] = useState("");
+  const [maintDesc, setMaintDesc] = useState("");
+  const [maintHours, setMaintHours] = useState("");
+  const [maintSaving, setMaintSaving] = useState(false);
+
+  // Read/write maintenance records from siteNotes JSON (keyed as _maint_{serial})
+  const getNotesMap = (h) => { try { const raw = siteNotes.find(s => hospitalMatches(s.hospital, h))?.equipment_note || ""; const parsed = JSON.parse(raw); return typeof parsed === "object" && parsed !== null ? parsed : { _legacy: raw }; } catch { const raw = siteNotes.find(s => hospitalMatches(s.hospital, h))?.equipment_note || ""; return raw ? { _legacy: raw } : {}; } };
+  const getMaintRecords = (hospital, serial) => {
+    const m = getNotesMap(hospital);
+    try { return JSON.parse(m[`_maint_${serial}`] || "[]"); } catch { return []; }
+  };
+  const saveMaintRecord = async (hospital, serial, record) => {
+    const m = getNotesMap(hospital);
+    const existing = getMaintRecords(hospital, serial);
+    existing.push(record);
+    m[`_maint_${serial}`] = JSON.stringify(existing);
+    await updateSiteNote(hospital, JSON.stringify(m));
+  };
+  const deleteMaintRecord = async (hospital, serial, idx) => {
+    const m = getNotesMap(hospital);
+    const existing = getMaintRecords(hospital, serial);
+    existing.splice(idx, 1);
+    m[`_maint_${serial}`] = JSON.stringify(existing);
+    await updateSiteNote(hospital, JSON.stringify(m));
+  };
+
+  const handleAddMaint = async () => {
+    if (!maintDate || !maintDesc.trim()) return;
+    setMaintSaving(true);
+    await saveMaintRecord(selectedSite, selectedEquip.serial, {
+      type: maintType, date: maintDate, description: maintDesc.trim(),
+      runningHours: maintHours.trim() || "", status: "OK"
+    });
+    setMaintDate(""); setMaintDesc(""); setMaintHours(""); setAddingMaint(false);
+    setMaintSaving(false);
+    if (onRefresh) await onRefresh();
+  };
+  // Equipment history view — combines tickets + maintenance into one activity table.
   if (selectedSite && selectedEquip) {
-    const history = complaintsForSerial(selectedEquip.serial, complaints);
-    const statusMeta = (c) => {
-      const st = getEffectiveStatus(c);
-      if (st === "Verified") return { label: "Verified", color: "#16a34a", bg: "#ecfdf5" };
-      if (st === "Resolved") return { label: "Resolved", color: "#2563eb", bg: "#eff6ff" };
-      if (st === "In Progress") return { label: "In Progress", color: "#b45309", bg: "#fef3e2" };
-      return { label: "Open", color: "#dc2626", bg: "#fef2f2" };
-    };
+    const ticketRows = complaintsForSerial(selectedEquip.serial, complaints).map(c => ({
+      type: "Ticket", date: c.created_at, description: c.title,
+      runningHours: "", status: isClosedStatus(c.status) ? "OK" : "Pending",
+      isTicket: true, _c: c
+    }));
+    const maintRows = getMaintRecords(selectedSite, selectedEquip.serial).map((r, i) => ({
+      type: r.type || "Maintenance", date: r.date, description: r.description,
+      runningHours: r.runningHours || "", status: r.status || "OK",
+      isTicket: false, _idx: i
+    }));
+    const allRows = [...ticketRows, ...maintRows].sort((a, b) => new Date(b.date) - new Date(a.date));
     const dateFmt = { year: "numeric", month: "short", day: "numeric" };
     const fmt = (d) => d ? new Date(d).toLocaleDateString("en-PK", dateFmt) : "—";
-    const thStyle = { fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, padding: "13px 14px", textAlign: "left", whiteSpace: "nowrap" };
+    const thStyle = { fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, padding: "13px 14px", textAlign: "center", whiteSpace: "nowrap" };
     const tdStyle = { fontSize: 12.5, color: "#374151", padding: "13px 14px", verticalAlign: "top", borderBottom: "1px solid transparent", borderImage: "linear-gradient(90deg, #0b3b38, #0f766e, #0b3b38) 1" };
     return (
       <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
         <button onClick={() => setSelectedEquip(null)} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
         {/* Header: icon + identity */}
-        <div style={{ display: "flex", alignItems: "center", gap: 18, marginBottom: 22, padding: "20px 22px", background: "linear-gradient(135deg, #f0fdfa, #f7fdfb)", border: "1px solid #d5f0ea", borderRadius: 16 }}>
-          <img src={`/equipment/${EQUIP_ICONS[selectedEquip.key] || "equipment"}.svg`} alt={selectedEquip.label} style={{ width: 72, height: 72, objectFit: "contain", filter: "drop-shadow(0 8px 14px rgba(15,23,25,0.18))" }} onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "block"; }} />
-          <svg style={{ display: "none", width: 66, height: 66 }} viewBox="0 0 24 24" fill="none" stroke="#0d9488" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
-          <div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>{selectedEquip.label}</div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#0f766e", fontFamily: "'DM Mono', ui-monospace, monospace", letterSpacing: 0.5, marginTop: 3 }}>SN: {selectedEquip.serial}</div>
-            <div style={{ fontSize: 12, color: "#8a9199", marginTop: 3 }}>{displayName(selectedSite)}</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22, padding: "20px 22px", background: "linear-gradient(135deg, #f0fdfa, #f7fdfb)", border: "1px solid #d5f0ea", borderRadius: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+            <img src={`/equipment/${EQUIP_ICONS[selectedEquip.key] || "equipment"}.svg`} alt={selectedEquip.label} style={{ width: 72, height: 72, objectFit: "contain", filter: "drop-shadow(0 8px 14px rgba(15,23,25,0.18))" }} onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "block"; }} />
+            <svg style={{ display: "none", width: 66, height: 66 }} viewBox="0 0 24 24" fill="none" stroke="#0d9488" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>{selectedEquip.label}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#0f766e", fontFamily: "'DM Mono', ui-monospace, monospace", letterSpacing: 0.5, marginTop: 3 }}>SN: {selectedEquip.serial}</div>
+              <div style={{ fontSize: 12, color: "#8a9199", marginTop: 3 }}>{displayName(selectedSite)}</div>
+            </div>
           </div>
+          {isAdmin && !addingMaint && (
+            <button onClick={() => setAddingMaint(true)} style={{ fontSize: 12, fontWeight: 700, color: "#062825", background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)", border: "none", borderRadius: 10, padding: "9px 18px", cursor: "pointer", letterSpacing: 0.3, whiteSpace: "nowrap" }}>+ Log Maintenance</button>
+          )}
         </div>
-        {/* History table */}
+        {/* Add maintenance form (admin only) */}
+        {isAdmin && addingMaint && (
+          <div style={{ background: "#fff", border: `1px solid ${C.tealLight}`, borderRadius: 14, padding: 18, marginBottom: 18 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1d21", marginBottom: 12 }}>Log Maintenance Activity</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.textMid, display: "block", marginBottom: 4 }}>Activity Type</label>
+                <select value={maintType} onChange={e => setMaintType(e.target.value)} style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", background: "#fff", color: "#111", cursor: "pointer" }}>
+                  <option value="Warranty Maintenance">Warranty Maintenance</option>
+                  <option value="Corrective Maintenance">Corrective Maintenance</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.textMid, display: "block", marginBottom: 4 }}>Date</label>
+                <input type="date" value={maintDate} onChange={e => setMaintDate(e.target.value)} style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", color: "#111" }} />
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10, marginBottom: 12 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.textMid, display: "block", marginBottom: 4 }}>Description</label>
+                <input value={maintDesc} onChange={e => setMaintDesc(e.target.value)} placeholder="What was done..." style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", color: "#111" }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.textMid, display: "block", marginBottom: 4 }}>Running Hours</label>
+                <input value={maintHours} onChange={e => setMaintHours(e.target.value)} placeholder="e.g. 1200" style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", color: "#111" }} />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={handleAddMaint} disabled={maintSaving || !maintDate || !maintDesc.trim()} style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: (!maintDate || !maintDesc.trim()) ? "#9db8b4" : C.teal, border: "none", borderRadius: 10, padding: "9px 18px", cursor: (!maintDate || !maintDesc.trim()) ? "not-allowed" : "pointer" }}>{maintSaving ? "Saving…" : "Save"}</button>
+              <button onClick={() => { setAddingMaint(false); setMaintDate(""); setMaintDesc(""); setMaintHours(""); }} style={{ fontSize: 12, fontWeight: 500, color: C.black, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 18px", cursor: "pointer" }}>Cancel</button>
+            </div>
+          </div>
+        )}
+        {/* Activity table */}
         <div style={{ background: "#fff", border: "1px solid #e5e5e0", borderRadius: 12, overflow: "hidden", overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
             <thead>
               <tr style={{ background: "linear-gradient(120deg, #0b3b38, #0f766e 50%, #0b3b38)" }}>
-                <th style={{ ...thStyle, width: 40, textAlign: "center" }}>#</th>
-                <th style={thStyle}>Issue</th>
-                <th style={thStyle}>Description</th>
-                <th style={{ ...thStyle, textAlign: "center" }}>Severity</th>
-                <th style={{ ...thStyle, textAlign: "center" }}>Status</th>
-                <th style={{ ...thStyle, textAlign: "center" }}>Opened</th>
-                <th style={{ ...thStyle, textAlign: "center" }}>Visits</th>
-                <th style={{ ...thStyle, textAlign: "center" }}>Resolved</th>
+                <th style={{ ...thStyle, textAlign: "left", minWidth: 160 }}>Activity</th>
+                <th style={{ ...thStyle, minWidth: 110 }}>Date</th>
+                <th style={{ ...thStyle, textAlign: "left", minWidth: 200 }}>Description</th>
+                <th style={{ ...thStyle, minWidth: 100 }}>Running Hours</th>
+                <th style={{ ...thStyle, minWidth: 90 }}>Status</th>
               </tr>
             </thead>
             <tbody>
-              {history.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: "40px 16px", textAlign: "center", fontSize: 13, color: "#94a3b8" }}>No records for this unit yet.</td></tr>
-              ) : history.map((c, i) => {
-                const sm = statusMeta(c);
-                const visits = hasVisits(c) ? visitDates(c).map(d => fmt(d)).join(", ") : "—";
+              {allRows.length === 0 ? (
+                <tr><td colSpan={5} style={{ padding: "44px 16px", textAlign: "center", fontSize: 13, color: "#94a3b8" }}>No records for this unit.</td></tr>
+              ) : allRows.map((row, i) => {
+                const isOk = row.status === "OK";
+                const actColor = row.type === "Ticket" ? { color: "#b45309", bg: "#fef3e2" } : row.type === "Warranty Maintenance" ? { color: "#0f766e", bg: "#e6f5f0" } : { color: "#6d28d9", bg: "#f3f0ff" };
                 return (
-                  <tr key={c.id}>
-                    <td style={{ ...tdStyle, textAlign: "center", color: "#b0b5ba", fontWeight: 600 }}>{history.length - i}</td>
-                    <td style={{ ...tdStyle, fontWeight: 700, color: "#1a1d21", minWidth: 130 }}>{c.title}</td>
-                    <td style={{ ...tdStyle, color: "#5f6b7a", lineHeight: 1.5, minWidth: 180, maxWidth: 280 }}>{cleanDescription(c.description) || "—"}</td>
-                    <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap" }}>{c.severity || "—"}</td>
-                    <td style={{ ...tdStyle, textAlign: "center" }}><span style={{ fontSize: 11, fontWeight: 700, color: sm.color, background: sm.bg, padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap" }}>{sm.label}</span></td>
-                    <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap" }}>{fmt(c.created_at)}</td>
-                    <td style={{ ...tdStyle, textAlign: "center", color: "#5f6b7a", whiteSpace: "nowrap" }}>{visits}</td>
-                    <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", color: (c.status === "Resolved" || c.status === "Verified") && c.resolved_at ? "#16a34a" : "#94a3b8", fontWeight: 600 }}>{(c.status === "Resolved" || c.status === "Verified") ? fmt(c.resolved_at) : "—"}</td>
+                  <tr key={row.isTicket ? row._c.id : `m-${row._idx}`}>
+                    <td style={{ ...tdStyle, textAlign: "left" }}><span style={{ fontSize: 11, fontWeight: 700, color: actColor.color, background: actColor.bg, padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap" }}>{row.type}</span></td>
+                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{fmt(row.date)}</td>
+                    <td style={{ ...tdStyle, textAlign: "left", color: "#1a1d21", fontWeight: 600 }}>{row.description || "—"}</td>
+                    <td style={{ ...tdStyle, fontFamily: "'DM Mono', ui-monospace, monospace", fontWeight: 600 }}>{row.runningHours || "—"}</td>
+                    <td style={{ ...tdStyle }}><span style={{ fontSize: 11, fontWeight: 700, color: isOk ? "#16a34a" : "#dc2626", background: isOk ? "#ecfdf5" : "#fef2f2", padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap" }}>{row.status}</span></td>
                   </tr>
                 );
               })}
@@ -2735,7 +2809,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
           <div key={tab} className="scale-in">
           {tab === "dashboard" && <HomeTab hospitals={ALL_HOSPITALS} groups={GROUPS} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "sites" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
-          {tab === "equipment" && <EquipmentTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} />}
+          {tab === "equipment" && <EquipmentTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} isAdmin={true} onRefresh={onRefresh} />}
           {tab === "tickets" && !selected && (<>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
               <button style={styles.tabActionBtn} onClick={() => downloadCSV(complaints, "All Tickets Data")}>↓ Download Data</button>
@@ -3010,7 +3084,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
           <div key={tab} className="scale-in">
           {tab === "dashboard" && <HomeTab hospitals={myHospitals} groups={myGroups} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "sites" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
-          {tab === "equipment" && <EquipmentTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} />}
+          {tab === "equipment" && <EquipmentTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} isAdmin={false} onRefresh={onRefresh} />}
           {tab === "tickets" && !selected && (<>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
               <button style={styles.tabActionBtn} onClick={() => downloadCSV(myComplaints, "All Tickets Data")}>↓ Download Data</button>
