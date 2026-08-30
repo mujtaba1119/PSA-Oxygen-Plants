@@ -2244,37 +2244,33 @@ const EQUIP_CATEGORIES = [
   { group: "Auxiliary Systems", items: [{ key: "hpox", label: "HPOX 450 Booster" }, { key: "oxycheck", label: "Oxycheck Analyzer" }, { key: "css", label: "Central Supervision System" }, { key: "medgas", label: "Medgas Flow" }, { key: "generator", label: "Diesel Generator (Pramac)" }]},
 ];
 const EQUIP_GROUP_COLORS = { "Oxygen Generator": { border: "#0d9488", text: "#0f766e" }, "Air Compressors": { border: "#3b82f6", text: "#1e5bbf" }, "Air Dryers": { border: "#d9822b", text: "#b06318" }, "Auxiliary Systems": { border: "#7c5cbf", text: "#5b3fa0" } };
+const EQUIP_ICONS = { oxyswing_a: "oxyswing", oxyswing_b: "oxyswing", comp1: "compressor", comp2: "compressor", comp3: "compressor", comp4: "compressor", dryer1: "dryer", dryer2: "dryer", dryer3: "dryer", dryer4: "dryer", hpox: "hpox", oxycheck: "oxycheck", css: "css", medgas: "medgas", generator: "generator" };
 
 function EquipmentTab({ hospitals, complaints, siteNotes }) {
   const [selectedSite, setSelectedSite] = useState(null);
   const [search, setSearch] = useState("");
   if (selectedSite) {
     const equip = EQUIPMENT_DATA[selectedSite] || {};
-    const siteStatus = getSiteDisplayStatus(selectedSite, complaints, siteNotes);
-    const siteComplaints = complaints.filter(c => hospitalMatches(c.hospital, selectedSite) && !isClosedStatus(c.status));
     return (
       <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
         <button onClick={() => setSelectedSite(null)} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; All Sites</button>
         <div style={{ marginBottom: 24 }}>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#111", margin: 0, letterSpacing: -0.3 }}>{displayName(selectedSite)}</h2>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
-            <SiteStatusBadge status={siteStatus} />
-            <span style={{ fontSize: 12, color: "#94a3b8" }}>{getProvider(selectedSite)}</span>
-            <span style={{ fontSize: 12, color: "#94a3b8" }}>{Object.keys(equip).length} equipment</span>
-            {siteComplaints.length > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#c0392b", background: "#fce8e8", padding: "2px 10px", borderRadius: 20 }}>{siteComplaints.length} open</span>}
-          </div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: 0, letterSpacing: "-0.01em" }}>{displayName(selectedSite)}</h2>
         </div>
         {EQUIP_CATEGORIES.map(cat => {
           const gc = EQUIP_GROUP_COLORS[cat.group];
           const catItems = cat.items.filter(item => equip[item.key]);
           if (catItems.length === 0) return null;
-          return (<div key={cat.group} style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: gc.text, textTransform: "uppercase", marginBottom: 10, paddingLeft: 2 }}>{cat.group}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 10 }}>
+          return (<div key={cat.group} style={{ marginBottom: 26 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: gc.text, textTransform: "uppercase", marginBottom: 12, paddingLeft: 2 }}>{cat.group}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 12 }}>
               {catItems.map(item => (
-                <div key={item.key} style={{ background: "#fff", borderRadius: 12, padding: "14px 16px", borderLeft: `3px solid ${gc.border}`, boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)" }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "#111", marginBottom: 6 }}>{item.label}</div>
-                  <div style={{ fontSize: 12, color: "#94a3b8" }}>SN: <span style={{ color: C.tealDark, fontWeight: 700, fontFamily: "monospace" }}>{equip[item.key]}</span></div>
+                <div key={item.key} style={{ background: "#fff", border: "1px solid #e8ecf0", borderRadius: 14, padding: "20px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12, transition: "all 0.2s", boxShadow: "0 1px 3px rgba(15,23,25,0.04)" }} onMouseEnter={e => { e.currentTarget.style.borderColor = "#0d9488"; e.currentTarget.style.boxShadow = "0 6px 18px rgba(13,148,136,0.1)"; e.currentTarget.style.transform = "translateY(-2px)"; }} onMouseLeave={e => { e.currentTarget.style.borderColor = "#e8ecf0"; e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,25,0.04)"; e.currentTarget.style.transform = "none"; }}>
+                  <div style={{ width: 60, height: 60, borderRadius: 14, background: "linear-gradient(135deg, #f0fdfa, #e6f5f0)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <img src={`/equipment/${EQUIP_ICONS[item.key] || "equipment"}.svg`} alt={item.label} style={{ width: 34, height: 34, objectFit: "contain" }} onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "block"; }} />
+                    <svg style={{ display: "none", width: 32, height: 32 }} viewBox="0 0 24 24" fill="none" stroke={gc.border} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1d21", fontFamily: "monospace", letterSpacing: 0.3, textAlign: "center", wordBreak: "break-all" }}>{equip[item.key]}</div>
                 </div>
               ))}
             </div>
