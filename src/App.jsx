@@ -2101,43 +2101,51 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
     }
   };
   const handleMarkResolved = async (id) => { const c = complaints.find(x => x.id === id); await markResolved(id, operatorName.trim() || user.name + " Hospital"); if (c) { createNotification("amex", "resolved", `Ready for Verification: ${user.name}`, c.title, id, user.name).catch(() => {}); notifyUsers("resolved", `Ready for Verification: ${user.name}`, c.title, user.name, id, user.id).catch(() => {}); } await onRefresh(); };
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
+  const resolvedCount = mine.length - openCount;
   return (
-    <div style={{ ...styles.shell, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
-      {/* Teal gradient hero header — now the very top, with actions integrated */}
-      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 55%, #0d9488 100%)", padding: "20px 24px 24px", color: "#fff" }}>
-        <div style={{ maxWidth: 900, margin: "0 auto" }}>
-          <div style={{ fontSize: 12, letterSpacing: 1.4, opacity: 0.8, fontWeight: 600, textTransform: "uppercase" }}>PSA Oxygen Plant</div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
-            <div style={{ fontSize: 28, fontWeight: 800 }}>{user.name}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <NotificationBell user={user} onFocusComplaint={handleFocusComplaint} light={true} complaints={complaints} />
-              <button style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)", color: "#fff", fontSize: 12, fontWeight: 700, letterSpacing: 0.8, padding: "8px 16px", borderRadius: 10, cursor: "pointer", textTransform: "uppercase" }} onClick={onLogout}>Sign Out</button>
-            </div>
+    <div style={{ display: "flex", minHeight: "100vh", background: "#f7f8fa", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <style>{`
+        @media (max-width: 768px) { .hosp-sidebar { display: none !important; } .hosp-main { margin-left: 0 !important; } }
+      `}</style>
+      {/* Sidebar — same teal strip, vessel, brand, but showing ticket stats instead of nav */}
+      <nav className="hosp-sidebar" style={sidebarStyles.nav}>
+        <div style={{ padding: "16px 0 18px", display: "flex", flexDirection: "column", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 8, width: "100%" }}>
+          <SidebarVessel />
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#5eead4", letterSpacing: 2, textTransform: "uppercase", marginTop: 2 }}>OxyTrack</div>
+        </div>
+        {/* Ticket stats */}
+        <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: 1.5, color: "rgba(94,234,212,0.7)", textTransform: "uppercase", paddingLeft: 2, marginBottom: 2 }}>Tickets</div>
+          <div style={{ background: "rgba(94,234,212,0.08)", border: "1px solid rgba(94,234,212,0.12)", borderRadius: 12, padding: "14px 12px", textAlign: "center" }}>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "#fff", lineHeight: 1 }}>{mine.length}</div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 5 }}>Total</div>
           </div>
-          <div style={{ marginTop: 20, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 16, padding: "12px 8px 14px" }}>
-            <div style={{ fontSize: 10.5, letterSpacing: 2, fontWeight: 700, opacity: 0.7, textAlign: "center", marginBottom: 10 }}>TICKETS</div>
-            <div style={{ display: "flex", alignItems: "center" }}>
-              <div style={{ flex: 1, textAlign: "center" }}>
-                <div style={{ fontSize: 24, fontWeight: 800 }}>{mine.length}</div>
-                <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 3 }}>Total</div>
-              </div>
-              <div style={{ width: 1, height: 34, background: "rgba(255,255,255,0.18)" }} />
-              <div style={{ flex: 1, textAlign: "center" }}>
-                <div style={{ fontSize: 24, fontWeight: 800 }}>{openCount}</div>
-                <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 3 }}>Open</div>
-              </div>
-              <div style={{ width: 1, height: 34, background: "rgba(255,255,255,0.18)" }} />
-              <div style={{ flex: 1, textAlign: "center" }}>
-                <div style={{ fontSize: 24, fontWeight: 800 }}>{mine.length - openCount}</div>
-                <div style={{ fontSize: 10.5, opacity: 0.85, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, marginTop: 3 }}>Resolved</div>
-              </div>
-            </div>
+          <div style={{ background: openCount > 0 ? "rgba(245,158,11,0.12)" : "rgba(94,234,212,0.08)", border: `1px solid ${openCount > 0 ? "rgba(245,158,11,0.25)" : "rgba(94,234,212,0.12)"}`, borderRadius: 12, padding: "14px 12px", textAlign: "center" }}>
+            <div style={{ fontSize: 28, fontWeight: 800, color: openCount > 0 ? "#fbbf24" : "#fff", lineHeight: 1 }}>{openCount}</div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 5 }}>Open</div>
+          </div>
+          <div style={{ background: "rgba(94,234,212,0.08)", border: "1px solid rgba(94,234,212,0.12)", borderRadius: 12, padding: "14px 12px", textAlign: "center" }}>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "#5eead4", lineHeight: 1 }}>{resolvedCount}</div>
+            <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 5 }}>Resolved</div>
           </div>
         </div>
-      </div>
-
-      <main className="main-responsive" style={styles.main}>
-        <section style={styles.formSectionTeal}>
+        <div style={{ flex: 1 }} />
+        <div style={{ padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", width: "100%", textAlign: "center" }}>
+          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", letterSpacing: 1, textTransform: "uppercase" }}>oxytrack.pk</div>
+        </div>
+      </nav>
+      <div className="hosp-main" style={{ flex: 1, marginLeft: 180, background: "#f7f8fa", minHeight: "100vh" }}>
+        <TopBar title="PSA Oxygen Plants" user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
+          <NotificationBell user={user} onFocusComplaint={handleFocusComplaint} light={true} complaints={complaints} />
+        </TopBar>
+        <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px" }}>
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>{user.name}</div>
+            <div style={{ fontSize: 13, color: "#8a9199", marginTop: 3 }}>PSA Oxygen Plant · {getProvider(user.name)}</div>
+          </div>
+          <section style={styles.formSectionTeal}>
           <h2 style={{ ...styles.sectionTitleTeal, borderLeft: "none", paddingLeft: 0, display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ width: 40, height: 40, borderRadius: "50%", background: C.teal, color: "#fff", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 400, boxShadow: "0 3px 8px rgba(13,148,136,0.3)" }}>+</span>
             Submit a Ticket
@@ -2196,8 +2204,9 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
             </div>
           ))}
         </section>
-      </main>
-      <PartnerFooter />
+        </main>
+        <PartnerFooter />
+      </div>
     </div>
   );
 }
