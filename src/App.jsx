@@ -283,7 +283,7 @@ function canLogVisitTicket(user, hospital, c) {
 }
 // Hospital or the assigned provider can mark resolved, once a visit has actually happened
 function canMarkResolvedTicket(user, hospital, c) {
-  if (user.role === "admin") return true;
+  if (user.role === "admin") return c.status === "Open";
   if (getEffectiveStatus(c) !== "In Progress") return false;
   if (user.role === "hospital") return true;
   return isProviderUser(user) && getProvider(hospital) === getCompanyName(user);
@@ -1838,6 +1838,8 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const [editDesc, setEditDesc] = useState(cleanDescription(complaint.description)); const [editSaving, setEditSaving] = useState(false);
   const [assigneePicks, setAssigneePicks] = useState([]);
   const [visitDatePick, setVisitDatePick] = useState("");
+  const [resolveDatePick, setResolveDatePick] = useState("");
+  const [verifyDatePick, setVerifyDatePick] = useState("");
   const [equipOpen, setEquipOpen] = useState(false);
   const [equipPicks, setEquipPicks] = useState(() => extractSerials(complaint.description));
   const [equipSaving, setEquipSaving] = useState(false);
@@ -1859,8 +1861,8 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const toggleAssignee = (name) => setAssigneePicks(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
   const handleAssign = async () => { if (!assigneePicks.length) return; setBusy(true); await onAssign(c.id, assigneePicks); setAssigneePicks([]); setBusy(false); };
   const handleLogVisit = async () => { if (!visitDatePick) return; setBusy(true); await onLogVisit(c.id, visitDatePick); setVisitDatePick(""); setBusy(false); };
-  const handleMarkResolved = async () => { setBusy(true); await onMarkResolved(c.id); setBusy(false); };
-  const handleVerify = async () => { setBusy(true); await onVerify(c.id); setBusy(false); };
+  const handleMarkResolved = async () => { setBusy(true); await onMarkResolved(c.id, resolveDatePick || undefined); setResolveDatePick(""); setBusy(false); };
+  const handleVerify = async () => { setBusy(true); await onVerify(c.id, verifyDatePick || undefined); setVerifyDatePick(""); setBusy(false); };
   const handleRejectVerify = async () => { if (!window.confirm("Reject this resolution? The ticket will go back to Open and will need to be reassigned.")) return; setBusy(true); await onRejectVerify(c.id); setBusy(false); };
   const handleRemoveAssignee = async (name) => { if (!window.confirm(`Remove ${name} from this ticket?`)) return; setBusy(true); await removeAssignee(c.id, name); setBusy(false); await onRefresh(); };
   const handleRemoveVisit = async (d) => { if (!window.confirm("Remove this logged visit?")) return; setBusy(true); await removeVisit(c.id, d); setBusy(false); await onRefresh(); };
@@ -1962,10 +1964,14 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                 </>
               )}
               {canMarkResolved && (
-                <button style={styles.btnTealSmall} onClick={handleMarkResolved} disabled={busy}>{busy ? "…" : "✓ Mark Resolved"}</button>
+                <>
+                  {isAdmin && <input type="date" style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={resolveDatePick} onChange={e => setResolveDatePick(e.target.value)} title="Optional: pick a past date" />}
+                  <button style={styles.btnTealSmall} onClick={handleMarkResolved} disabled={busy}>{busy ? "…" : "✓ Mark Resolved"}</button>
+                </>
               )}
               {canVerify && (
                 <>
+                  {isAdmin && <input type="date" style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={verifyDatePick} onChange={e => setVerifyDatePick(e.target.value)} title="Optional: pick a past date" />}
                   <button style={{ ...styles.btnTealSmall, background: "#27ae60", boxShadow: "none" }} onClick={handleVerify} disabled={busy}>{busy ? "…" : "✓ Verify"}</button>
                   <button style={{ ...styles.btnTealSmall, background: "#c0392b", boxShadow: "none" }} onClick={handleRejectVerify} disabled={busy}>✕ Reject</button>
                 </>
@@ -2767,8 +2773,8 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
   const handleAssign = async (id, assignedTo) => { await assignComplaint(id, assignedTo, user.name); const c = complaints.find(x => x.id === id); if (c) notifyUsers("assigned", `Ticket Assigned: ${c.hospital}`, `${c.title} — assigned to ${assignedTo}`, c.hospital, id, "admin").catch(() => {}); await onRefresh(); };
   const handleLogVisit = async (id, visitDate) => { await logVisit(id, visitDate, user.name); await onRefresh(); };
-  const handleMarkResolved = async (id) => { await markResolved(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification("amex", "resolved", `Ready for Verification: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Ready for Verification: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
-  const handleVerify = async (id) => { await verifyComplaint(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
+  const handleMarkResolved = async (id, resolveDate) => { if (resolveDate) { await resolveComplaint(id, resolveDate, user.name); } else { await markResolved(id, user.name); } const c = complaints.find(x => x.id === id); if (c) { createNotification("amex", "resolved", `Ready for Verification: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Ready for Verification: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
+  const handleVerify = async (id, verifyDate) => { if (verifyDate) { await dbWrite({ action: "verify_complaint", id, verified_by: user.name, verified_at: new Date(verifyDate).toISOString() }); } else { await verifyComplaint(id, user.name); } const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
   const handleRejectVerify = async (id) => { await rejectVerification(id); await insertComment(id, "", "admin", "Verification rejected — ticket reopened."); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
   const handleDelete = async (id) => { await deleteComplaint(id); await onRefresh(); };
   const staffOptions = users.filter(u => u.role === "company" && (u.company_role === "engineer" || u.company_role === "technician" || u.company_role === "manager"));
