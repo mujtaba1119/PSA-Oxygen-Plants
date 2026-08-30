@@ -60,7 +60,7 @@ const GROUPS = {
 };
 const ALL_HOSPITALS = Object.values(GROUPS).flat();
 const getProvider = h => Object.entries(GROUPS).find(([, list]) => list.includes(h))?.[0] || "Unknown";
-const DISPLAY_NAMES = { "Timergara": "Lower Dir - Timergara", "Malakand": "Batkhela - Malakand", "Neelum": "Neelum - AJK", "Jhelum": "Jhelum - AJK", "Haveli": "Haveli - AJK", "Ghizer": "Gahkuch - Ghizer", "Khaplu": "Khaplu - Ghanche", "Quetta SZ": "Quetta Sheikh Zayed", "Panjgur": "Panjgur", "Bhimber": "Bhimber" };
+const DISPLAY_NAMES = { "Rawalpindi": "Rawalpindi - Holy Family Hospital", "Kohat": "DHQ Hospital Kohat", "Swat": "Saidu Teaching Hospital", "Timergara": "DHQ Hospital Timergara", "Malakand": "Batkhela - DHQ Hospital", "Bannu": "Khalifa Gul Nawaz Hospital", "Neelum": "DHQ Hospital Neelum", "Jhelum": "DHQ Hospital Jehlum Valley", "Haveli": "DHQ Hospital Haveli", "Nagar": "DHQ Hospital Nagar", "Ghizer": "DHQ Hospital Gahkuch", "Astore": "DHQ Hospital Eidgah - Astore", "Khaplu": "DHQ Hospital Khaplu - Ghanche", "Islamabad": "PIMS Hospital Islamabad", "Bhakkar": "DHQ Hospital Bhakkar", "Sahiwal": "Sahiwal Teaching Hospital", "Toba Tek Singh": "DHQ Hospital Toba Tek Singh", "Sargodha": "DHQ Hospital Sargodha", "Rahim Yar Khan": "Sheikh Zayed Hospital - Rahim Yar Khan", "Jhang": "DHQ Hospital Jhang", "Faisalabad": "Allied Hospital Faisalabad", "Bhimber": "DHQ Hospital Bhimber", "Multan": "Nishtar Hospital Multan", "Larkana": "Chandka Medical College Hospital", "Jamshoro": "Liaqat University Hospital Jamshoro", "Quetta SZ": "Sheikh Zayed Hospital Quetta", "DM Jamali": "DHQ Hospital Dera Murad Jamali", "Khuzdar": "DHQ Hospital Khuzdar", "Sibbi": "DHQ Hospital Sibbi", "Nawabshah": "DHQ Hospital Benazirabad", "Zhob": "DHQ Teaching Hospital Zhob", "Quetta Sandeman": "Sandman Provincial Hospital Quetta", "Loralai": "DHQ Teaching Hospital Loralai", "Panjgur": "DHQ Hospital Panjgur", "Kharan": "Divisional Hospital Kharan", "Karachi": "Sindh Govt. Hospital Korangi" };
 const displayName = h => DISPLAY_NAMES[h] || h;
 
 // Internal-only site abbreviations for ticket numbering (never shown as labels, only in ticket IDs)
@@ -685,23 +685,31 @@ function SerialPicker({ hospital, complaintType, selected, onChange }) {
     else onChange([...selected, serial]);
   };
   return (
-    <div style={{ marginBottom: 14, padding: "14px 16px", background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 12, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ fontSize: 12.5, fontWeight: 700, color: C.tealDark, marginBottom: 12 }}>Which unit(s) are affected? <span style={{ fontWeight: 500, color: C.textMid }}>Select one or more</span></div>
+    <div style={{ marginBottom: 16, padding: "16px 18px", background: "linear-gradient(135deg, #f0fdfa, #f7fdfb)", border: "1px solid #d5f0ea", borderRadius: 16, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#0f766e" }}>Which unit(s) are affected?</span>
+        <span style={{ fontSize: 11.5, fontWeight: 500, color: "#8a9199" }}>Select one or more</span>
+      </div>
       {groups.map((group, gi) => (
-        <div key={group.label} style={{ marginBottom: gi < groups.length - 1 ? 14 : 0 }}>
-          {groups.length > 1 && <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", color: C.tealDark, textTransform: "uppercase", marginBottom: 7 }}>{group.label}s</div>}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
+        <div key={group.label} style={{ marginBottom: gi < groups.length - 1 ? 16 : 0 }}>
+          {groups.length > 1 && <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", color: "#0f766e", textTransform: "uppercase", marginBottom: 8 }}>{group.label}s</div>}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(158px, 1fr))", gap: 10 }}>
             {group.options.map(opt => {
               const on = selected.includes(opt.serial);
               return (
-                <div key={opt.key} onClick={() => toggle(opt.serial)} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 12px", borderRadius: 10, cursor: "pointer", background: on ? C.teal : "#fff", border: `1.5px solid ${on ? C.teal : C.tealLight}`, transition: "all 0.15s" }}>
-                  <span style={{ width: 16, height: 16, borderRadius: 5, flexShrink: 0, background: on ? "#fff" : "transparent", border: `1.5px solid ${on ? "#fff" : C.tealLight}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {on && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                  </span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: on ? "rgba(255,255,255,0.85)" : C.textMid, lineHeight: 1.2 }}>{opt.label}</div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#fff" : C.black, fontFamily: "'DM Mono', ui-monospace, monospace", letterSpacing: 0.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt.serial}</div>
+                <div key={opt.key} onClick={() => toggle(opt.serial)} style={{ position: "relative", display: "flex", alignItems: "center", gap: 11, padding: "11px 13px", borderRadius: 12, cursor: "pointer", background: on ? "linear-gradient(135deg, #0d9488, #0f766e)" : "#fff", boxShadow: on ? "0 4px 12px rgba(13,148,136,0.25)" : "0 1px 3px rgba(15,23,25,0.05)", border: on ? "1.5px solid transparent" : "1.5px solid #e3efec", transition: "all 0.18s" }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: on ? "rgba(255,255,255,0.18)" : "#f0fdfa", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <img src={`/equipment/${EQUIP_ICONS[opt.key] || "equipment"}.svg`} alt="" style={{ width: 22, height: 22, objectFit: "contain", filter: on ? "brightness(0) invert(1)" : "none" }} onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "block"; }} />
+                    <svg style={{ display: "none", width: 18, height: 18 }} viewBox="0 0 24 24" fill="none" stroke={on ? "#fff" : "#0f766e"} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
                   </div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: on ? "rgba(255,255,255,0.8)" : "#8a9199", lineHeight: 1.2 }}>{opt.label}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: on ? "#fff" : "#1a1d21", fontFamily: "'DM Mono', ui-monospace, monospace", letterSpacing: 0.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt.serial}</div>
+                  </div>
+                  {on && <div style={{ position: "absolute", top: 8, right: 8, width: 16, height: 16, borderRadius: "50%", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>}
                 </div>
               );
             })}
@@ -3156,8 +3164,8 @@ const styles = {
   inputTealSelect: { display: "block", width: "100%", padding: "14px 16px", fontSize: 14, border: `1.5px solid ${C.teal}`, borderRadius: 12, marginBottom: 14, outline: "none", boxSizing: "border-box", color: C.text, background: C.tealBg, fontFamily: "'DM Sans', system-ui, sans-serif", fontWeight: 600, cursor: "pointer" },
   btnTeal: { display: "block", width: "100%", padding: "15px 0", fontSize: 14, fontWeight: 700, color: C.white, background: C.teal, border: "none", borderRadius: 12, cursor: "pointer", letterSpacing: 1.2, textTransform: "uppercase", boxShadow: "0 4px 12px rgba(13,148,136,0.3)" },
   successMsgTeal: { color: C.teal, fontSize: 14, fontWeight: 700, marginTop: 12, textAlign: "center" },
-  cardTeal: { background: C.white, borderRadius: 18, marginBottom: 14, overflow: "hidden", border: `1px solid ${C.tealLight}`, boxShadow: "0 4px 14px rgba(15,118,110,0.1)" },
-  btnTealSmall: { display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13.5, fontWeight: 700, color: "#fff", background: C.teal, border: "none", borderRadius: 12, padding: "11px 20px", cursor: "pointer", boxShadow: "0 3px 8px rgba(13,148,136,0.25)" },
+  cardTeal: { background: C.white, borderRadius: 18, marginBottom: 16, overflow: "hidden", border: "1px solid #e3efec", boxShadow: "0 2px 6px rgba(15,23,25,0.05), 0 8px 24px rgba(15,118,110,0.08)" },
+  btnTealSmall: { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#fff", background: C.teal, border: "none", borderRadius: 9, padding: "8px 15px", cursor: "pointer", boxShadow: "0 2px 6px rgba(13,148,136,0.2)", letterSpacing: 0.2 },
 
   loadWrap: { minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: C.bg, fontFamily: "'DM Sans', system-ui, sans-serif" },
   loadLogo: { fontSize: 56, fontWeight: 800, color: C.black, letterSpacing: -3 },
