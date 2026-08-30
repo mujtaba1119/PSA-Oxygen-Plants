@@ -1331,7 +1331,7 @@ function makePinIcon(color) {
 
 /* ─── Homepage: map + program pulse, shown to every non-hospital account.
    Overview (the older site-list view) remains available as its own separate tab. ─── */
-function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
+function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user }) {
   const [pkBoundary, setPkBoundary] = useState(null);
   useEffect(() => {
     fetch("/pakistan-boundary.geojson")
@@ -1367,9 +1367,65 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
   const providerEntries = Object.entries(groups || {}).filter(([, sites]) => sites.some(s => hospitals.includes(s)));
   const showProviderBreakdown = providerEntries.length > 1;
 
+  const isUndpCmu = user && user.role === "company" && ["UNDP", "CMU"].includes(getCompanyName(user));
+
+  const oneMonthAgo = new Date(); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+  const resolvedThisMonth = scoped
+    .filter(c => isClosedStatus(c.status) && c.resolved_at && new Date(c.resolved_at) >= oneMonthAgo)
+    .sort((a, b) => new Date(b.resolved_at) - new Date(a.resolved_at));
+
+  const openTickets = scoped.filter(c => !isClosedStatus(c.status));
+  const sevCounts = { Critical: 0, High: 0, Low: 0 };
+  openTickets.forEach(c => { const sev = c.severity || getDefaultSeverity(c.title); if (sevCounts[sev] !== undefined) sevCounts[sev]++; });
+
+  const verifiedThisMonth = scoped.filter(c => c.status === "Verified" && c.verified_at && new Date(c.verified_at) >= oneMonthAgo);
+
   return (
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      {/* 4 Stat Cards — white with gradient top accent lines (ZeBeyond style) */}
+      {isUndpCmu ? (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 26 }}>
+        {/* Tile 1: Sites Operational */}
+        <div style={{ background: "linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)", borderRadius: 16, padding: "20px 22px", border: "1.5px solid #99f6e4", position: "relative", overflow: "hidden", boxShadow: "0 2px 10px rgba(13,148,136,0.08)", textAlign: "center" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: "#0f766e", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Sites Operational</div>
+          <div style={{ fontSize: 36, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>
+            {funcCount}<span style={{ fontSize: 16, fontWeight: 500, color: "#94a3b8", marginLeft: 3 }}>/ {hospitals.length}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+            {shutdownSites.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#fef2f2", color: "#dc2626" }}>{shutdownSites.length} Shut Down</span>}
+            {hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Non Functional").length > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#f1f5f9", color: "#64748b" }}>{hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Non Functional").length} Non-Functional</span>}
+          </div>
+        </div>
+        {/* Tile 2: Open Tickets with severity breakdown */}
+        <div style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", borderRadius: 16, padding: "20px 22px", border: "1.5px solid #fde68a", position: "relative", overflow: "hidden", boxShadow: "0 2px 10px rgba(217,119,6,0.06)", textAlign: "center" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Open Tickets</div>
+          <div style={{ fontSize: 36, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>{openTickets.length}</div>
+          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
+            {sevCounts.Critical > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#c0392b", color: "#fff" }}>{sevCounts.Critical} Critical</span>}
+            {sevCounts.High > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#d9822b", color: "#fff" }}>{sevCounts.High} High</span>}
+            {sevCounts.Low > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#e2e8f0", color: "#555" }}>{sevCounts.Low} Low</span>}
+          </div>
+        </div>
+        {/* Tile 3: Resolved This Month */}
+        <div style={{ background: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)", borderRadius: 16, padding: "20px 22px", border: "1.5px solid #a7f3d0", position: "relative", overflow: "hidden", boxShadow: "0 2px 10px rgba(22,163,74,0.06)", textAlign: "center" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: "#166534", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Resolved This Month</div>
+          <div style={{ fontSize: 36, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>{resolvedThisMonth.length}</div>
+          <div style={{ marginTop: 10 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#dcfce7", color: "#16a34a" }}>{verifiedThisMonth.length} Verified</span>
+          </div>
+        </div>
+        {/* Tile 4: Avg Resolution Time */}
+        <div style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderRadius: 16, padding: "20px 22px", border: "1.5px solid #bfdbfe", position: "relative", overflow: "hidden", boxShadow: "0 2px 10px rgba(37,99,235,0.06)", textAlign: "center" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: "#1e40af", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Avg Resolution Time</div>
+          <div style={{ fontSize: 36, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>
+            {(() => { const resolved = scoped.filter(c => c.resolved_at && c.created_at); if (resolved.length === 0) return "—"; const avg = resolved.reduce((sum, c) => sum + (new Date(c.resolved_at) - new Date(c.created_at)), 0) / resolved.length; const days = Math.round(avg / (1000 * 60 * 60 * 24)); return days; })()}
+            <span style={{ fontSize: 14, fontWeight: 500, color: "#94a3b8", marginLeft: 3 }}>days</span>
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <span style={{ fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 20, background: "#dbeafe", color: "#2563eb" }}>All-time average</span>
+          </div>
+        </div>
+      </div>
+      ) : (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 26 }}>
         {[
           { label: "Operational", value: funcCount, sub: `/ ${hospitals.length}`, tag: `${hospitals.length > 0 ? Math.round(funcCount / hospitals.length * 100) : 0}% uptime`, tagType: "green", gradient: "linear-gradient(90deg, #0f766e, #2dd4a8)" },
@@ -1391,6 +1447,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
           </div>
         ))}
       </div>
+      )}
       {/* Map + Mint-tinted Side Panel */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 14, marginBottom: 24 }}>
         <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid #e8ecf0", boxShadow: "0 1px 3px rgba(15,23,42,0.05)", height: 400, position: "relative", background: "#fff" }}>
@@ -2899,7 +2956,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         </TopBar>
         <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px" }}>
           <div key={tab} className="scale-in">
-          {tab === "dashboard" && <HomeTab hospitals={ALL_HOSPITALS} groups={GROUPS} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
+          {tab === "dashboard" && <HomeTab hospitals={ALL_HOSPITALS} groups={GROUPS} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} user={user} />}
           {tab === "sites" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "equipment" && <EquipmentTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} isAdmin={true} onRefresh={onRefresh} />}
           {tab === "tickets" && !selected && (<>
@@ -3174,7 +3231,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
         </TopBar>
         <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px" }}>
           <div key={tab} className="scale-in">
-          {tab === "dashboard" && <HomeTab hospitals={myHospitals} groups={myGroups} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
+          {tab === "dashboard" && <HomeTab hospitals={myHospitals} groups={myGroups} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} user={user} />}
           {tab === "sites" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "equipment" && <EquipmentTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} isAdmin={false} onRefresh={onRefresh} />}
           {tab === "tickets" && !selected && (<>
