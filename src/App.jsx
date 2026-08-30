@@ -1877,15 +1877,14 @@ function ComplaintListView({ hospital, complaints, currentUser, canComment, isAd
     }
   }, [focusInfo]);
   return (<>
-    <button style={styles.backBtn} onClick={onBack}>← BACK</button>
+    <button style={styles.backBtn} onClick={onBack}>&larr; Back</button>
     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>{hospital}</h2><span style={{ fontSize: 13, color: "#999" }}>({hc.length})</span><span style={{ fontSize: 12, color: "#555", background: "#f0f0f0", padding: "2px 8px" }}>{getProvider(hospital)}</span></div>
     {hc.length === 0 && (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 24px", textAlign: "center", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
         <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
         </div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1d21", marginBottom: 4 }}>No Tickets from this Hospital</div>
-        <div style={{ fontSize: 13, color: "#8a9199" }}>This site has no logged tickets — everything looks good here.</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1d21" }}>No Tickets from this Hospital</div>
       </div>
     )}
     {hc.map(c => (
@@ -2328,7 +2327,7 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
           .equip-item:hover .equip-icon { transform: scale(1.12); }
         `}</style>
         <div className="equip-page">
-        <button onClick={() => setSelectedSite(null)} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; All Sites</button>
+        <button onClick={() => setSelectedSite(null)} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
         <div style={{ marginBottom: 24 }}>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: 0, letterSpacing: "-0.01em" }}>{displayName(selectedSite)}</h2>
         </div>
@@ -2883,7 +2882,7 @@ const styles = {
   hospitalName: { flex: 1, fontSize: 14.5, fontWeight: 600, color: C.black },
   hospitalBadge: { fontSize: 12, fontWeight: 700, color: C.tealDark, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: "3px 11px" },
   openBadge: { fontSize: 11, fontWeight: 700, color: C.red, background: "#fbeaea", borderRadius: 10, padding: "3px 9px" },
-  backBtn: { fontSize: 13, fontWeight: 500, color: C.black, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", display: "block", letterSpacing: 0.5, textTransform: "uppercase" },
+  backBtn: { fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", display: "block", letterSpacing: 0.5, textTransform: "uppercase" },
   resolveBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.green, border: "none", borderRadius: 0, padding: "8px 20px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
   deleteBtn: { fontSize: 12, fontWeight: 600, color: C.white, background: C.red, border: "none", borderRadius: 0, padding: "8px 20px", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" },
   groupSection: { marginBottom: 32 },
