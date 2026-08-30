@@ -2368,15 +2368,17 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {children}
-            <button className="refresh-btn tb-glass" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.25)", color: "rgba(255,255,255,0.85)", borderRadius: 10, cursor: "pointer", padding: "7px 16px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 500, letterSpacing: 0.3, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
+            <button className="refresh-btn tb-glass" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.25)", color: "rgba(255,255,255,0.85)", borderRadius: "10px 0 0 10px", cursor: "pointer", padding: "7px 16px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 500, letterSpacing: 0.3, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif", width: 118, boxSizing: "border-box" }}>
               <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
               {!refreshing && "Refresh"}
               {refreshing && <svg className="spinning" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
             </button>
-            <button className="tb-glass" title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)", border: "none", color: "#062825", borderRadius: 10, cursor: "pointer", padding: "7px 16px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif", textTransform: "capitalize" }}>
+            <button className="tb-glass" title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)", border: "none", color: "#062825", borderRadius: "0 10px 10px 0", cursor: "pointer", padding: "7px 16px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif", textTransform: "capitalize", width: 118, boxSizing: "border-box" }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
               Sign Out
             </button>
+            </div>
           </div>
         </div>
         {/* Curve cutout — fills with content bg color, sits inside the gradient div. No seam possible. */}
