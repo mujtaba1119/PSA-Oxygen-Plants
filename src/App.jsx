@@ -2287,27 +2287,29 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
   const filtered = search.trim() ? ALL_HOSPITALS.filter(h => h.toLowerCase().includes(search.toLowerCase()) || displayName(h).toLowerCase().includes(search.toLowerCase())) : ALL_HOSPITALS;
   return (
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em", marginBottom: 4 }}>Equipment Inventory</div>
-          <div style={{ fontSize: 13, color: "#555" }}>{ALL_HOSPITALS.length} sites · {Object.values(EQUIPMENT_DATA).reduce((s, e) => s + Object.keys(e).length, 0)} registered equipment</div>
-        </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>Equipment Inventory</div>
         <input style={{ padding: "8px 14px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", width: 220, background: "#fff", color: "#111" }} placeholder="Search sites..." value={search} onChange={e => setSearch(e.target.value)} onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.tealLight} />
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
         {Object.entries(GROUPS).map(([provider, sites]) => sites.filter(s => filtered.includes(s)).map(h => {
-          const equip = EQUIPMENT_DATA[h] || {}; const equipCount = Object.keys(equip).length;
-          const status = getSiteDisplayStatus(h, complaints, siteNotes);
-          return (<div key={h} onClick={() => setSelectedSite(h)} style={{ background: "#fff", borderRadius: 14, padding: "18px 20px", boxShadow: "0 1px 3px rgba(15,23,25,0.04), 0 4px 12px rgba(15,23,25,0.03)", cursor: "pointer", transition: "box-shadow 0.2s, transform 0.2s", borderLeft: `3px solid ${status === "Shut Down" ? "#c0392b" : status === "Non Functional" ? "#868e96" : "#0d9488"}` }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(15,118,110,0.12), 0 8px 24px rgba(15,23,25,0.06)"; e.currentTarget.style.transform = "translateY(-2px)"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,42,0.05)"; e.currentTarget.style.transform = "none"; }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div><div style={{ fontSize: 15, fontWeight: 700, color: "#111", marginBottom: 4 }}>{displayName(h)}</div><div style={{ fontSize: 11, color: "#94a3b8" }}>{provider}</div></div>
-              <SiteStatusBadge status={status} />
+          const imgSrc = `/sites/${SITE_CODES[h] || h.toLowerCase().replace(/\s+/g, "-")}.jpg`;
+          return (
+            <div key={h} onClick={() => setSelectedSite(h)} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", cursor: "pointer", transition: "all 0.22s", border: "1px solid #e8ecf0", boxShadow: "0 1px 3px rgba(15,23,25,0.05)" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 28px rgba(15,118,110,0.14)"; e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.borderColor = "#0d9488"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,25,0.05)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.borderColor = "#e8ecf0"; }}>
+              {/* Image */}
+              <div style={{ position: "relative", width: "100%", aspectRatio: "4 / 3", background: "linear-gradient(135deg, #0b3b38, #0f766e)", overflow: "hidden" }}>
+                <img src={imgSrc} alt={displayName(h)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
+                {/* Placeholder shown when image missing */}
+                <div style={{ display: "none", position: "absolute", inset: 0, alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #0b3b38, #0f766e)" }}>
+                  <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="rgba(94,234,212,0.55)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
+                </div>
+              </div>
+              {/* Name */}
+              <div style={{ padding: "14px 16px", textAlign: "center" }}>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: "#1a1d21", letterSpacing: "-0.01em" }}>{displayName(h)}</div>
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 16, marginTop: 12, fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: equipCount > 0 ? "#0d9488" : "#ccc" }} />{equipCount} equipment</span>
-              <span style={{ color: "#0d9488", fontWeight: 600 }}>View inventory &rarr;</span>
-            </div>
-          </div>);
+          );
         }))}
       </div>
     </div>
