@@ -159,6 +159,51 @@ const SEVERITY_MAP = {
   "Other Issue": "Low",
 };
 function getDefaultSeverity(issueTitle) { return SEVERITY_MAP[issueTitle] || "Low"; }
+
+// Maps a complaint type to the equipment-item keys whose serials the operator should pick from.
+// Only multi-unit categories prompt for a serial selection.
+const COMPLAINT_EQUIP_KEYS = {
+  "Compressor Issue": ["comp1", "comp2", "comp3", "comp4"],
+  "Dryer Issue": ["dryer1", "dryer2", "dryer3", "dryer4"],
+  "Purity Issue/Oxygen Generator Issue": ["oxyswing_a", "oxyswing_b"],
+};
+// Human label for the serial-picker section per complaint type.
+const COMPLAINT_EQUIP_LABEL = {
+  "Compressor Issue": "Compressor",
+  "Dryer Issue": "Air Dryer",
+  "Purity Issue/Oxygen Generator Issue": "Oxygen Generator",
+};
+// Returns [{ key, label, serial }] serial options for a given site + complaint type, or [] if none apply.
+function serialOptionsFor(hospital, complaintType) {
+  const keys = COMPLAINT_EQUIP_KEYS[complaintType];
+  if (!keys) return [];
+  const equip = EQUIPMENT_DATA[hospital] || {};
+  const label = COMPLAINT_EQUIP_LABEL[complaintType] || "Unit";
+  return keys.filter(k => equip[k]).map((k, i) => ({ key: k, label: `${label} ${i + 1}`, serial: equip[k] }));
+}
+// Serials affected by a complaint are appended to its description in a hidden tag:
+//   ...description text...\n\n[EQUIP:22177409,22177477]
+// These helpers keep that tag out of the visible description and let us query by serial.
+const EQUIP_TAG_RE = /\n*\[EQUIP:([^\]]*)\]\s*$/;
+function encodeSerials(description, serials) {
+  const clean = (description || "").replace(EQUIP_TAG_RE, "").trimEnd();
+  if (!serials || serials.length === 0) return clean;
+  return `${clean}\n\n[EQUIP:${serials.join(",")}]`;
+}
+function extractSerials(description) {
+  const m = (description || "").match(EQUIP_TAG_RE);
+  if (!m) return [];
+  return m[1].split(",").map(s => s.trim()).filter(Boolean);
+}
+function cleanDescription(description) {
+  return (description || "").replace(EQUIP_TAG_RE, "").trimEnd();
+}
+// All complaints that reference a given serial number, newest first.
+function complaintsForSerial(serial, complaints) {
+  return complaints
+    .filter(c => extractSerials(c.description).includes(serial))
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+}
 const SEVERITY_COLORS = {
   "Critical": { color: "#fff", background: "#c0392b" },
   "High": { color: "#fff", background: "#d9822b" },
@@ -605,7 +650,7 @@ function downloadCSV(complaints, filename) {
   const escape = s => '"' + String(s || "").replace(/"/g, '""') + '"';
   const rows = complaints.map(c => [
     new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" }),
-    c.hospital, getProvider(c.hospital), c.title, c.description, c.status || "Open",
+    c.hospital, getProvider(c.hospital), c.title, cleanDescription(c.description), c.status || "Open",
     c.submitted_by || "", c.resolved_at ? new Date(c.resolved_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" }) : ""
   ].map(escape).join(","));
   const csv = [headers.join(","), ...rows].join("\n");
@@ -621,6 +666,38 @@ function ComplaintTypeSelect({ value, onChange, style }) {
       <option value="">Select complaint type</option>
       {COMPLAINT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
     </select>
+  );
+}
+
+// Shown below the complaint-type select when the chosen type maps to multiple units.
+// Lets the operator tick one or more affected serial numbers. Controlled via `selected` (array of serials).
+function SerialPicker({ hospital, complaintType, selected, onChange }) {
+  const options = serialOptionsFor(hospital, complaintType);
+  if (options.length === 0) return null;
+  const toggle = (serial) => {
+    if (selected.includes(serial)) onChange(selected.filter(s => s !== serial));
+    else onChange([...selected, serial]);
+  };
+  return (
+    <div style={{ marginBottom: 14, padding: "14px 16px", background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 12, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: C.tealDark, marginBottom: 10 }}>Which unit(s) are affected? <span style={{ fontWeight: 500, color: C.textMid }}>Select one or more</span></div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
+        {options.map(opt => {
+          const on = selected.includes(opt.serial);
+          return (
+            <div key={opt.key} onClick={() => toggle(opt.serial)} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 12px", borderRadius: 10, cursor: "pointer", background: on ? C.teal : "#fff", border: `1.5px solid ${on ? C.teal : C.tealLight}`, transition: "all 0.15s" }}>
+              <span style={{ width: 16, height: 16, borderRadius: 5, flexShrink: 0, background: on ? "#fff" : "transparent", border: `1.5px solid ${on ? "#fff" : C.tealLight}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {on && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+              </span>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: on ? "rgba(255,255,255,0.85)" : C.textMid, lineHeight: 1.2 }}>{opt.label}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#fff" : C.black, fontFamily: "'DM Mono', ui-monospace, monospace", letterSpacing: 0.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt.serial}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -1488,7 +1565,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                         <span style={{ fontSize: 13, fontWeight: 600, color: "#b91c1c" }}>{c.title}</span>
                         <span style={{ fontSize: 11, color: "#8a9199" }}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</span>
                       </div>
-                      <p style={{ fontSize: 12, color: "#5f6b7a", margin: 0, lineHeight: 1.6 }}>{c.description}</p>
+                      <p style={{ fontSize: 12, color: "#5f6b7a", margin: 0, lineHeight: 1.6 }}>{cleanDescription(c.description)}</p>
                     </div>
                   )) : <p style={{ fontSize: 12, color: "#8a9199" }}>No open complaints for this site.</p>}
                   {onViewSite && (
@@ -1730,7 +1807,7 @@ function AttachmentViewer({ attachments }) {
 function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, onLogVisit, onMarkResolved, onVerify, onRejectVerify, onDelete, onRefresh, staffOptions, cardHighlight, highlightCommentText, ticketNumber }) {
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false); const [editTitle, setEditTitle] = useState(complaint.title);
-  const [editDesc, setEditDesc] = useState(complaint.description); const [editSaving, setEditSaving] = useState(false);
+  const [editDesc, setEditDesc] = useState(cleanDescription(complaint.description)); const [editSaving, setEditSaving] = useState(false);
   const [assigneePicks, setAssigneePicks] = useState([]);
   const [visitDatePick, setVisitDatePick] = useState("");
   const c = complaint;
@@ -1760,7 +1837,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const handleUndoVerify = async () => { if (!window.confirm("Undo verification? The ticket will go back to Resolved.")) return; setBusy(true); await undoVerify(c.id); setBusy(false); await onRefresh(); };
   const handleUndoReject = async () => { if (!window.confirm("Undo the last rejection? This restores the ticket to the state it was in right before it was rejected.")) return; setBusy(true); await undoReject(c.id); setBusy(false); await onRefresh(); };
   const handleDelete = async () => { if (window.confirm("Delete this complaint permanently?")) { await onDelete(c.id); await onRefresh(); } };
-  const handleEditSave = async () => { if (!editTitle.trim() || !editDesc.trim()) return; setEditSaving(true); await updateComplaintFields(c.id, { title: editTitle.trim(), description: editDesc.trim() }); setEditSaving(false); setEditing(false); await onRefresh(); };
+  const handleEditSave = async () => { if (!editTitle.trim() || !editDesc.trim()) return; setEditSaving(true); const preservedSerials = extractSerials(complaint.description); const newDesc = encodeSerials(editDesc.trim(), preservedSerials); await updateComplaintFields(c.id, { title: editTitle.trim(), description: newDesc }); setEditSaving(false); setEditing(false); await onRefresh(); };
   const dateFmt = { year: "numeric", month: "short", day: "numeric" };
   const accentMap = { "Open": C.red, "In Progress": "#e0912f", "Resolved": "#2874a6", "Verified": C.green };
   const accent = accentMap[effStatus] || C.red;
@@ -1771,7 +1848,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
         <div style={{ padding: 18 }}>
           <ComplaintTypeSelect value={editTitle} onChange={e => setEditTitle(e.target.value)} style={{ ...styles.inputTeal, marginBottom: 8 }} />
           <textarea style={{ ...styles.inputTeal, minHeight: 80, resize: "vertical", fontFamily: "inherit" }} value={editDesc} onChange={e => setEditDesc(e.target.value)} />
-          <div style={{ display: "flex", gap: 8 }}><button style={styles.pwSaveBtn} onClick={handleEditSave}>{editSaving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditing(false); setEditTitle(c.title); setEditDesc(c.description); }}>Cancel</button></div>
+          <div style={{ display: "flex", gap: 8 }}><button style={styles.pwSaveBtn} onClick={handleEditSave}>{editSaving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditing(false); setEditTitle(c.title); setEditDesc(cleanDescription(c.description)); }}>Cancel</button></div>
         </div>
       ) : (
         <>
@@ -1789,7 +1866,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
           </div>
           {expanded && (
           <div style={{ padding: 16 }}>
-            <p style={styles.cardDesc}>{c.description}</p>
+            <p style={styles.cardDesc}>{cleanDescription(c.description)}</p>
             {c.submitted_by && <p style={{ fontSize: 12.5, color: C.tealDark, fontWeight: 600, marginTop: 10 }}>👤 {c.submitted_by}</p>}
             {hasAssignees(c) && <div style={{ marginTop: 10 }}><AssignedTag complaint={c} isAdmin={isAdmin} onRemove={handleRemoveAssignee} /></div>}
             <div style={{ marginTop: 12, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 11, display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
@@ -1906,6 +1983,7 @@ function ComplaintListView({ hospital, complaints, currentUser, canComment, isAd
 function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const [operatorName, setOperatorName] = useState("");
   const [title, setTitle] = useState(""); const [desc, setDesc] = useState("");
+  const [selectedSerials, setSelectedSerials] = useState([]);
   const [files, setFiles] = useState([]);
   const [success, setSuccess] = useState(false); const [submitting, setSubmitting] = useState(false);
   const [focusInfo, setFocusInfo] = useState(null); // { complaintId, isComment, commentText }
@@ -1962,12 +2040,12 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const submitComplaint = async () => {
     if (!operatorName.trim() || !title.trim() || !desc.trim() || submitting) return;
     setSubmitting(true);
-    const savedTitle = title.trim(); const savedDesc = desc.trim(); const savedFiles = [...files];
+    const savedTitle = title.trim(); const savedDesc = encodeSerials(desc.trim(), selectedSerials); const savedFiles = [...files];
     const savedSeverity = getDefaultSeverity(savedTitle);
     const r = await insertComplaint(user.name, savedTitle, savedDesc, null, operatorName.trim(), savedSeverity);
     if (r) {
       if (savedFiles.length > 0) await doUpload(r.id, savedFiles);
-      setTitle(""); setDesc(""); setFiles([]);
+      setTitle(""); setDesc(""); setFiles([]); setSelectedSerials([]);
       notifyUsers("new_complaint", `New Complaint: ${user.name}`, savedTitle, user.name, r.id, user.id).catch(() => {});
       await onRefresh();
       setSubmitting(false);
@@ -2020,13 +2098,14 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
             Submit a Ticket
           </h2>
           <input style={styles.inputTeal} placeholder="Your name (operator name)" value={operatorName} onChange={e => setOperatorName(e.target.value)} />
-          <ComplaintTypeSelect value={title} onChange={e => setTitle(e.target.value)} style={styles.inputTealSelect} />
+          <ComplaintTypeSelect value={title} onChange={e => { setTitle(e.target.value); setSelectedSerials([]); }} style={styles.inputTealSelect} />
           {title && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
               <span style={{ fontSize: 12.5, color: C.textMid }}>Severity:</span>
               <SeverityBadge severity={getDefaultSeverity(title)} />
             </div>
           )}
+          <SerialPicker hospital={user.name} complaintType={title} selected={selectedSerials} onChange={setSelectedSerials} />
           <textarea style={{ ...styles.inputTeal, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue in detail…" value={desc} onChange={e => setDesc(e.target.value)} />
           <div style={{ marginBottom: 14 }}>
             <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: C.teal, fontWeight: 600, cursor: "pointer", padding: "10px 18px", border: `1.5px solid ${C.tealLight}`, background: C.tealBg, borderRadius: 10 }}>
@@ -2318,7 +2397,75 @@ const EQUIP_ICONS = { oxyswing_a: "oxyswing", oxyswing_b: "oxyswing", comp1: "co
 
 function EquipmentTab({ hospitals, complaints, siteNotes }) {
   const [selectedSite, setSelectedSite] = useState(null);
+  const [selectedEquip, setSelectedEquip] = useState(null); // { key, label, serial }
   const [search, setSearch] = useState("");
+  // Equipment history view — shows all tickets that referenced this unit's serial number.
+  if (selectedSite && selectedEquip) {
+    const history = complaintsForSerial(selectedEquip.serial, complaints);
+    const statusMeta = (c) => {
+      const st = getEffectiveStatus(c);
+      if (st === "Verified") return { label: "Verified", color: "#16a34a", bg: "#ecfdf5" };
+      if (st === "Resolved") return { label: "Resolved", color: "#2563eb", bg: "#eff6ff" };
+      if (st === "In Progress") return { label: "In Progress", color: "#b45309", bg: "#fef3e2" };
+      return { label: "Open", color: "#dc2626", bg: "#fef2f2" };
+    };
+    const dateFmt = { year: "numeric", month: "short", day: "numeric" };
+    return (
+      <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+        <button onClick={() => setSelectedEquip(null)} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
+        {/* Header: icon + identity */}
+        <div style={{ display: "flex", alignItems: "center", gap: 18, marginBottom: 26, padding: "20px 22px", background: "linear-gradient(135deg, #f0fdfa, #f7fdfb)", border: "1px solid #d5f0ea", borderRadius: 16 }}>
+          <img src={`/equipment/${EQUIP_ICONS[selectedEquip.key] || "equipment"}.svg`} alt={selectedEquip.label} style={{ width: 72, height: 72, objectFit: "contain", filter: "drop-shadow(0 8px 14px rgba(15,23,25,0.18))" }} onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "block"; }} />
+          <svg style={{ display: "none", width: 66, height: 66 }} viewBox="0 0 24 24" fill="none" stroke="#0d9488" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>{selectedEquip.label}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#0f766e", fontFamily: "'DM Mono', ui-monospace, monospace", letterSpacing: 0.5, marginTop: 3 }}>SN: {selectedEquip.serial}</div>
+            <div style={{ fontSize: 12, color: "#8a9199", marginTop: 3 }}>{displayName(selectedSite)}</div>
+          </div>
+        </div>
+        {/* Ticket history */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", color: "#0f766e", textTransform: "uppercase" }}>Ticket History</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#5f6b7a", background: "#f4f4f0", padding: "2px 9px", borderRadius: 20 }}>{history.length}</span>
+        </div>
+        {history.length === 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "50px 24px", textAlign: "center" }}>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1d21" }}>No Issues Recorded</div>
+            <div style={{ fontSize: 12.5, color: "#8a9199", marginTop: 3 }}>This unit has a clean service record.</div>
+          </div>
+        ) : (
+          <div style={{ position: "relative", paddingLeft: 26 }}>
+            {/* timeline line */}
+            <div style={{ position: "absolute", left: 7, top: 6, bottom: 6, width: 2, background: "linear-gradient(180deg, #0f766e, #d5f0ea)" }} />
+            {history.map(c => {
+              const sm = statusMeta(c);
+              return (
+                <div key={c.id} style={{ position: "relative", marginBottom: 14 }}>
+                  {/* dot */}
+                  <div style={{ position: "absolute", left: -26, top: 18, width: 16, height: 16, borderRadius: "50%", background: "#fff", border: `3px solid ${sm.color}` }} />
+                  <div style={{ background: "#fff", border: "1px solid #e8ecf0", borderRadius: 14, padding: "14px 16px", boxShadow: "0 1px 3px rgba(15,23,25,0.04)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1d21" }}>{c.title}</div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: sm.color, background: sm.bg, padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap", flexShrink: 0 }}>{sm.label}</span>
+                    </div>
+                    {cleanDescription(c.description) && <div style={{ fontSize: 13, color: "#5f6b7a", lineHeight: 1.6, marginBottom: 10 }}>{cleanDescription(c.description)}</div>}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 12 }}>
+                      <span style={{ color: "#8a9199" }}>Opened: <span style={{ color: "#1a1d21", fontWeight: 600 }}>{new Date(c.created_at).toLocaleDateString("en-PK", dateFmt)}</span></span>
+                      {(c.status === "Resolved" || c.status === "Verified") && c.resolved_at && <span style={{ color: "#8a9199" }}>Resolved: <span style={{ color: "#16a34a", fontWeight: 600 }}>{new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt)}</span></span>}
+                      <span style={{ color: "#8a9199" }}>Severity: <span style={{ color: "#1a1d21", fontWeight: 600 }}>{c.severity || "—"}</span></span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
   if (selectedSite) {
     const equip = EQUIPMENT_DATA[selectedSite] || {};
     return (
@@ -2331,7 +2478,7 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
           .equip-item:hover .equip-icon { transform: scale(1.12); }
         `}</style>
         <div className="equip-page">
-        <button onClick={() => setSelectedSite(null)} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
+        <button onClick={() => { setSelectedSite(null); setSelectedEquip(null); }} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
         <div style={{ marginBottom: 24 }}>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: 0, letterSpacing: "-0.01em" }}>{displayName(selectedSite)}</h2>
         </div>
@@ -2345,7 +2492,7 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
               {catItems.map(item => {
                 const delay = (idx++ * 0.05).toFixed(2);
                 return (
-                <div key={item.key} className="equip-item" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "10px", cursor: "pointer", animationDelay: `${delay}s` }}>
+                <div key={item.key} className="equip-item" onClick={() => setSelectedEquip({ key: item.key, label: item.label, serial: equip[item.key] })} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "10px", cursor: "pointer", animationDelay: `${delay}s` }}>
                   <img src={`/equipment/${EQUIP_ICONS[item.key] || "equipment"}.svg`} alt={item.label} className="equip-icon" style={{ width: 160, height: 160, objectFit: "contain", filter: "drop-shadow(0 14px 24px rgba(15,23,25,0.22))", transition: "transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)" }} onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "block"; }} />
                   <svg className="equip-icon" style={{ display: "none", width: 150, height: 150, filter: "drop-shadow(0 14px 24px rgba(15,23,25,0.22))", transition: "transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)" }} viewBox="0 0 24 24" fill="none" stroke={gc.border} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
@@ -2406,6 +2553,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
   const [adminFiles, setAdminFiles] = useState([]);
   const [pendingFocus, setPendingFocus] = useState(null);
   const [adminSeverity, setAdminSeverity] = useState("");
+  const [adminSerials, setAdminSerials] = useState([]);
   const handleNotifFocus = (info) => {
     setTab("tickets");
     setSelected(info.hospital);
@@ -2475,7 +2623,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
     }
   };
 
-  const submitAdminComplaint = async () => { if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return; setAdminSubmitting(true); const savedFiles = [...adminFiles]; const sev = adminSeverity || getDefaultSeverity(adminTitle.trim()); const r = await insertComplaint(adminHospital, adminTitle.trim(), adminDesc.trim(), adminDate || null, null, sev); if (r) { if (savedFiles.length > 0) await adminDoUpload(r.id, savedFiles); notifyUsers("new_complaint", `New Complaint: ${adminHospital}`, adminTitle.trim(), adminHospital, r.id, user.id).catch(() => {}); setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminFiles([]); setAdminSeverity(""); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); } setAdminSubmitting(false); };
+  const submitAdminComplaint = async () => { if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return; setAdminSubmitting(true); const savedFiles = [...adminFiles]; const sev = adminSeverity || getDefaultSeverity(adminTitle.trim()); const encodedDesc = encodeSerials(adminDesc.trim(), adminSerials); const r = await insertComplaint(adminHospital, adminTitle.trim(), encodedDesc, adminDate || null, null, sev); if (r) { if (savedFiles.length > 0) await adminDoUpload(r.id, savedFiles); notifyUsers("new_complaint", `New Complaint: ${adminHospital}`, adminTitle.trim(), adminHospital, r.id, user.id).catch(() => {}); setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminFiles([]); setAdminSeverity(""); setAdminSerials([]); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); } setAdminSubmitting(false); };
   const handleAddUser = async () => {
     if (!newUserName.trim() || !newUserPw.trim() || addingUser) return;
     if (newUserPw.trim().length < 8) { alert("Password must be at least 8 characters"); return; }
@@ -2559,9 +2707,10 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
                 </div>
                 <div style={{ padding: 22 }}>
                   <label style={styles.fieldLabel}>Hospital</label>
-                  <select style={{ ...styles.tealInput, cursor: "pointer" }} value={adminHospital} onChange={e => setAdminHospital(e.target.value)}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h}</option>)}</select>
+                  <select style={{ ...styles.tealInput, cursor: "pointer" }} value={adminHospital} onChange={e => { setAdminHospital(e.target.value); setAdminSerials([]); }}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h}</option>)}</select>
                   <label style={styles.fieldLabel}>Issue Type</label>
-                  <ComplaintTypeSelect value={adminTitle} onChange={e => { setAdminTitle(e.target.value); setAdminSeverity(getDefaultSeverity(e.target.value)); }} style={styles.tealInput} />
+                  <ComplaintTypeSelect value={adminTitle} onChange={e => { setAdminTitle(e.target.value); setAdminSeverity(getDefaultSeverity(e.target.value)); setAdminSerials([]); }} style={styles.tealInput} />
+                  <SerialPicker hospital={adminHospital} complaintType={adminTitle} selected={adminSerials} onChange={setAdminSerials} />
                   <label style={styles.fieldLabel}>Description</label>
                   <textarea style={{ ...styles.tealInput, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} />
                   <label style={styles.fieldLabel}>Date (leave empty for today)</label>
