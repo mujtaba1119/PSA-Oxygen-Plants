@@ -859,10 +859,13 @@ function initialsFor(name) {
 
 function getSiteDisplayStatus(hospital, complaints, siteNotes) {
   const base = getSiteBaseStatus(hospital, siteNotes);
+  // Manual flags ("Shut Down", "Non Functional") are deliberate admin statements that the plant
+  // isn't producing — they win over the presence of an open ticket and persist until an admin
+  // manually clears them back to "Fully Functional".
   if (base === "Shut Down") return "Shut Down";
+  if (base === "Non Functional") return "Non Functional";
   const hasOpen = complaints.some(c => hospitalMatches(c.hospital, hospital) && !isClosedStatus(c.status));
   if (hasOpen) return "Functional";
-  if (base === "Non Functional") return "Non Functional";
   return "Fully Functional";
 }
 
@@ -880,8 +883,8 @@ function SiteStatusBadge({ status }) {
       </span>
     );
   }
-  const color = status === "Functional" ? "#c0392b" : status === "Non Functional" ? "#555" : "#166534";
-  const dot = status === "Functional" ? "#e0912f" : status === "Non Functional" ? "#999" : "#2f9e58";
+  const color = status === "Functional" ? "#d97706" : status === "Non Functional" ? "#555" : "#166534";
+  const dot = status === "Functional" ? "#f08c00" : status === "Non Functional" ? "#999" : "#2f9e58";
   return (
     <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color, padding: "4px 10px", borderRadius: 20, whiteSpace: "nowrap", letterSpacing: 0.2 }}>
       <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, display: "inline-block", flexShrink: 0 }} />
@@ -1344,7 +1347,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user })
   const shutdownSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Shut Down");
   const issueSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Functional");
 
-  const scoped = complaints.filter(c => hospitals.includes(c.hospital));
+  const scoped = complaints.filter(c => hospitals.some(h => hospitalMatches(h, c.hospital)));
   const stageCounts = { "Open": 0, "Assigned": 0, "In Progress": 0, "Resolved": 0, "Verified": 0 };
   scoped.forEach(c => { const s = getEffectiveStatus(c); if (stageCounts[s] !== undefined) stageCounts[s]++; });
 
@@ -1458,7 +1461,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user })
               {imgSrc && <div style={{ width: 115, flexShrink: 0, position: "relative" }}><img src={imgSrc} alt={h} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", minHeight: 130 }} onError={e => { e.target.parentElement.style.display = "none"; }} /><div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, transparent 60%, rgba(255,255,255,0.15) 100%)" }} /></div>}
               <div style={{ padding: "12px 16px 14px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 6, flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a", lineHeight: 1.2, letterSpacing: -0.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(h)}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#f08c00" : "#16a34a", boxShadow: `0 0 5px ${s === "Shut Down" ? "rgba(220,38,38,0.4)" : s === "Non Functional" ? "rgba(134,142,150,0.3)" : s === "Functional" ? "rgba(240,140,0,0.3)" : "rgba(22,163,74,0.3)"}` }} /><span style={{ fontSize: 11.5, fontWeight: 600, color: s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#d97706" : "#16a34a" }}>{s === "Fully Operational" ? "Fully Operational" : s}</span></div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#f08c00" : "#16a34a", boxShadow: `0 0 5px ${s === "Shut Down" ? "rgba(220,38,38,0.4)" : s === "Non Functional" ? "rgba(134,142,150,0.3)" : s === "Functional" ? "rgba(240,140,0,0.3)" : "rgba(22,163,74,0.3)"}` }} /><span style={{ fontSize: 11.5, fontWeight: 600, color: s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#d97706" : "#16a34a" }}>{s}</span></div>
                 <div style={{ fontSize: 11.5, color: "#64748b", lineHeight: 1.3 }}>Service Provider: <span style={{ fontWeight: 700, color: "#0f766e" }}>{getProvider(h)}</span></div>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: openCount > 0 ? "#dc2626" : "#16a34a", display: "flex", alignItems: "center", gap: 5 }}>
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
