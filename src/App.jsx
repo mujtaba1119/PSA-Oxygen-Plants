@@ -1615,12 +1615,56 @@ function GroupedHospitalList({ groups, complaints, onSelect }) {
   const openCountFor = h => complaints.filter(c => hospitalMatches(c.hospital, h) && !isClosedStatus(c.status)).length;
   const groupCountFor = hs => complaints.filter(c => hs.includes(c.hospital)).length;
   const groupOpenFor = hs => complaints.filter(c => hs.includes(c.hospital) && !isClosedStatus(c.status)).length;
-  return (<div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>{Object.entries(groups).map(([p, hs]) => (
-    <div key={p} style={styles.groupSection}>
-      <div className="group-header-responsive" style={styles.groupHeader}><h3 style={styles.groupTitle}><span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: C.teal, marginRight: 8, verticalAlign: "middle" }} />{p}</h3><div style={{ display: "flex", gap: 8 }}><span style={styles.groupBadge}>{groupCountFor(hs)} total</span>{groupOpenFor(hs) > 0 && <span style={{ ...styles.groupBadge, color: "#c47f1e", background: "#fef3e2", border: "1px solid #f7d9a8" }}>{groupOpenFor(hs)} open</span>}</div></div>
-      <div className="hospital-grid-responsive" style={styles.hospitalGrid}>{hs.map((h, i) => { const open = openCountFor(h); return (<button key={h} style={styles.hospitalBtn} onClick={() => onSelect(h)} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 18px rgba(15,118,110,0.15)"; e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.transform = "translateY(-2px)"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 2px 8px rgba(15,118,110,0.06)"; e.currentTarget.style.borderColor = C.tealLight; e.currentTarget.style.transform = "none"; }}><span style={styles.hospitalName}>{h}</span><span style={styles.hospitalBadge}>{countFor(h)}</span>{open > 0 && <span style={styles.openBadge}>{open}</span>}</button>); })}</div>
+  const totalOpen = complaints.filter(c => !isClosedStatus(c.status)).length;
+  const totalResolved = complaints.filter(c => isClosedStatus(c.status)).length;
+  return (
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ marginBottom: 22 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>Tickets</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: totalOpen > 0 ? "#b45309" : "#5f6b7a", background: totalOpen > 0 ? "#fef3e2" : "#f4f4f0", padding: "4px 12px", borderRadius: 20 }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: totalOpen > 0 ? "#d97706" : "#94a3b8" }} />
+            {totalOpen} open ticket{totalOpen === 1 ? "" : "s"}
+          </span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, fontWeight: 600, color: "#0f766e", background: "#e6f5f0", padding: "4px 12px", borderRadius: 20 }}>
+            {totalResolved} resolved
+          </span>
+        </div>
+      </div>
+      {Object.entries(groups).map(([p, hs]) => (
+        <div key={p} style={{ marginBottom: 26 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700, color: "#1a1d21" }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: C.teal }} />{p}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 20, background: "#f4f4f0", color: "#5f6b7a" }}>{groupCountFor(hs)} total</span>
+              {groupOpenFor(hs) > 0 && <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 20, background: "#fef3e2", color: "#b45309" }}>{groupOpenFor(hs)} open</span>}
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
+            {hs.map(h => {
+              const total = countFor(h); const open = openCountFor(h);
+              return (
+                <div key={h} onClick={() => onSelect(h)} style={{ background: "#fff", border: "1px solid #e8ecf0", borderRadius: 16, overflow: "hidden", cursor: "pointer", boxShadow: "0 1px 3px rgba(15,23,25,0.05)", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 22px rgba(13,148,136,0.14)"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.borderColor = "#0d9488"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,25,0.05)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.borderColor = "#e8ecf0"; }}>
+                  <div style={{ background: "linear-gradient(120deg, #0b3b38, #0f766e)", padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 700, color: "#fff" }}>{displayName(h)}</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "#5eead4" }}>{total}</div>
+                  </div>
+                  <div style={{ padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 11, color: "#8a9199" }}>{p}</span>
+                    {open > 0
+                      ? <span style={{ fontSize: 11, fontWeight: 600, color: "#dc2626", background: "#fef2f2", padding: "3px 10px", borderRadius: 20 }}>{open} open</span>
+                      : <span style={{ fontSize: 11, fontWeight: 600, color: "#16a34a", background: "#ecfdf5", padding: "3px 10px", borderRadius: 20 }}>All clear</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
-  ))}</div>);
+  );
 }
 
 /* ─── Attachment Viewer ─── */
