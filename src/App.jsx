@@ -2378,7 +2378,7 @@ function SidebarNav({ items, active, onSelect, bottomItems }) {
       {/* Vessel + Brand */}
       <div style={{ padding: "16px 0 18px", display: "flex", flexDirection: "column", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 8, width: "100%" }}>
         <SidebarVessel />
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#5eead4", letterSpacing: 2, textTransform: "uppercase", marginTop: 2 }}>OxyTrack</div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#5eead4", letterSpacing: 2, textTransform: "uppercase", marginTop: -24 }}>OxyTrack</div>
       </div>
       {/* Main nav items */}
       <div style={sidebarStyles.items}>
