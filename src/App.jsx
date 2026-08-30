@@ -160,26 +160,32 @@ const SEVERITY_MAP = {
 };
 function getDefaultSeverity(issueTitle) { return SEVERITY_MAP[issueTitle] || "Low"; }
 
-// Maps a complaint type to the equipment-item keys whose serials the operator should pick from.
-// Only multi-unit categories prompt for a serial selection.
-const COMPLAINT_EQUIP_KEYS = {
-  "Compressor Issue": ["comp1", "comp2", "comp3", "comp4"],
-  "Dryer Issue": ["dryer1", "dryer2", "dryer3", "dryer4"],
-  "Purity Issue/Oxygen Generator Issue": ["oxyswing_a", "oxyswing_b"],
+// Maps a complaint type to the equipment groups whose serials the operator should pick from.
+// Each group has a label and the item keys it covers. Only multi-unit types prompt for selection.
+const COMPLAINT_EQUIP_GROUPS = {
+  "Compressor Issue": [{ label: "Compressor", keys: ["comp1", "comp2", "comp3", "comp4"] }],
+  "Dryer Issue": [{ label: "Air Dryer", keys: ["dryer1", "dryer2", "dryer3", "dryer4"] }],
+  "Purity Issue/Oxygen Generator Issue": [{ label: "Oxygen Generator", keys: ["oxyswing_a", "oxyswing_b"] }],
+  "Complete Shutdown": [
+    { label: "Oxygen Generator", keys: ["oxyswing_a", "oxyswing_b"] },
+    { label: "Compressor", keys: ["comp1", "comp2", "comp3", "comp4"] },
+    { label: "Air Dryer", keys: ["dryer1", "dryer2", "dryer3", "dryer4"] },
+  ],
 };
-// Human label for the serial-picker section per complaint type.
-const COMPLAINT_EQUIP_LABEL = {
-  "Compressor Issue": "Compressor",
-  "Dryer Issue": "Air Dryer",
-  "Purity Issue/Oxygen Generator Issue": "Oxygen Generator",
-};
-// Returns [{ key, label, serial }] serial options for a given site + complaint type, or [] if none apply.
-function serialOptionsFor(hospital, complaintType) {
-  const keys = COMPLAINT_EQUIP_KEYS[complaintType];
-  if (!keys) return [];
+// Returns grouped serial options for a given site + complaint type:
+//   [{ label, options: [{ key, label, serial }] }]  or []  if none apply.
+function serialGroupsFor(hospital, complaintType) {
+  const groups = COMPLAINT_EQUIP_GROUPS[complaintType];
+  if (!groups) return [];
   const equip = EQUIPMENT_DATA[hospital] || {};
-  const label = COMPLAINT_EQUIP_LABEL[complaintType] || "Unit";
-  return keys.filter(k => equip[k]).map((k, i) => ({ key: k, label: `${label} ${i + 1}`, serial: equip[k] }));
+  return groups.map(g => ({
+    label: g.label,
+    options: g.keys.filter(k => equip[k]).map((k, i) => ({ key: k, label: `${g.label} ${i + 1}`, serial: equip[k] }))
+  })).filter(g => g.options.length > 0);
+}
+// Flat list of all serial options for a type (used to know if the picker should show at all).
+function serialOptionsFor(hospital, complaintType) {
+  return serialGroupsFor(hospital, complaintType).flatMap(g => g.options);
 }
 // Serials affected by a complaint are appended to its description in a hidden tag:
 //   ...description text...\n\n[EQUIP:22177409,22177477]
@@ -672,31 +678,36 @@ function ComplaintTypeSelect({ value, onChange, style }) {
 // Shown below the complaint-type select when the chosen type maps to multiple units.
 // Lets the operator tick one or more affected serial numbers. Controlled via `selected` (array of serials).
 function SerialPicker({ hospital, complaintType, selected, onChange }) {
-  const options = serialOptionsFor(hospital, complaintType);
-  if (options.length === 0) return null;
+  const groups = serialGroupsFor(hospital, complaintType);
+  if (groups.length === 0) return null;
   const toggle = (serial) => {
     if (selected.includes(serial)) onChange(selected.filter(s => s !== serial));
     else onChange([...selected, serial]);
   };
   return (
     <div style={{ marginBottom: 14, padding: "14px 16px", background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 12, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ fontSize: 12.5, fontWeight: 700, color: C.tealDark, marginBottom: 10 }}>Which unit(s) are affected? <span style={{ fontWeight: 500, color: C.textMid }}>Select one or more</span></div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
-        {options.map(opt => {
-          const on = selected.includes(opt.serial);
-          return (
-            <div key={opt.key} onClick={() => toggle(opt.serial)} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 12px", borderRadius: 10, cursor: "pointer", background: on ? C.teal : "#fff", border: `1.5px solid ${on ? C.teal : C.tealLight}`, transition: "all 0.15s" }}>
-              <span style={{ width: 16, height: 16, borderRadius: 5, flexShrink: 0, background: on ? "#fff" : "transparent", border: `1.5px solid ${on ? "#fff" : C.tealLight}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {on && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-              </span>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: on ? "rgba(255,255,255,0.85)" : C.textMid, lineHeight: 1.2 }}>{opt.label}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#fff" : C.black, fontFamily: "'DM Mono', ui-monospace, monospace", letterSpacing: 0.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt.serial}</div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: C.tealDark, marginBottom: 12 }}>Which unit(s) are affected? <span style={{ fontWeight: 500, color: C.textMid }}>Select one or more</span></div>
+      {groups.map((group, gi) => (
+        <div key={group.label} style={{ marginBottom: gi < groups.length - 1 ? 14 : 0 }}>
+          {groups.length > 1 && <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", color: C.tealDark, textTransform: "uppercase", marginBottom: 7 }}>{group.label}s</div>}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 8 }}>
+            {group.options.map(opt => {
+              const on = selected.includes(opt.serial);
+              return (
+                <div key={opt.key} onClick={() => toggle(opt.serial)} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 12px", borderRadius: 10, cursor: "pointer", background: on ? C.teal : "#fff", border: `1.5px solid ${on ? C.teal : C.tealLight}`, transition: "all 0.15s" }}>
+                  <span style={{ width: 16, height: 16, borderRadius: 5, flexShrink: 0, background: on ? "#fff" : "transparent", border: `1.5px solid ${on ? "#fff" : C.tealLight}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {on && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: on ? "rgba(255,255,255,0.85)" : C.textMid, lineHeight: 1.2 }}>{opt.label}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: on ? "#fff" : C.black, fontFamily: "'DM Mono', ui-monospace, monospace", letterSpacing: 0.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{opt.serial}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1860,7 +1871,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
           <div onClick={() => setExpanded(!expanded)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.tealBg, padding: "14px 16px", borderBottom: expanded ? `1px solid ${C.tealLight}` : "none", cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
               <span style={{ width: 9, height: 9, borderRadius: "50%", background: accent, flexShrink: 0 }} />
-              {ticketNumber && <span style={{ fontSize: 12, fontWeight: 700, color: C.tealDark, background: C.white, border: `1px solid ${C.tealLight}`, borderRadius: 7, padding: "2px 9px", flexShrink: 0, letterSpacing: 0.3 }}>Ticket ID: {ticketNumber}</span>}
+              {ticketNumber && <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: "linear-gradient(135deg, #0d9488, #0f766e)", border: "none", borderRadius: 7, padding: "3px 10px", flexShrink: 0, letterSpacing: 0.3 }}>Ticket ID: {ticketNumber}</span>}
               <strong style={{ fontSize: 14.5, fontWeight: 700, color: C.black, whiteSpace: expanded ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</strong>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
@@ -2141,10 +2152,17 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
           <NotificationBell user={user} onFocusComplaint={handleFocusComplaint} light={true} complaints={complaints} />
         </TopBar>
         <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px" }}>
-          <div style={{ marginBottom: 22 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>{displayName(user.name)}</div>
-            <div style={{ fontSize: 13, color: "#8a9199", marginTop: 4 }}>PSA Oxygen Plant</div>
-            <div style={{ fontSize: 13, color: "#8a9199", marginTop: 2 }}>Service Provider: {getProvider(user.name)}</div>
+          <div style={{ marginBottom: 24, padding: "22px 24px", background: "linear-gradient(135deg, #f0fdfa, #f7fdfb)", border: "1px solid #d5f0ea", borderRadius: 16, display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ width: 52, height: 52, borderRadius: 14, background: "linear-gradient(135deg, #0b3b38, #0f766e)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 4px 12px rgba(13,148,136,0.25)" }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5eead4" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
+            </div>
+            <div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#0f766e", letterSpacing: "-0.01em" }}>{displayName(user.name)}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 7 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#0f766e", background: "#e6f5f0", padding: "3px 11px", borderRadius: 20 }}>PSA Oxygen Plant</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#5f6b7a", background: "#fff", border: "1px solid #d5f0ea", padding: "3px 11px", borderRadius: 20 }}>Service Provider: {getProvider(user.name)}</span>
+              </div>
+            </div>
           </div>
           <section style={styles.formSectionTeal}>
           <h2 style={{ ...styles.sectionTitleTeal, borderLeft: "none", paddingLeft: 0, display: "flex", alignItems: "center", gap: 12 }}>
