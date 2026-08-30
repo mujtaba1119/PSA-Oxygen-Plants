@@ -174,6 +174,11 @@ const COMPLAINT_EQUIP_GROUPS = {
     { label: "Compressor", keys: ["comp1", "comp2", "comp3", "comp4"] },
     { label: "Air Dryer", keys: ["dryer1", "dryer2", "dryer3", "dryer4"] },
   ],
+  "Monitoring/CSS Issue": [{ label: "CSS Panel", keys: ["css"] }],
+  "Power Generator Issue": [{ label: "Power Generator", keys: ["generator"] }],
+  "Booster Filling System Issue": [{ label: "HP Oxygen Panel", keys: ["hpox"] }],
+  "Electrical/Power Issue": [{ label: "Power Generator", keys: ["generator"] }],
+  "Backup Manifold Issue": [{ label: "Medical Gas Panel", keys: ["medgas"] }],
 };
 // Returns grouped serial options for a given site + complaint type:
 //   [{ label, options: [{ key, label, serial }] }]  or []  if none apply.
@@ -2209,7 +2214,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
             Submit a Ticket
           </h2>
           <input style={styles.inputTeal} placeholder="Your name (operator name)" value={operatorName} onChange={e => setOperatorName(e.target.value)} />
-          <ComplaintTypeSelect value={title} onChange={e => { setTitle(e.target.value); setSelectedSerials([]); }} style={styles.inputTealSelect} />
+          <ComplaintTypeSelect value={title} onChange={e => { const t = e.target.value; setTitle(t); const opts = serialOptionsFor(user.name, t); if (opts.length === 1) { setSelectedSerials([opts[0].serial]); } else { setSelectedSerials([]); } }} style={styles.inputTealSelect} />
           {title && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
               <span style={{ fontSize: 12.5, color: C.textMid }}>Severity:</span>
@@ -2908,9 +2913,9 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
                 </div>
                 <div style={{ padding: 22 }}>
                   <label style={styles.fieldLabel}>Hospital</label>
-                  <select style={{ ...styles.tealInput, cursor: "pointer" }} value={adminHospital} onChange={e => { setAdminHospital(e.target.value); setAdminSerials([]); }}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h}</option>)}</select>
+                  <select style={{ ...styles.tealInput, cursor: "pointer" }} value={adminHospital} onChange={e => { const h = e.target.value; setAdminHospital(h); const opts = serialOptionsFor(h, adminTitle); if (opts.length === 1) { setAdminSerials([opts[0].serial]); } else { setAdminSerials([]); } }}>{ALL_HOSPITALS.map(h => <option key={h} value={h}>{h}</option>)}</select>
                   <label style={styles.fieldLabel}>Issue Type</label>
-                  <ComplaintTypeSelect value={adminTitle} onChange={e => { setAdminTitle(e.target.value); setAdminSeverity(getDefaultSeverity(e.target.value)); setAdminSerials([]); }} style={styles.tealInput} />
+                  <ComplaintTypeSelect value={adminTitle} onChange={e => { const t = e.target.value; setAdminTitle(t); setAdminSeverity(getDefaultSeverity(t)); const opts = serialOptionsFor(adminHospital, t); if (opts.length === 1) { setAdminSerials([opts[0].serial]); } else { setAdminSerials([]); } }} style={styles.tealInput} />
                   <SerialPicker hospital={adminHospital} complaintType={adminTitle} selected={adminSerials} onChange={setAdminSerials} />
                   <label style={styles.fieldLabel}>Description</label>
                   <textarea style={{ ...styles.tealInput, minHeight: 100, resize: "vertical", fontFamily: "inherit" }} placeholder="Describe the issue…" value={adminDesc} onChange={e => setAdminDesc(e.target.value)} />
