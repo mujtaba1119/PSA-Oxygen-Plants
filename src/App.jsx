@@ -787,9 +787,9 @@ function PartnerFooter() {
         <span style={{ fontSize: 12, color: C.textLight, fontWeight: 500, letterSpacing: 0.3 }}>PSA Oxygen Plants · Management System</span>
       </div>
       <style>{`
-        .site-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+        .site-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 14px; overflow: hidden; box-shadow: none; background: transparent; border: none; }
         .site-popup .leaflet-popup-content { margin: 0; width: auto !important; }
-        .site-popup .leaflet-popup-tip { background: #fff; }
+        .site-popup .leaflet-popup-tip { background: #fff; box-shadow: 0 2px 8px rgba(15,118,110,0.08); }
         .pf-img { flex-shrink: 1; min-width: 0; }
         .refresh-icon { display: none; }
         .refresh-icon-desktop { display: inline; }
@@ -1397,17 +1397,17 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
           <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
             <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
             {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: C.teal, weight: 1.5, fillColor: C.tealLight, fillOpacity: 0.15 }} />}
-            {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={320} maxWidth={360} className="site-popup"><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "row" }}>
-              {imgSrc && <div style={{ width: 120, minHeight: 120, flexShrink: 0 }}><img src={imgSrc} alt={h} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} onError={e => { e.target.parentElement.style.display = "none"; }} /></div>}
-              <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 4, flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 13.5, color: "#1a2332", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(h)}</div>
-                <SiteStatusBadge status={s} />
-                <div style={{ fontSize: 11, color: "#64748b" }}>Provider: <span style={{ fontWeight: 600, color: "#334155" }}>{getProvider(h)}</span></div>
-                <div style={{ fontSize: 11, color: openCount > 0 ? "#dc2626" : "#16a34a", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: openCount > 0 ? "#dc2626" : "#16a34a" }} />
+            {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={330} maxWidth={370} className="site-popup"><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "row", border: "1.5px solid #e2e8f0", borderRadius: 14, overflow: "hidden", background: "#fff", boxShadow: "0 2px 12px rgba(15,118,110,0.08)" }}>
+              {imgSrc && <div style={{ width: 115, flexShrink: 0, position: "relative" }}><img src={imgSrc} alt={h} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", minHeight: 130 }} onError={e => { e.target.parentElement.style.display = "none"; }} /><div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, transparent 60%, rgba(255,255,255,0.15) 100%)" }} /></div>}
+              <div style={{ padding: "12px 16px 14px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 6, flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a", lineHeight: 1.2, letterSpacing: -0.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(h)}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#f08c00" : "#16a34a", boxShadow: `0 0 5px ${s === "Shut Down" ? "rgba(220,38,38,0.4)" : s === "Non Functional" ? "rgba(134,142,150,0.3)" : s === "Functional" ? "rgba(240,140,0,0.3)" : "rgba(22,163,74,0.3)"}` }} /><span style={{ fontSize: 11.5, fontWeight: 600, color: s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#d97706" : "#16a34a" }}>{s === "Fully Operational" ? "Fully Operational" : s}</span></div>
+                <div style={{ fontSize: 11.5, color: "#64748b", lineHeight: 1.3 }}>Service Provider: <span style={{ fontWeight: 700, color: "#0f766e" }}>{getProvider(h)}</span></div>
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: openCount > 0 ? "#dc2626" : "#16a34a", display: "flex", alignItems: "center", gap: 5 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
                   {openCount > 0 ? `Open Tickets (${openCount})` : "No open tickets"}
                 </div>
-                <button onClick={() => onViewSite(h)} style={{ marginTop: 2, fontSize: 11, fontWeight: 700, color: "#fff", background: C.teal, border: "none", borderRadius: 6, padding: "5px 0", cursor: "pointer", width: "100%" }}>View details →</button>
+                <button onClick={() => onViewSite(h)} style={{ marginTop: 2, fontSize: 11.5, fontWeight: 700, color: "#fff", background: "linear-gradient(135deg, #0d9488, #0f766e)", border: "none", borderRadius: 8, padding: "7px 0", cursor: "pointer", width: "100%", letterSpacing: 0.2, boxShadow: "0 2px 8px rgba(13,148,136,0.25)" }}>View Details →</button>
               </div>
             </div></Popup><Tooltip direction="top" offset={[0, -10]}>{displayName(h)}</Tooltip></Marker>); })}
           </MapContainer>
