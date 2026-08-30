@@ -1,0 +1,73 @@
+<svg width="440" height="460" viewBox="0 0 440 460" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="csF" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F0EDE8"/><stop offset="40%" stop-color="#E8E5E0"/><stop offset="100%" stop-color="#DDD9D4"/></linearGradient>
+<linearGradient id="csT" x1="0" y1="0" x2="0.3" y2="1"><stop offset="0%" stop-color="#F6F3EE"/><stop offset="100%" stop-color="#EAE7E2"/></linearGradient>
+<linearGradient id="csS" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#D8D5D0"/><stop offset="50%" stop-color="#CCC9C4"/><stop offset="100%" stop-color="#BAB7B2"/></linearGradient>
+<linearGradient id="bzF" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#666A70"/><stop offset="40%" stop-color="#5A5E64"/><stop offset="100%" stop-color="#4E5258"/></linearGradient>
+<linearGradient id="scrBg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E8F0E8"/><stop offset="30%" stop-color="#F0F6F0"/><stop offset="100%" stop-color="#E4ECE4"/></linearGradient>
+<linearGradient id="scrGl" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fff" stop-opacity="0.2"/><stop offset="50%" stop-color="#fff" stop-opacity="0.03"/><stop offset="100%" stop-color="#000" stop-opacity="0.04"/></linearGradient>
+<linearGradient id="hlC" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff" stop-opacity="0.2"/><stop offset="100%" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<linearGradient id="btG" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#BBB"/><stop offset="100%" stop-color="#999"/></linearGradient>
+</defs>
+<rect x="60" y="28" width="326" height="386" rx="5" fill="#000" opacity="0.04" transform="translate(3,3)"/>
+<path d="M54,24 Q54,20 58,20 L382,20 Q386,20 386,24 L386,406 Q386,410 382,410 L58,410 Q54,410 54,406 Z" fill="url(#csF)" stroke="#C0BDB8" stroke-width="0.5"/>
+<polygon points="54,20 74,6 406,6 386,20" fill="url(#csT)" stroke="#C0BDB8" stroke-width="0.4"/>
+<polygon points="386,20 406,6 406,394 386,410" fill="url(#csS)" stroke="#C0BDB8" stroke-width="0.4"/>
+<rect x="56" y="20" width="328" height="3" rx="1" fill="url(#hlC)"/>
+<line x1="55" y1="24" x2="55" y2="406" stroke="#fff" stroke-width="0.5" opacity="0.12"/>
+<path d="M94,64 L94,250 Q94,255 99,255 L341,255 Q346,255 346,250 L346,64 Q346,60 341,58 L265,58 Q260,54 255,54 L185,54 Q180,54 175,58 L99,58 Q94,60 94,64 Z" fill="url(#bzF)" stroke="#3A3E44" stroke-width="0.5"/>
+<rect x="108" y="72" width="220" height="148" rx="3" fill="#1A1A1A"/>
+<rect x="111" y="75" width="214" height="142" rx="2.5" fill="url(#scrBg)"/>
+<rect x="111" y="75" width="214" height="142" rx="2.5" fill="url(#scrGl)"/>
+<rect x="111" y="75" width="214" height="14" rx="2.5" fill="#C0392B" opacity="0.85"/>
+<text x="119" y="85" font-family="Arial" font-size="5" font-weight="700" fill="#fff" opacity="0.8">NOXERIOR</text>
+<rect x="252" y="78" width="65" height="7" rx="1.5" fill="#2B8FCE" opacity="0.7"/>
+<text x="258" y="84" font-family="Arial" font-size="4.5" fill="#fff" opacity="0.8">SYSTEM MONITOR</text>
+<rect x="122" y="98" width="26" height="18" rx="2" fill="#DDD" stroke="#AAA" stroke-width="0.3"/>
+<rect x="122" y="98" width="26" height="8" rx="2" fill="#888"/>
+<rect x="155" y="100" width="36" height="7" rx="1.5" fill="#27AE60" opacity="0.8"/>
+<text x="159" y="106" font-family="Arial" font-size="4.5" fill="#fff">RUNNING</text>
+<rect x="122" y="122" width="26" height="18" rx="2" fill="#DDD" stroke="#AAA" stroke-width="0.3"/>
+<rect x="122" y="122" width="26" height="8" rx="2" fill="#888"/>
+<rect x="155" y="124" width="36" height="7" rx="1.5" fill="#27AE60" opacity="0.8"/>
+<text x="159" y="130" font-family="Arial" font-size="4.5" fill="#fff">RUNNING</text>
+<rect x="122" y="146" width="26" height="18" rx="2" fill="#DDD" stroke="#AAA" stroke-width="0.3"/>
+<rect x="122" y="146" width="26" height="8" rx="2" fill="#666"/>
+<rect x="155" y="148" width="36" height="7" rx="1.5" fill="#27AE60" opacity="0.8"/>
+<text x="159" y="154" font-family="Arial" font-size="4.5" fill="#fff">RUNNING</text>
+<rect x="212" y="98" width="26" height="18" rx="2" fill="#DDD" stroke="#AAA" stroke-width="0.3"/>
+<rect x="212" y="98" width="26" height="8" rx="2" fill="#888"/>
+<rect x="245" y="100" width="36" height="7" rx="1.5" fill="#27AE60" opacity="0.8"/>
+<text x="249" y="106" font-family="Arial" font-size="4.5" fill="#fff">RUNNING</text>
+<rect x="212" y="122" width="26" height="18" rx="2" fill="#DDD" stroke="#AAA" stroke-width="0.3"/>
+<rect x="212" y="122" width="26" height="8" rx="2" fill="#888"/>
+<rect x="245" y="124" width="36" height="7" rx="1.5" fill="#FF9800" opacity="0.7"/>
+<text x="249" y="130" font-family="Arial" font-size="4.5" fill="#fff">STANDBY</text>
+<circle cx="228" cy="156" r="7" fill="#E74C3C" opacity="0.6"/>
+<text x="228" y="159" font-family="Arial" font-size="5.5" font-weight="700" fill="#fff" text-anchor="middle">!</text>
+<rect x="122" y="174" width="44" height="15" rx="2" fill="#27AE60" opacity="0.7"/>
+<text x="128" y="185" font-family="monospace" font-size="7" fill="#fff">93.5%</text>
+<rect x="172" y="174" width="44" height="15" rx="2" fill="#2B8FCE" opacity="0.6"/>
+<text x="178" y="185" font-family="monospace" font-size="7" fill="#fff">4.2bar</text>
+<rect x="111" y="195" width="214" height="10" rx="1" fill="#E0E0E0"/>
+<rect x="116" y="197" width="6" height="6" rx="1" fill="#2196F3" opacity="0.7"/>
+<rect x="126" y="198" width="25" height="5" rx="1" fill="#DDD" stroke="#CCC" stroke-width="0.2"/>
+<rect x="156" y="198" width="25" height="5" rx="1" fill="#DDD" stroke="#CCC" stroke-width="0.2"/>
+<rect x="186" y="198" width="25" height="5" rx="1" fill="#DDD" stroke="#CCC" stroke-width="0.2"/>
+<rect x="132" y="220" width="16" height="10" rx="2" fill="url(#btG)" stroke="#888" stroke-width="0.3"/>
+<rect x="153" y="220" width="16" height="10" rx="2" fill="url(#btG)" stroke="#888" stroke-width="0.3"/>
+<rect x="174" y="220" width="16" height="10" rx="2" fill="url(#btG)" stroke="#888" stroke-width="0.3"/>
+<rect x="195" y="220" width="16" height="10" rx="2" fill="url(#btG)" stroke="#888" stroke-width="0.3"/>
+<rect x="216" y="220" width="16" height="10" rx="2" fill="url(#btG)" stroke="#888" stroke-width="0.3"/>
+<rect x="237" y="220" width="16" height="10" rx="2" fill="url(#btG)" stroke="#888" stroke-width="0.3"/>
+<rect x="258" y="220" width="16" height="10" rx="2" fill="url(#btG)" stroke="#888" stroke-width="0.3"/>
+<circle cx="364" cy="160" r="12" fill="#D0D0D0" stroke="#AAA" stroke-width="0.5"/>
+<circle cx="364" cy="160" r="8.5" fill="#E8E8E8" stroke="#BBB" stroke-width="0.3"/>
+<circle cx="364" cy="160" r="3.5" fill="#555"/>
+<rect x="362" y="153" width="4" height="8" rx="1" fill="#333"/>
+<rect x="356" y="150" width="16" height="4" rx="2" fill="#222"/>
+<rect x="100" y="310" width="240" height="22" rx="3" fill="#E0DDD8" stroke="#C0BDB8" stroke-width="0.3"/>
+<text x="220" y="325" font-family="Arial, Helvetica, sans-serif" font-size="9.5" font-weight="700" fill="#555" letter-spacing="1.2" text-anchor="middle">CENTRAL SUPER VISION SYSTEM</text>
+<text x="220" y="362" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="800" fill="#8B3A3A" letter-spacing="2" text-anchor="middle">NOXERIOR</text>
+<text x="220" y="374" font-family="Arial, Helvetica, sans-serif" font-size="5.5" font-weight="400" fill="#888" letter-spacing="0.3" text-anchor="middle">Next Generation Gas Solutions</text>
+</svg>

@@ -1,0 +1,145 @@
+<svg width="680" height="560" viewBox="0 0 680 560" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="dkF" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#6E7378"/>
+<stop offset="40%" stop-color="#636870"/>
+<stop offset="100%" stop-color="#565B62"/>
+</linearGradient>
+<linearGradient id="dkT" x1="0" y1="0" x2="0.3" y2="1">
+<stop offset="0%" stop-color="#828790"/>
+<stop offset="100%" stop-color="#6E7378"/>
+</linearGradient>
+<linearGradient id="dkS" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#5C6168"/>
+<stop offset="50%" stop-color="#50555C"/>
+<stop offset="100%" stop-color="#454A50"/>
+</linearGradient>
+<linearGradient id="ltF" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#EFEFEF"/>
+<stop offset="40%" stop-color="#E6E6E6"/>
+<stop offset="100%" stop-color="#DADADA"/>
+</linearGradient>
+<linearGradient id="ltS" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#D0D0D0"/>
+<stop offset="50%" stop-color="#C0C0C0"/>
+<stop offset="100%" stop-color="#ACACAC"/>
+</linearGradient>
+<linearGradient id="scG" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#1E94E8"/>
+<stop offset="100%" stop-color="#0E6AB8"/>
+</linearGradient>
+<linearGradient id="scGl" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#fff" stop-opacity="0.2"/>
+<stop offset="50%" stop-color="#fff" stop-opacity="0.03"/>
+<stop offset="100%" stop-color="#000" stop-opacity="0.05"/>
+</linearGradient>
+<linearGradient id="hlG" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#fff" stop-opacity="0.2"/>
+<stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+</linearGradient>
+<linearGradient id="rbG" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#555"/>
+<stop offset="100%" stop-color="#333"/>
+</linearGradient>
+<linearGradient id="blueStrip" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#2B6EA8"/>
+<stop offset="100%" stop-color="#1F5580"/>
+</linearGradient>
+</defs>
+<ellipse cx="330" cy="538" rx="260" ry="10" fill="#000" opacity="0.07"/>
+<rect x="58" y="522" width="22" height="9" rx="3.5" fill="url(#rbG)"/>
+<rect x="218" y="522" width="22" height="9" rx="3.5" fill="url(#rbG)"/>
+<polygon points="78,516 90,508 108,508 96,516" fill="#444" opacity="0.4"/>
+<polygon points="232,516 244,508 262,508 250,516" fill="#444" opacity="0.4"/>
+<path d="M48,82 Q48,78 52,78 L240,78 Q244,78 244,82 L244,300 L48,300 Z" fill="url(#dkF)" stroke="#505458" stroke-width="0.5"/>
+<polygon points="48,78 72,58 268,58 244,78" fill="url(#dkT)" stroke="#505458" stroke-width="0.4"/>
+<polygon points="244,78 268,58 268,280 244,300" fill="url(#dkS)" stroke="#505458" stroke-width="0.4"/>
+<rect x="50" y="78" width="192" height="3" rx="1" fill="url(#hlG)"/>
+<line x1="49" y1="82" x2="49" y2="300" stroke="#fff" stroke-width="0.6" opacity="0.08"/>
+<rect x="48" y="298" width="196" height="6" fill="url(#blueStrip)"/>
+<polygon points="244,298 268,278 268,284 244,304" fill="#1F5580"/>
+<path d="M48,304 L48,518 Q48,522 52,522 L240,522 Q244,522 244,518 L244,304 Z" fill="url(#ltF)" stroke="#C0C0C0" stroke-width="0.5"/>
+<polygon points="244,304 268,284 268,504 244,522" fill="url(#ltS)" stroke="#C0C0C0" stroke-width="0.4"/>
+<line x1="49" y1="308" x2="49" y2="518" stroke="#fff" stroke-width="0.5" opacity="0.12"/>
+<rect x="80" y="95" width="80" height="50" rx="3" fill="#151515"/>
+<rect x="84" y="99" width="72" height="42" rx="2" fill="url(#scG)"/>
+<rect x="84" y="99" width="72" height="42" rx="2" fill="url(#scGl)"/>
+<rect x="91" y="106" width="42" height="4" rx="1" fill="#fff" opacity="0.35"/>
+<rect x="91" y="114" width="32" height="3" rx="1" fill="#fff" opacity="0.2"/>
+<rect x="91" y="120" width="36" height="3" rx="1" fill="#fff" opacity="0.2"/>
+<rect x="91" y="127" width="22" height="6" rx="1.5" fill="#27AE60" opacity="0.6"/>
+<text x="95" y="132" font-family="Arial" font-size="4.5" fill="#fff" opacity="0.9">OK</text>
+<rect x="80" y="160" width="130" height="50" rx="2" fill="#5A5F66" stroke="#4A4F54" stroke-width="0.4"/>
+<circle cx="100" cy="175" r="3" fill="#4CAF50"/>
+<circle cx="114" cy="175" r="3" fill="#FFC107" opacity="0.7"/>
+<circle cx="128" cy="175" r="3" fill="#FF5722" opacity="0.5"/>
+<circle cx="142" cy="175" r="3" fill="#4CAF50"/>
+<circle cx="156" cy="175" r="3" fill="#FFC107" opacity="0.7"/>
+<circle cx="170" cy="175" r="3" fill="#4CAF50"/>
+<circle cx="184" cy="175" r="3" fill="#FF5722" opacity="0.5"/>
+<rect x="95" y="190" width="48" height="14" rx="2" fill="#111"/>
+<rect x="97" y="192" width="44" height="10" rx="1" fill="#0A2E1A"/>
+<text x="102" y="200" font-family="monospace" font-size="7" fill="#33FF66" opacity="0.9">93.5%</text>
+<rect x="80" y="225" width="130" height="22" rx="2" fill="#6A6E74" stroke="#5A5E64" stroke-width="0.3"/>
+<text x="145" y="240" font-family="Arial" font-size="10" font-weight="600" fill="#DDD" letter-spacing="0.5" text-anchor="middle">Oxygen Generator</text>
+<text x="146" y="430" font-family="Arial, Helvetica, sans-serif" font-size="62" font-weight="800" fill="#9AA0A6" opacity="0.3" text-anchor="middle">OS</text>
+<text x="146" y="490" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="800" fill="#8B3A3A" letter-spacing="2" text-anchor="middle">NOXERIOR</text>
+<rect x="288" y="522" width="18" height="9" rx="3" fill="url(#rbG)"/>
+<rect x="400" y="522" width="18" height="9" rx="3" fill="url(#rbG)"/>
+<path d="M280,165 Q280,162 283,162 L415,162 Q418,162 418,165 L418,340 L280,340 Z" fill="url(#dkF)" stroke="#505458" stroke-width="0.5"/>
+<polygon points="280,162 298,148 436,148 418,162" fill="url(#dkT)" stroke="#505458" stroke-width="0.4"/>
+<polygon points="418,162 436,148 436,326 418,340" fill="url(#dkS)" stroke="#505458" stroke-width="0.4"/>
+<rect x="282" y="162" width="134" height="3" rx="1" fill="url(#hlG)"/>
+<line x1="281" y1="165" x2="281" y2="340" stroke="#fff" stroke-width="0.5" opacity="0.08"/>
+<rect x="280" y="338" width="138" height="5" fill="url(#blueStrip)"/>
+<polygon points="418,338 436,324 436,329 418,343" fill="#1F5580"/>
+<path d="M280,343 L280,518 Q280,522 283,522 L415,522 Q418,522 418,518 L418,343 Z" fill="url(#ltF)" stroke="#C0C0C0" stroke-width="0.5"/>
+<polygon points="418,343 436,329 436,504 418,522" fill="url(#ltS)" stroke="#C0C0C0" stroke-width="0.4"/>
+<line x1="281" y1="347" x2="281" y2="518" stroke="#fff" stroke-width="0.4" opacity="0.1"/>
+<rect x="295" y="178" width="108" height="40" rx="2" fill="#5A5F66" stroke="#4A4F54" stroke-width="0.3"/>
+<circle cx="320" cy="198" r="10" fill="#DDD" stroke="#999" stroke-width="0.5"/>
+<circle cx="320" cy="198" r="7.5" fill="#F5F5F5"/>
+<circle cx="320" cy="198" r="1.2" fill="#333"/>
+<line x1="320" y1="198" x2="326" y2="192" stroke="#C0392B" stroke-width="0.8" stroke-linecap="round"/>
+<circle cx="349" cy="198" r="10" fill="#DDD" stroke="#999" stroke-width="0.5"/>
+<circle cx="349" cy="198" r="7.5" fill="#F5F5F5"/>
+<circle cx="349" cy="198" r="1.2" fill="#333"/>
+<line x1="349" y1="198" x2="343" y2="191" stroke="#C0392B" stroke-width="0.8" stroke-linecap="round"/>
+<circle cx="378" cy="198" r="10" fill="#DDD" stroke="#999" stroke-width="0.5"/>
+<circle cx="378" cy="198" r="7.5" fill="#F5F5F5"/>
+<circle cx="378" cy="198" r="1.2" fill="#333"/>
+<line x1="378" y1="198" x2="384" y2="192" stroke="#C0392B" stroke-width="0.8" stroke-linecap="round"/>
+<rect x="295" y="230" width="108" height="18" rx="2" fill="#6A6E74" stroke="#5A5E64" stroke-width="0.3"/>
+<text x="349" y="243" font-family="Arial" font-size="9" font-weight="600" fill="#DDD" letter-spacing="0.3" text-anchor="middle">OS Slave</text>
+<text x="349" y="440" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="800" fill="#9AA0A6" opacity="0.25" text-anchor="middle">OS</text>
+<text x="349" y="490" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="800" fill="#8B3A3A" letter-spacing="1.8" text-anchor="middle">NOXERIOR</text>
+<rect x="458" y="522" width="18" height="9" rx="3" fill="url(#rbG)"/>
+<rect x="570" y="522" width="18" height="9" rx="3" fill="url(#rbG)"/>
+<path d="M450,165 Q450,162 453,162 L585,162 Q588,162 588,165 L588,340 L450,340 Z" fill="url(#dkF)" stroke="#505458" stroke-width="0.5"/>
+<polygon points="450,162 468,148 606,148 588,162" fill="url(#dkT)" stroke="#505458" stroke-width="0.4"/>
+<polygon points="588,162 606,148 606,326 588,340" fill="url(#dkS)" stroke="#505458" stroke-width="0.4"/>
+<rect x="452" y="162" width="134" height="3" rx="1" fill="url(#hlG)"/>
+<line x1="451" y1="165" x2="451" y2="340" stroke="#fff" stroke-width="0.5" opacity="0.08"/>
+<rect x="450" y="338" width="138" height="5" fill="url(#blueStrip)"/>
+<polygon points="588,338 606,324 606,329 588,343" fill="#1F5580"/>
+<path d="M450,343 L450,518 Q450,522 453,522 L585,522 Q588,522 588,518 L588,343 Z" fill="url(#ltF)" stroke="#C0C0C0" stroke-width="0.5"/>
+<polygon points="588,343 606,329 606,504 588,522" fill="url(#ltS)" stroke="#C0C0C0" stroke-width="0.4"/>
+<line x1="451" y1="347" x2="451" y2="518" stroke="#fff" stroke-width="0.4" opacity="0.1"/>
+<rect x="465" y="178" width="108" height="40" rx="2" fill="#5A5F66" stroke="#4A4F54" stroke-width="0.3"/>
+<circle cx="490" cy="198" r="10" fill="#DDD" stroke="#999" stroke-width="0.5"/>
+<circle cx="490" cy="198" r="7.5" fill="#F5F5F5"/>
+<circle cx="490" cy="198" r="1.2" fill="#333"/>
+<line x1="490" y1="198" x2="496" y2="192" stroke="#C0392B" stroke-width="0.8" stroke-linecap="round"/>
+<circle cx="519" cy="198" r="10" fill="#DDD" stroke="#999" stroke-width="0.5"/>
+<circle cx="519" cy="198" r="7.5" fill="#F5F5F5"/>
+<circle cx="519" cy="198" r="1.2" fill="#333"/>
+<line x1="519" y1="198" x2="513" y2="191" stroke="#C0392B" stroke-width="0.8" stroke-linecap="round"/>
+<circle cx="548" cy="198" r="10" fill="#DDD" stroke="#999" stroke-width="0.5"/>
+<circle cx="548" cy="198" r="7.5" fill="#F5F5F5"/>
+<circle cx="548" cy="198" r="1.2" fill="#333"/>
+<line x1="548" y1="198" x2="554" y2="192" stroke="#C0392B" stroke-width="0.8" stroke-linecap="round"/>
+<rect x="465" y="230" width="108" height="18" rx="2" fill="#6A6E74" stroke="#5A5E64" stroke-width="0.3"/>
+<text x="519" y="243" font-family="Arial" font-size="9" font-weight="600" fill="#DDD" letter-spacing="0.3" text-anchor="middle">OS Slave</text>
+<text x="519" y="440" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="800" fill="#9AA0A6" opacity="0.25" text-anchor="middle">OS</text>
+<text x="519" y="490" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="800" fill="#8B3A3A" letter-spacing="1.8" text-anchor="middle">NOXERIOR</text>
+</svg>

@@ -1,0 +1,192 @@
+<svg width="680" height="560" viewBox="0 0 680 560" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="mbF" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#CDD2D7"/>
+<stop offset="8%" stop-color="#D8DCE0"/>
+<stop offset="40%" stop-color="#C5CAD0"/>
+<stop offset="60%" stop-color="#B8BEC6"/>
+<stop offset="85%" stop-color="#AEB5BD"/>
+<stop offset="100%" stop-color="#A5ACB4"/>
+</linearGradient>
+<linearGradient id="mbT" x1="0" y1="0" x2="0.3" y2="1">
+<stop offset="0%" stop-color="#E2E5E8"/>
+<stop offset="50%" stop-color="#D5D9DD"/>
+<stop offset="100%" stop-color="#C8CDD2"/>
+</linearGradient>
+<linearGradient id="mbS" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#A0A7AF"/>
+<stop offset="30%" stop-color="#969DA5"/>
+<stop offset="100%" stop-color="#848B93"/>
+</linearGradient>
+<linearGradient id="pF" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#F7F7F7"/>
+<stop offset="15%" stop-color="#F2F2F2"/>
+<stop offset="50%" stop-color="#EDEDED"/>
+<stop offset="85%" stop-color="#E6E6E6"/>
+<stop offset="100%" stop-color="#E0E0E0"/>
+</linearGradient>
+<linearGradient id="pT" x1="0" y1="0" x2="0.4" y2="1">
+<stop offset="0%" stop-color="#FCFCFC"/>
+<stop offset="100%" stop-color="#EFEFEF"/>
+</linearGradient>
+<linearGradient id="pS" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#DCDCDC"/>
+<stop offset="100%" stop-color="#C4C4C4"/>
+</linearGradient>
+<linearGradient id="scr" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#1E94E8"/>
+<stop offset="40%" stop-color="#1780D4"/>
+<stop offset="100%" stop-color="#0E6AB8"/>
+</linearGradient>
+<linearGradient id="scrGlass" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#fff" stop-opacity="0.18"/>
+<stop offset="50%" stop-color="#fff" stop-opacity="0.03"/>
+<stop offset="100%" stop-color="#000" stop-opacity="0.05"/>
+</linearGradient>
+<linearGradient id="baseF" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#9EA5AD"/>
+<stop offset="100%" stop-color="#7D848C"/>
+</linearGradient>
+<linearGradient id="baseT" x1="0" y1="0" x2="0.3" y2="1">
+<stop offset="0%" stop-color="#B0B6BC"/>
+<stop offset="100%" stop-color="#9EA5AD"/>
+</linearGradient>
+<linearGradient id="baseS" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#858C94"/>
+<stop offset="100%" stop-color="#6E757D"/>
+</linearGradient>
+<radialGradient id="gFace" cx="0.45" cy="0.4" r="0.55">
+<stop offset="0%" stop-color="#FFFFFF"/>
+<stop offset="70%" stop-color="#F5F5F5"/>
+<stop offset="100%" stop-color="#E8E8E8"/>
+</radialGradient>
+<radialGradient id="gRim" cx="0.5" cy="0.5" r="0.5">
+<stop offset="70%" stop-color="#D0D0D0"/>
+<stop offset="85%" stop-color="#B8B8B8"/>
+<stop offset="100%" stop-color="#A0A0A0"/>
+</radialGradient>
+<linearGradient id="hlStrip" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#fff" stop-opacity="0.25"/>
+<stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+</linearGradient>
+</defs>
+
+<!-- SHADOW -->
+<ellipse cx="310" cy="498" rx="200" ry="14" fill="#000" opacity="0.08"/>
+
+<!-- BASE PLATFORM -->
+<polygon points="120,415 155,398 520,398 485,415" fill="url(#baseT)" stroke="#8A9098" stroke-width="0.5"/>
+<path d="M120,415 L120,440 Q120,445 125,445 L480,445 Q485,445 485,440 L485,415 Z" fill="url(#baseF)" stroke="#8A9098" stroke-width="0.5"/>
+<polygon points="485,415 520,398 520,428 485,445" fill="url(#baseS)" stroke="#8A9098" stroke-width="0.5"/>
+<rect x="145" y="445" width="50" height="14" rx="3" fill="#6E757D" stroke="#5A6068" stroke-width="0.5"/>
+<rect x="400" y="445" width="50" height="14" rx="3" fill="#6E757D" stroke="#5A6068" stroke-width="0.5"/>
+<rect x="150" y="455" width="40" height="6" rx="2" fill="#3D4348"/>
+<rect x="405" y="455" width="40" height="6" rx="2" fill="#3D4348"/>
+
+<!-- MAIN BODY -->
+<path d="M130,240 Q130,236 134,236 L476,236 Q480,236 480,240 L480,410 Q480,414 476,414 L134,414 Q130,414 130,410 Z" fill="url(#mbF)" stroke="#9AA0A8" stroke-width="0.6"/>
+<polygon points="130,236 165,212 515,212 480,236" fill="url(#mbT)" stroke="#9AA0A8" stroke-width="0.5"/>
+<polygon points="480,236 515,212 515,390 480,414" fill="url(#mbS)" stroke="#9AA0A8" stroke-width="0.5"/>
+<rect x="132" y="236" width="346" height="3" rx="1" fill="url(#hlStrip)"/>
+<line x1="130" y1="300" x2="480" y2="300" stroke="#B5BBC2" stroke-width="0.4" opacity="0.6"/>
+
+<!-- Ventilation grille -->
+<rect x="148" y="310" width="175" height="90" rx="3" fill="#B8BFC7" stroke="#A0A7AF" stroke-width="0.4"/>
+<g opacity="0.5">
+<line x1="155" y1="320" x2="316" y2="320" stroke="#9AA1A9" stroke-width="1.2"/>
+<line x1="155" y1="330" x2="316" y2="330" stroke="#9AA1A9" stroke-width="1.2"/>
+<line x1="155" y1="340" x2="316" y2="340" stroke="#9AA1A9" stroke-width="1.2"/>
+<line x1="155" y1="350" x2="316" y2="350" stroke="#9AA1A9" stroke-width="1.2"/>
+<line x1="155" y1="360" x2="316" y2="360" stroke="#9AA1A9" stroke-width="1.2"/>
+<line x1="155" y1="370" x2="316" y2="370" stroke="#9AA1A9" stroke-width="1.2"/>
+<line x1="155" y1="380" x2="316" y2="380" stroke="#9AA1A9" stroke-width="1.2"/>
+<line x1="155" y1="390" x2="316" y2="390" stroke="#9AA1A9" stroke-width="1.2"/>
+</g>
+
+<!-- HPOX 450 label -->
+<text x="155" y="275" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="800" fill="#7A828A" letter-spacing="1.5" opacity="0.7">HPOX</text>
+<text x="225" y="275" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="500" fill="#8A929A" opacity="0.65">450</text>
+
+<!-- Booster label -->
+<text x="350" y="268" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="600" fill="#6E767E" letter-spacing="0.8">Booster</text>
+
+<!-- NOXERIOR brand -->
+<text x="340" y="400" font-family="Arial, Helvetica, sans-serif" font-size="13" font-weight="800" fill="#C0392B" letter-spacing="2.5">NOXERIOR</text>
+<rect x="340" y="403" width="105" height="1.5" rx="0.5" fill="#C0392B" opacity="0.5"/>
+
+<!-- CONTROL PANEL -->
+<path d="M290,120 Q290,116 294,116 L460,116 Q464,116 464,120 L464,232 Q464,236 460,236 L294,236 Q290,236 290,232 Z" fill="url(#pF)" stroke="#C0C4C8" stroke-width="0.5"/>
+<polygon points="290,116 316,96 490,96 464,116" fill="url(#pT)" stroke="#C0C4C8" stroke-width="0.5"/>
+<polygon points="464,116 490,96 490,212 464,236" fill="url(#pS)" stroke="#C0C4C8" stroke-width="0.5"/>
+<rect x="292" y="116" width="170" height="2" rx="0.5" fill="url(#hlStrip)"/>
+<line x1="290" y1="130" x2="464" y2="130" stroke="#D5D8DB" stroke-width="0.3"/>
+
+<!-- TOUCHSCREEN -->
+<rect x="310" y="145" width="95" height="72" rx="4" fill="#1A1A1A"/>
+<rect x="314" y="149" width="87" height="64" rx="3" fill="url(#scr)"/>
+<rect x="314" y="149" width="87" height="64" rx="3" fill="url(#scrGlass)"/>
+<rect x="322" y="158" width="55" height="6" rx="1" fill="#fff" opacity="0.35"/>
+<rect x="322" y="168" width="42" height="4" rx="1" fill="#fff" opacity="0.2"/>
+<rect x="322" y="176" width="48" height="4" rx="1" fill="#fff" opacity="0.2"/>
+<rect x="322" y="184" width="35" height="4" rx="1" fill="#fff" opacity="0.15"/>
+<rect x="322" y="196" width="30" height="10" rx="2" fill="#27AE60" opacity="0.7"/>
+<text x="328" y="204" font-family="Arial" font-size="6" fill="#fff" opacity="0.9">OK</text>
+<circle cx="390" cy="201" r="3" fill="#2ECC71"/>
+
+<!-- LEDs -->
+<circle cx="420" cy="170" r="3.5" fill="#2ECC71"/>
+<circle cx="420" cy="170" r="5" fill="none" stroke="#2ECC71" stroke-width="0.3" opacity="0.5"/>
+<circle cx="420" cy="185" r="3" fill="#E67E22" opacity="0.5"/>
+
+<!-- PRESSURE GAUGES -->
+<rect x="316" y="90" width="145" height="10" rx="2" fill="#D0D4D8" stroke="#B0B4B8" stroke-width="0.3"/>
+
+<circle cx="345" cy="72" r="22" fill="url(#gRim)" stroke="#8A8E92" stroke-width="0.8"/>
+<circle cx="345" cy="72" r="18" fill="url(#gFace)"/>
+<circle cx="345" cy="72" r="16" fill="none" stroke="#DDD" stroke-width="0.3"/>
+<g stroke="#555" stroke-width="0.5">
+<line x1="345" y1="56" x2="345" y2="59"/><line x1="361" y1="72" x2="358" y2="72"/>
+<line x1="329" y1="72" x2="332" y2="72"/><line x1="345" y1="88" x2="345" y2="85"/>
+<line x1="356" y1="61" x2="354" y2="63"/><line x1="334" y1="61" x2="336" y2="63"/>
+<line x1="356" y1="83" x2="354" y2="81"/><line x1="334" y1="83" x2="336" y2="81"/>
+</g>
+<line x1="345" y1="72" x2="356" y2="62" stroke="#C0392B" stroke-width="1.2" stroke-linecap="round"/>
+<circle cx="345" cy="72" r="2.5" fill="#444"/><circle cx="345" cy="72" r="1.2" fill="#666"/>
+<rect x="341" y="90" width="8" height="6" rx="1.5" fill="#BABEC2" stroke="#9AA0A6" stroke-width="0.3"/>
+
+<circle cx="400" cy="72" r="22" fill="url(#gRim)" stroke="#8A8E92" stroke-width="0.8"/>
+<circle cx="400" cy="72" r="18" fill="url(#gFace)"/>
+<circle cx="400" cy="72" r="16" fill="none" stroke="#DDD" stroke-width="0.3"/>
+<g stroke="#555" stroke-width="0.5">
+<line x1="400" y1="56" x2="400" y2="59"/><line x1="416" y1="72" x2="413" y2="72"/>
+<line x1="384" y1="72" x2="387" y2="72"/><line x1="400" y1="88" x2="400" y2="85"/>
+<line x1="411" y1="61" x2="409" y2="63"/><line x1="389" y1="61" x2="391" y2="63"/>
+<line x1="411" y1="83" x2="409" y2="81"/><line x1="389" y1="83" x2="391" y2="81"/>
+</g>
+<line x1="400" y1="72" x2="390" y2="60" stroke="#C0392B" stroke-width="1.2" stroke-linecap="round"/>
+<circle cx="400" cy="72" r="2.5" fill="#444"/><circle cx="400" cy="72" r="1.2" fill="#666"/>
+<rect x="396" y="90" width="8" height="6" rx="1.5" fill="#BABEC2" stroke="#9AA0A6" stroke-width="0.3"/>
+
+<circle cx="455" cy="72" r="22" fill="url(#gRim)" stroke="#8A8E92" stroke-width="0.8"/>
+<circle cx="455" cy="72" r="18" fill="url(#gFace)"/>
+<circle cx="455" cy="72" r="16" fill="none" stroke="#DDD" stroke-width="0.3"/>
+<g stroke="#555" stroke-width="0.5">
+<line x1="455" y1="56" x2="455" y2="59"/><line x1="471" y1="72" x2="468" y2="72"/>
+<line x1="439" y1="72" x2="442" y2="72"/><line x1="455" y1="88" x2="455" y2="85"/>
+<line x1="466" y1="61" x2="464" y2="63"/><line x1="444" y1="61" x2="446" y2="63"/>
+<line x1="466" y1="83" x2="464" y2="81"/><line x1="444" y1="83" x2="446" y2="81"/>
+</g>
+<line x1="455" y1="72" x2="448" y2="59" stroke="#C0392B" stroke-width="1.2" stroke-linecap="round"/>
+<circle cx="455" cy="72" r="2.5" fill="#444"/><circle cx="455" cy="72" r="1.2" fill="#666"/>
+<rect x="451" y="90" width="8" height="6" rx="1.5" fill="#BABEC2" stroke="#9AA0A6" stroke-width="0.3"/>
+
+<!-- Outlet ports -->
+<ellipse cx="498" cy="290" rx="8" ry="7" fill="#7D848C" stroke="#666" stroke-width="0.5"/>
+<ellipse cx="498" cy="290" rx="5" ry="4.5" fill="#555"/>
+<ellipse cx="505" cy="330" rx="6" ry="5" fill="#7D848C" stroke="#666" stroke-width="0.5"/>
+<ellipse cx="505" cy="330" rx="3.5" ry="3" fill="#555"/>
+
+<!-- Edge highlights -->
+<line x1="131" y1="240" x2="131" y2="410" stroke="#fff" stroke-width="0.8" opacity="0.15"/>
+<line x1="291" y1="120" x2="291" y2="232" stroke="#fff" stroke-width="0.6" opacity="0.2"/>
+</svg>

@@ -1,0 +1,137 @@
+<svg width="680" height="600" viewBox="0 0 680 600" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="cbF" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#F5F5F5"/>
+<stop offset="4%" stop-color="#F2F2F2"/>
+<stop offset="35%" stop-color="#ECECEC"/>
+<stop offset="65%" stop-color="#E4E4E4"/>
+<stop offset="90%" stop-color="#DDDDDD"/>
+<stop offset="100%" stop-color="#D8D8D8"/>
+</linearGradient>
+<linearGradient id="cbT" x1="0" y1="0" x2="0.35" y2="1">
+<stop offset="0%" stop-color="#FDFDFD"/>
+<stop offset="40%" stop-color="#F4F4F4"/>
+<stop offset="100%" stop-color="#E8E8E8"/>
+</linearGradient>
+<linearGradient id="cbS" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#E0E0E0"/>
+<stop offset="20%" stop-color="#D4D4D4"/>
+<stop offset="80%" stop-color="#C4C4C4"/>
+<stop offset="100%" stop-color="#B8B8B8"/>
+</linearGradient>
+<linearGradient id="ctrlBg" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#EBEBEB"/>
+<stop offset="100%" stop-color="#DCDCDC"/>
+</linearGradient>
+<linearGradient id="scrC" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#1E94E8"/>
+<stop offset="50%" stop-color="#1780D4"/>
+<stop offset="100%" stop-color="#0E6AB8"/>
+</linearGradient>
+<linearGradient id="scrGl" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0%" stop-color="#fff" stop-opacity="0.22"/>
+<stop offset="40%" stop-color="#fff" stop-opacity="0.04"/>
+<stop offset="100%" stop-color="#000" stop-opacity="0.06"/>
+</linearGradient>
+<linearGradient id="hlS" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#fff" stop-opacity="0.35"/>
+<stop offset="100%" stop-color="#fff" stop-opacity="0"/>
+</linearGradient>
+<linearGradient id="ventG" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0%" stop-color="#D2D2D2"/>
+<stop offset="50%" stop-color="#C6C6C6"/>
+<stop offset="100%" stop-color="#BABABA"/>
+</linearGradient>
+<linearGradient id="rubberG" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0%" stop-color="#555"/>
+<stop offset="40%" stop-color="#444"/>
+<stop offset="100%" stop-color="#333"/>
+</linearGradient>
+</defs>
+
+<!-- Shadow -->
+<ellipse cx="335" cy="572" rx="145" ry="10" fill="#000" opacity="0.08"/>
+
+<!-- Rubber feet -->
+<rect x="208" y="555" width="28" height="10" rx="4" fill="url(#rubberG)"/>
+<rect x="211" y="561" width="22" height="5" rx="2.5" fill="#2A2A2A"/>
+<rect x="418" y="555" width="28" height="10" rx="4" fill="url(#rubberG)"/>
+<rect x="421" y="561" width="22" height="5" rx="2.5" fill="#2A2A2A"/>
+<polygon points="232,544 250,536 276,536 258,544" fill="#444" opacity="0.6"/>
+<polygon points="440,544 458,536 484,536 466,544" fill="#444" opacity="0.6"/>
+
+<!-- Main cabinet body -->
+<path d="M195,115 Q195,111 199,111 L455,111 Q459,111 459,115 L459,555 Q459,558 455,558 L199,558 Q195,558 195,555 Z" fill="url(#cbF)" stroke="#C2C2C2" stroke-width="0.5"/>
+<polygon points="195,111 230,84 494,84 459,111" fill="url(#cbT)" stroke="#C2C2C2" stroke-width="0.5"/>
+<polygon points="459,111 494,84 494,530 459,558" fill="url(#cbS)" stroke="#C2C2C2" stroke-width="0.5"/>
+<rect x="197" y="111" width="260" height="4" rx="1" fill="url(#hlS)"/>
+<line x1="196" y1="115" x2="196" y2="555" stroke="#fff" stroke-width="1" opacity="0.18"/>
+
+<!-- Control panel area -->
+<rect x="212" y="122" width="232" height="56" rx="4" fill="url(#ctrlBg)" stroke="#CACACA" stroke-width="0.4"/>
+<rect x="214" y="124" width="228" height="52" rx="3" fill="none" stroke="#fff" stroke-width="0.3" opacity="0.3"/>
+
+<!-- Emergency stop button -->
+<circle cx="240" cy="150" r="14" fill="#F5C518" stroke="#D4A500" stroke-width="1.2"/>
+<circle cx="240" cy="150" r="10" fill="#D32F2F" stroke="#B71C1C" stroke-width="0.8"/>
+<circle cx="240" cy="148" r="7.5" fill="#E53935"/>
+<ellipse cx="239" cy="145" rx="4.5" ry="2.8" fill="#EF5350" opacity="0.55"/>
+
+<!-- Indicator lights -->
+<circle cx="278" cy="140" r="4.5" fill="#4CAF50"/>
+<circle cx="278" cy="140" r="6" fill="none" stroke="#4CAF50" stroke-width="0.4" opacity="0.35"/>
+<circle cx="278" cy="158" r="4" fill="#FFC107" opacity="0.65"/>
+<circle cx="278" cy="158" r="5.5" fill="none" stroke="#FFC107" stroke-width="0.3" opacity="0.25"/>
+
+<!-- Display screen -->
+<rect x="302" y="130" width="90" height="40" rx="3.5" fill="#151515"/>
+<rect x="306" y="134" width="82" height="32" rx="2.5" fill="url(#scrC)"/>
+<rect x="306" y="134" width="82" height="32" rx="2.5" fill="url(#scrGl)"/>
+<rect x="314" y="140" width="50" height="5" rx="1" fill="#fff" opacity="0.35"/>
+<rect x="314" y="149" width="38" height="3.5" rx="1" fill="#fff" opacity="0.2"/>
+<rect x="314" y="156" width="28" height="7" rx="2" fill="#27AE60" opacity="0.65"/>
+<text x="319" y="162" font-family="Arial" font-size="5.5" fill="#fff" opacity="0.9">RUN</text>
+<circle cx="375" cy="158" r="2.5" fill="#2ECC71"/>
+
+<!-- Power switch -->
+<rect x="410" y="134" width="24" height="32" rx="3.5" fill="#D8D8D8" stroke="#BCBCBC" stroke-width="0.5"/>
+<rect x="415" y="137" width="14" height="14" rx="2.5" fill="#505050"/>
+<line x1="422" y1="140" x2="422" y2="148" stroke="#999" stroke-width="1.2" stroke-linecap="round"/>
+
+<!-- NOXERIOR -->
+<text x="327" y="203" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="800" fill="#C0392B" letter-spacing="2.8" text-anchor="middle">NOXERIOR</text>
+<rect x="277" y="206" width="100" height="1.5" rx="0.5" fill="#C0392B" opacity="0.35"/>
+
+<!-- Compressor -->
+<text x="327" y="228" font-family="Arial, Helvetica, sans-serif" font-size="15" font-weight="600" fill="#7A828A" letter-spacing="1.2" text-anchor="middle">Compressor</text>
+
+<!-- Front panel recessed area (clean, no keyhole, no plate) -->
+<rect x="212" y="245" width="232" height="295" rx="3" fill="none" stroke="#D8D8D8" stroke-width="0.4"/>
+<line x1="214" y1="246" x2="442" y2="246" stroke="#CDCDCD" stroke-width="0.6"/>
+<line x1="214" y1="539" x2="442" y2="539" stroke="#fff" stroke-width="0.4" opacity="0.3"/>
+
+<!-- Side ventilation grille -->
+<rect x="462" y="280" width="30" height="210" rx="2" fill="url(#ventG)" stroke="#B5B5B5" stroke-width="0.3"/>
+<g opacity="0.35" stroke="#A5A5A5" stroke-width="0.8">
+<line x1="466" y1="290" x2="488" y2="290"/>
+<line x1="466" y1="300" x2="488" y2="300"/>
+<line x1="466" y1="310" x2="488" y2="310"/>
+<line x1="466" y1="320" x2="488" y2="320"/>
+<line x1="466" y1="330" x2="488" y2="330"/>
+<line x1="466" y1="340" x2="488" y2="340"/>
+<line x1="466" y1="350" x2="488" y2="350"/>
+<line x1="466" y1="360" x2="488" y2="360"/>
+<line x1="466" y1="370" x2="488" y2="370"/>
+<line x1="466" y1="380" x2="488" y2="380"/>
+<line x1="466" y1="390" x2="488" y2="390"/>
+<line x1="466" y1="400" x2="488" y2="400"/>
+<line x1="466" y1="410" x2="488" y2="410"/>
+<line x1="466" y1="420" x2="488" y2="420"/>
+<line x1="466" y1="430" x2="488" y2="430"/>
+<line x1="466" y1="440" x2="488" y2="440"/>
+<line x1="466" y1="450" x2="488" y2="450"/>
+<line x1="466" y1="460" x2="488" y2="460"/>
+<line x1="466" y1="470" x2="488" y2="470"/>
+<line x1="466" y1="480" x2="488" y2="480"/>
+</g>
+</svg>
