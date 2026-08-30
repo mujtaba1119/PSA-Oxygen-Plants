@@ -780,7 +780,6 @@ function PartnerFooter() {
       {/* closing line */}
       <div style={{ borderTop: "1px solid #e4e8ea", padding: "14px 24px", textAlign: "center" }}>
         <span style={{ fontSize: 12, color: C.textLight, fontWeight: 500, letterSpacing: 0.3 }}>PSA Oxygen Plants · Management System</span>
-        <div style={{ fontSize: 12.5, color: C.tealDark, fontWeight: 700, letterSpacing: 0.5, marginTop: 4 }}>oxytrack.pk</div>
       </div>
       <style>{`
         .pf-img { flex-shrink: 1; min-width: 0; }
@@ -2186,9 +2185,6 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
           </div>
         </div>
         <div style={{ flex: 1 }} />
-        <div style={{ padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", width: "100%", textAlign: "center" }}>
-          <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", letterSpacing: 1, textTransform: "uppercase" }}>oxytrack.pk</div>
-        </div>
       </nav>
       <div className="hosp-main" style={{ flex: 1, marginLeft: 180, background: "#f7f8fa", minHeight: "100vh" }}>
         <TopBar title="PSA Oxygen Plants" user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
@@ -2415,10 +2411,6 @@ function SidebarNav({ items, active, onSelect, bottomItems }) {
         </>
       )}
       <div style={{ flex: 1 }} />
-      {/* Bottom: version tag */}
-      <div style={{ padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", width: "100%", textAlign: "center" }}>
-        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", letterSpacing: 1, textTransform: "uppercase" }}>oxytrack.pk</div>
-      </div>
     </nav>
   );
 }
