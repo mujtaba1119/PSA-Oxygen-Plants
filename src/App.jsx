@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "./supabase";
-// Map is now pure SVG — no Leaflet dependency needed
+import { MapContainer, TileLayer, Marker, GeoJSON, Popup, Tooltip } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 /* ─── Write helper: routes all DB writes through the service-role API ─── */
 async function dbWrite(payload) {
@@ -1310,154 +1312,30 @@ function AssignedTag({ complaint, isAdmin, onRemove }) {
 
 /* ─── Overview Tab ─── */
 // Modern teardrop pin icon for the map, colored per site status
-/* ─── Pure SVG Map of Pakistan (zero external dependency) ─── */
-function PakistanSvgMap({ hospitals, complaints, siteNotes, onViewSite, mapTheme }) {
-  const [pkBoundary, setPkBoundary] = useState(null);
-  const [hovered, setHovered] = useState(null);
-  const [tooltip, setTooltip] = useState(null);
+function makePinIcon(color) {
+  const svg = `<svg width="30" height="40" viewBox="0 0 30 40" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));">
+    <path d="M15 0C6.7 0 0 6.7 0 15c0 11 15 25 15 25s15-14 15-25C30 6.7 23.3 0 15 0z" fill="${color}"/>
+    <circle cx="15" cy="15" r="6.5" fill="#fff"/>
+  </svg>`;
+  return L.divIcon({
+    html: svg,
+    className: "",
+    iconSize: [30, 40],
+    iconAnchor: [15, 40],
+    popupAnchor: [0, -36],
+  });
+}
 
+/* ─── Homepage: map + program pulse, shown to every non-hospital account.
+   Overview (the older site-list view) remains available as its own separate tab. ─── */
+function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
+  const [pkBoundary, setPkBoundary] = useState(null);
   useEffect(() => {
     fetch("/pakistan-boundary.geojson")
       .then(r => r.json())
       .then(data => { if (data) setPkBoundary(data); })
       .catch(() => {});
   }, []);
-
-  // Mercator projection: lat/lon → SVG x/y
-  const bounds = { lonMin: 60, lonMax: 78, latMin: 23, latMax: 37.5 };
-  const svgW = 700, svgH = 400;
-  const toX = lon => ((lon - bounds.lonMin) / (bounds.lonMax - bounds.lonMin)) * svgW;
-  const toY = lat => {
-    const mercN = v => Math.log(Math.tan(Math.PI / 4 + (v * Math.PI / 180) / 2));
-    const yNorm = (mercN(bounds.latMax) - mercN(lat)) / (mercN(bounds.latMax) - mercN(bounds.latMin));
-    return yNorm * svgH;
-  };
-
-  // Convert GeoJSON coordinates to SVG path
-  const geoToPath = (coords) => {
-    return coords.map((ring, ri) => {
-      const pts = ring.map(([lon, lat]) => `${toX(lon).toFixed(1)},${toY(lat).toFixed(1)}`);
-      return (ri === 0 ? "M" : "M") + pts.join("L") + "Z";
-    }).join(" ");
-  };
-
-  const getAllPaths = (geojson) => {
-    if (!geojson) return [];
-    const paths = [];
-    const processGeom = (geom) => {
-      if (geom.type === "Polygon") paths.push(geoToPath(geom.coordinates));
-      else if (geom.type === "MultiPolygon") geom.coordinates.forEach(poly => paths.push(geoToPath(poly)));
-    };
-    if (geojson.type === "FeatureCollection") geojson.features.forEach(f => processGeom(f.geometry));
-    else if (geojson.type === "Feature") processGeom(geojson.geometry);
-    else processGeom(geojson);
-    return paths;
-  };
-
-  const pinColor = (h) => {
-    const s = getSiteDisplayStatus(h, complaints, siteNotes);
-    if (s === "Shut Down") return "#e03131";
-    if (s === "Functional") return "#f08c00";
-    if (s === "Non Functional") return "#868e96";
-    return "#2f9e44";
-  };
-
-  const isDark = mapTheme === "dark";
-  const bgColor = isDark ? "#1a2332" : "#f8fafc";
-  const seaColor = isDark ? "#141c28" : "#e8f4f8";
-  const landColor = isDark ? "rgba(13,148,136,0.08)" : "rgba(204,251,241,0.4)";
-  const borderColor = isDark ? "rgba(13,148,136,0.4)" : "#0d9488";
-  const gridColor = isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)";
-  const labelColor = isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.08)";
-
-  const paths = getAllPaths(pkBoundary);
-
-  return (
-    <svg viewBox={`0 0 ${svgW} ${svgH}`} style={{ width: "100%", height: "100%", background: bgColor, display: "block" }} xmlns="http://www.w3.org/2000/svg">
-      {/* Grid lines for texture */}
-      {[0.2, 0.4, 0.6, 0.8].map(f => (
-        <g key={f}>
-          <line x1={f * svgW} y1={0} x2={f * svgW} y2={svgH} stroke={gridColor} strokeWidth={0.5} />
-          <line x1={0} y1={f * svgH} x2={svgW} y2={f * svgH} stroke={gridColor} strokeWidth={0.5} />
-        </g>
-      ))}
-      {/* Lat/Lon labels */}
-      {[25, 28, 31, 34, 37].map(lat => (
-        <text key={`lat${lat}`} x={4} y={toY(lat) + 3} fontSize={7} fill={labelColor} fontFamily="'DM Mono', monospace">{lat}°N</text>
-      ))}
-      {[62, 66, 70, 74, 78].map(lon => (
-        <text key={`lon${lon}`} x={toX(lon) - 8} y={svgH - 4} fontSize={7} fill={labelColor} fontFamily="'DM Mono', monospace">{lon}°E</text>
-      ))}
-      {/* Pakistan boundary from GeoJSON */}
-      {paths.map((d, i) => (
-        <path key={i} d={d} fill={landColor} stroke={borderColor} strokeWidth={1.2} strokeLinejoin="round" />
-      ))}
-      {/* Site markers */}
-      {hospitals.map(h => {
-        const coord = SITE_COORDS[h];
-        if (!coord) return null;
-        const cx = toX(coord[1]);
-        const cy = toY(coord[0]);
-        const color = pinColor(h);
-        const isHov = hovered === h;
-        return (
-          <g key={h} 
-            onMouseEnter={(e) => { setHovered(h); setTooltip({ x: cx, y: cy, name: h }); }}
-            onMouseLeave={() => { setHovered(null); setTooltip(null); }}
-            onClick={() => onViewSite(h)}
-            style={{ cursor: "pointer" }}
-          >
-            {/* Pulse ring on hover */}
-            {isHov && <circle cx={cx} cy={cy} r={12} fill="none" stroke={color} strokeWidth={1.5} opacity={0.4}>
-              <animate attributeName="r" from="6" to="16" dur="1s" repeatCount="indefinite" />
-              <animate attributeName="opacity" from="0.6" to="0" dur="1s" repeatCount="indefinite" />
-            </circle>}
-            {/* Outer glow */}
-            <circle cx={cx} cy={cy} r={isHov ? 7 : 5} fill={color} opacity={0.2} />
-            {/* Pin dot */}
-            <circle cx={cx} cy={cy} r={isHov ? 5 : 3.5} fill={color} stroke="#fff" strokeWidth={1.2} style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.3))" }} />
-            {/* Inner highlight */}
-            <circle cx={cx - 1} cy={cy - 1} r={1} fill="rgba(255,255,255,0.5)" />
-          </g>
-        );
-      })}
-      {/* Tooltip */}
-      {tooltip && (() => {
-        const s = getSiteDisplayStatus(tooltip.name, complaints, siteNotes);
-        const provider = getProvider(tooltip.name);
-        const tx = Math.min(Math.max(tooltip.x, 70), svgW - 70);
-        const ty = tooltip.y - 18;
-        return (
-          <g>
-            <rect x={tx - 60} y={ty - 26} width={120} height={32} rx={8} fill={isDark ? "#0f172a" : "#fff"} stroke={isDark ? "rgba(255,255,255,0.1)" : "#e2e8f0"} strokeWidth={0.8} style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.15))" }} />
-            <text x={tx} y={ty - 12} textAnchor="middle" fontSize={10} fontWeight={700} fill={isDark ? "#f1f5f9" : "#1a2332"} fontFamily="'DM Sans', system-ui, sans-serif">{displayName(tooltip.name)}</text>
-            <text x={tx} y={ty} textAnchor="middle" fontSize={7.5} fill={isDark ? "#94a3b8" : "#64748b"} fontFamily="'DM Sans', system-ui, sans-serif">{provider} · {s}</text>
-          </g>
-        );
-      })()}
-      {/* Legend */}
-      <g transform={`translate(${svgW - 130}, 14)`}>
-        <rect x={0} y={0} width={120} height={72} rx={8} fill={isDark ? "rgba(15,23,42,0.85)" : "rgba(255,255,255,0.9)"} stroke={isDark ? "rgba(255,255,255,0.06)" : "#e8ecf0"} strokeWidth={0.5} />
-        {[
-          { color: "#2f9e44", label: "Fully Operational" },
-          { color: "#f08c00", label: "Has Open Tickets" },
-          { color: "#868e96", label: "Non Functional" },
-          { color: "#e03131", label: "Shut Down" },
-        ].map((item, i) => (
-          <g key={i} transform={`translate(10, ${12 + i * 15})`}>
-            <circle cx={4} cy={3} r={3.5} fill={item.color} stroke="#fff" strokeWidth={0.8} />
-            <text x={14} y={6} fontSize={8} fill={isDark ? "#94a3b8" : "#64748b"} fontFamily="'DM Sans', system-ui, sans-serif">{item.label}</text>
-          </g>
-        ))}
-      </g>
-    </svg>
-  );
-}
-
-/* ─── Homepage: map + program pulse, shown to every non-hospital account.
-   Overview (the older site-list view) remains available as its own separate tab. ─── */
-function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
-  const [mapTheme, setMapTheme] = useState("light"); // "light" or "dark"
 
   const funcCount = hospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
   const shutdownSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Shut Down");
@@ -1474,6 +1352,14 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
     .slice(0, 5);
 
   const attentionSites = [...shutdownSites, ...issueSites].slice(0, 6);
+
+  const pinColor = (h) => {
+    const s = getSiteDisplayStatus(h, complaints, siteNotes);
+    if (s === "Shut Down") return "#e03131";
+    if (s === "Functional") return "#f08c00";
+    if (s === "Non Functional") return "#868e96";
+    return "#2f9e44";
+  };
 
   const providerEntries = Object.entries(groups || {}).filter(([, sites]) => sites.some(s => hospitals.includes(s)));
   const showProviderBreakdown = providerEntries.length > 1;
@@ -1504,9 +1390,12 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
       </div>
       {/* Map + Mint-tinted Side Panel */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 14, marginBottom: 24 }}>
-        <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid #e8ecf0", boxShadow: "0 1px 3px rgba(15,23,42,0.05)", height: 400, position: "relative", background: mapTheme === "dark" ? "#1a2332" : "#fff" }}>
-          <button onClick={() => setMapTheme(mapTheme === "light" ? "dark" : "light")} style={{ position: "absolute", top: 10, right: 10, zIndex: 10, fontSize: 11.5, fontWeight: 600, padding: "6px 14px", borderRadius: 10, border: "none", cursor: "pointer", color: mapTheme === "light" ? "#fff" : "#1a2332", background: mapTheme === "light" ? "#1a2332" : "#fff", boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>{mapTheme === "light" ? "Dark" : "Light"}</button>
-          <PakistanSvgMap hospitals={hospitals} complaints={complaints} siteNotes={siteNotes} onViewSite={onViewSite} mapTheme={mapTheme} />
+        <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid #e8ecf0", boxShadow: "0 1px 3px rgba(15,23,42,0.05)", height: 400, position: "relative", background: "#fff" }}>
+          <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+            {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: C.teal, weight: 1.5, fillColor: C.tealLight, fillOpacity: 0.15 }} />}
+            {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup><div style={{ fontFamily: "'DM Sans',sans-serif", minWidth: 160 }}><div style={{ fontWeight: 700, fontSize: 14, color: "#1a2332", marginBottom: 6 }}>{displayName(h)}</div><SiteStatusBadge status={s} /><div style={{ fontSize: 11, color: "#666", marginTop: 6 }}>{getProvider(h)}</div><button onClick={() => onViewSite(h)} style={{ marginTop: 8, fontSize: 11, fontWeight: 600, color: C.teal, background: "none", border: "none", cursor: "pointer", padding: 0 }}>View details →</button></div></Popup><Tooltip direction="top" offset={[0, -10]}>{displayName(h)}</Tooltip></Marker>); })}
+          </MapContainer>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ background: "linear-gradient(135deg, #f0fdfa, #f7fdfb)", border: "1px solid #d5f0ea", borderRadius: 16, padding: "18px 18px 14px", flex: 1, overflowY: "auto" }}>
