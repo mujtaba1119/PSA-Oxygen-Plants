@@ -787,6 +787,9 @@ function PartnerFooter() {
         <span style={{ fontSize: 12, color: C.textLight, fontWeight: 500, letterSpacing: 0.3 }}>PSA Oxygen Plants · Management System</span>
       </div>
       <style>{`
+        .site-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.15); }
+        .site-popup .leaflet-popup-content { margin: 0; width: auto !important; }
+        .site-popup .leaflet-popup-tip { background: #fff; }
         .pf-img { flex-shrink: 1; min-width: 0; }
         .refresh-icon { display: none; }
         .refresh-icon-desktop { display: inline; }
@@ -1394,7 +1397,19 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite }) {
           <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
             <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
             {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: C.teal, weight: 1.5, fillColor: C.tealLight, fillOpacity: 0.15 }} />}
-            {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup><div style={{ fontFamily: "'DM Sans',sans-serif", minWidth: 160 }}><div style={{ fontWeight: 700, fontSize: 14, color: "#1a2332", marginBottom: 6 }}>{displayName(h)}</div><SiteStatusBadge status={s} /><div style={{ fontSize: 11, color: "#666", marginTop: 6 }}>{getProvider(h)}</div><button onClick={() => onViewSite(h)} style={{ marginTop: 8, fontSize: 11, fontWeight: 600, color: C.teal, background: "none", border: "none", cursor: "pointer", padding: 0 }}>View details →</button></div></Popup><Tooltip direction="top" offset={[0, -10]}>{displayName(h)}</Tooltip></Marker>); })}
+            {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={220} maxWidth={260} className="site-popup"><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1 }}>
+              {imgSrc && <div style={{ height: 90, borderRadius: "6px 6px 0 0", overflow: "hidden", marginBottom: 0 }}><img src={imgSrc} alt={h} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} onError={e => { e.target.parentElement.style.display = "none"; }} /></div>}
+              <div style={{ padding: "10px 12px 12px" }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "#1a2332", marginBottom: 6, lineHeight: 1.2 }}>{displayName(h)}</div>
+                <SiteStatusBadge status={s} />
+                <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 8 }}>Service Provider: <span style={{ fontWeight: 600, color: "#334155" }}>{getProvider(h)}</span></div>
+                <div style={{ fontSize: 11.5, color: openCount > 0 ? "#dc2626" : "#16a34a", fontWeight: 600, marginTop: 6, display: "flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: openCount > 0 ? "#dc2626" : "#16a34a", display: "inline-block" }} />
+                  {openCount > 0 ? `Open Tickets (${openCount})` : "No open tickets"}
+                </div>
+                <button onClick={() => onViewSite(h)} style={{ marginTop: 10, width: "100%", fontSize: 12, fontWeight: 700, color: "#fff", background: C.teal, border: "none", borderRadius: 8, padding: "8px 0", cursor: "pointer", letterSpacing: 0.3 }}>View details →</button>
+              </div>
+            </div></Popup><Tooltip direction="top" offset={[0, -10]}>{displayName(h)}</Tooltip></Marker>); })}
           </MapContainer>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
