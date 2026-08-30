@@ -1332,6 +1332,239 @@ function makePinIcon(color) {
   });
 }
 
+/* ─── UNDP / CMU oversight dashboard — donor/coordinator view focused on after-sales service.
+   Teal-monochrome palette, provider performance, critical issues, 6-month trend. ─── */
+function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite, pkBoundary, pinColor, scoped, funcCount, openTickets, sevCounts, resolvedThisMonth, resolutionRate, raisedThisMonth, stageCounts }) {
+  const T = { ink: "#12211f", slate: "#5a6b68", mute: "#94a3a0", line: "#e7edec", card: "#fff", teal900: "#0f4c47", teal700: "#0f766e", teal500: "#0d9488", teal300: "#5eead4", teal100: "#ccfbf1", teal50: "#f0fdfa" };
+
+  // Ticket pipeline (Open, Assigned, In Progress, Resolved) — no Verified
+  const pipeStages = [
+    { key: "Open", color: T.teal900 },
+    { key: "Assigned", color: T.teal700 },
+    { key: "In Progress", color: T.teal500 },
+    { key: "Resolved", color: T.teal300 },
+  ];
+  const pipeTotal = pipeStages.reduce((sum, s) => sum + (stageCounts[s.key] || 0), 0);
+
+  // Donut geometry (circumference 100)
+  let pieOffset = 0;
+  const pieSegments = pipeStages.map(s => {
+    const val = stageCounts[s.key] || 0;
+    const pct = pipeTotal > 0 ? (val / pipeTotal * 100) : 0;
+    const seg = { ...s, val, pct, offset: -pieOffset };
+    pieOffset += pct;
+    return seg;
+  });
+
+  // Critical issues: open tickets sorted by severity (Critical first) then age
+  const sevRank = { Critical: 0, High: 1, Low: 2 };
+  const criticalIssues = openTickets
+    .map(c => ({ ...c, sev: c.severity || getDefaultSeverity(c.title), days: c.created_at ? Math.max(0, Math.floor((Date.now() - new Date(c.created_at)) / (1000 * 60 * 60 * 24))) : 0 }))
+    .sort((a, b) => (sevRank[a.sev] - sevRank[b.sev]) || (b.days - a.days))
+    .slice(0, 6);
+
+  // Provider performance
+  const providerRows = ["Novair", "Intexim", "Z-Corps"].map(prov => {
+    const provSites = hospitals.filter(h => getProvider(h) === prov);
+    const provComplaints = scoped.filter(c => getProvider(c.hospital) === prov);
+    const open = provComplaints.filter(c => !isClosedStatus(c.status)).length;
+    const resolved30 = resolvedThisMonth.filter(c => getProvider(c.hospital) === prov).length;
+    const raised30 = raisedThisMonth.filter(c => getProvider(c.hospital) === prov).length;
+    const rate = raised30 > 0 ? Math.round(resolved30 / raised30 * 100) : (resolved30 > 0 ? 100 : 0);
+    return { prov, siteCount: provSites.length, open, resolved30, rate };
+  }).filter(r => r.siteCount > 0);
+
+  // 6-month trend
+  const months = [];
+  for (let i = 5; i >= 0; i--) { const d = new Date(); d.setMonth(d.getMonth() - i); months.push({ label: d.toLocaleString("en-US", { month: "short" }), year: d.getFullYear(), month: d.getMonth() }); }
+  const trend = months.map(m => {
+    const opened = scoped.filter(c => c.created_at && new Date(c.created_at).getMonth() === m.month && new Date(c.created_at).getFullYear() === m.year).length;
+    const resolved = scoped.filter(c => c.resolved_at && new Date(c.resolved_at).getMonth() === m.month && new Date(c.resolved_at).getFullYear() === m.year).length;
+    return { ...m, opened, resolved };
+  });
+  const trendMax = Math.max(1, ...trend.map(t => Math.max(t.opened, t.resolved)));
+
+  const sevColor = (sev) => sev === "Critical" ? T.teal900 : sev === "High" ? T.teal500 : T.mute;
+
+  const cardBase = { background: T.card, borderRadius: 16, border: `1px solid ${T.line}`, boxShadow: "0 1px 2px rgba(15,76,71,0.04)", overflow: "hidden", position: "relative" };
+  const accentBar = { position: "absolute", top: 0, left: 22, right: 22, height: 3, borderRadius: "0 0 3px 3px", background: `linear-gradient(90deg, ${T.teal700}, ${T.teal300})` };
+  const cardHeader = { padding: "16px 20px 12px", borderBottom: `1px solid ${T.line}` };
+  const cardTitle = { fontSize: 13.5, fontWeight: 800, letterSpacing: -0.2, color: T.ink };
+
+  return (
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      {/* ── Stat tiles ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.7fr 1fr", gap: 14, marginBottom: 20 }}>
+        {/* Sites Functional */}
+        <div style={{ ...cardBase, padding: 22 }}>
+          <div style={accentBar} />
+          <div style={{ fontSize: 11, fontWeight: 600, color: T.mute, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14, textAlign: "center" }}>Sites Functional</div>
+          <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, textAlign: "center", color: T.ink }}>{funcCount}<span style={{ fontSize: 16, fontWeight: 500, color: T.mute, marginLeft: 3 }}>/ {hospitals.length}</span></div>
+        </div>
+        {/* Ticket Overview (wide) */}
+        <div style={{ ...cardBase, padding: 22, display: "flex", flexDirection: "column" }}>
+          <div style={accentBar} />
+          <div style={{ fontSize: 11, fontWeight: 600, color: T.mute, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14, textAlign: "center" }}>Ticket Overview</div>
+          <div style={{ display: "flex", alignItems: "stretch", justifyContent: "space-between" }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 8px" }}>
+              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: T.ink }}>{openTickets.length}</div>
+              <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 6, color: T.mute, textAlign: "center" }}>Open Now</div>
+            </div>
+            <div style={{ width: 1, background: T.line, margin: "4px 0" }} />
+            <div style={{ flex: 1.5, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 8px" }}>
+              <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: T.mute, marginBottom: 10 }}>By Severity</div>
+              <div style={{ display: "flex", gap: 16 }}>
+                {[{ n: sevCounts.Critical, l: "Critical", c: T.teal900 }, { n: sevCounts.High, l: "High", c: T.teal500 }, { n: sevCounts.Low, l: "Low", c: T.mute }].map(x => (
+                  <div key={x.l} style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1, color: x.c }}>{x.n}</div>
+                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", marginTop: 5, color: x.c }}>{x.l}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ width: 1, background: T.line, margin: "4px 0" }} />
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 8px" }}>
+              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: T.teal700 }}>{resolvedThisMonth.length}</div>
+              <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 6, color: T.mute, textAlign: "center", lineHeight: 1.3 }}>Resolved<br />This Month</div>
+            </div>
+          </div>
+        </div>
+        {/* Resolution Rate */}
+        <div style={{ ...cardBase, padding: 22 }}>
+          <div style={accentBar} />
+          <div style={{ fontSize: 11, fontWeight: 600, color: T.mute, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14, textAlign: "center" }}>Resolution Rate</div>
+          <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, textAlign: "center", color: T.ink }}>{resolutionRate}<span style={{ fontSize: 16, fontWeight: 500, color: T.mute, marginLeft: 3 }}>%</span></div>
+          <div style={{ textAlign: "center", fontSize: 11.5, color: T.slate, fontWeight: 600, marginTop: 12 }}><b style={{ color: T.teal700 }}>{resolvedThisMonth.length}</b> resolved of <b style={{ color: T.teal700 }}>{raisedThisMonth.length}</b> raised</div>
+        </div>
+      </div>
+
+      {/* ── Map + Pipeline pie ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 14, marginBottom: 20 }}>
+        <div style={{ borderRadius: 16, overflow: "hidden", border: `1px solid ${T.line}`, boxShadow: "0 1px 2px rgba(15,76,71,0.04)", height: 360, background: "#fff" }}>
+          <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
+            <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+            {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: T.teal500, weight: 1.5, fillColor: T.teal100, fillOpacity: 0.15 }} />}
+            {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={330} maxWidth={370} className="site-popup"><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "row", border: "1.5px solid #e2e8f0", borderRadius: 14, overflow: "hidden", background: "#fff", boxShadow: "0 2px 12px rgba(15,118,110,0.08)" }}>
+              {imgSrc && <div style={{ width: 115, flexShrink: 0, position: "relative" }}><img src={imgSrc} alt={h} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", minHeight: 130 }} onError={e => { e.target.parentElement.style.display = "none"; }} /><div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, transparent 60%, rgba(255,255,255,0.15) 100%)" }} /></div>}
+              <div style={{ padding: "12px 16px 14px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 6, flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a", lineHeight: 1.2, letterSpacing: -0.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(h)}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#f08c00" : "#16a34a" }} /><span style={{ fontSize: 11.5, fontWeight: 600, color: s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#d97706" : "#16a34a" }}>{s}</span></div>
+                <div style={{ fontSize: 11.5, color: "#64748b", lineHeight: 1.3 }}>Service Provider: <span style={{ fontWeight: 700, color: "#0f766e" }}>{getProvider(h)}</span></div>
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: openCount > 0 ? "#dc2626" : "#16a34a", display: "flex", alignItems: "center", gap: 5 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  {openCount > 0 ? `Open Tickets (${openCount})` : "No open tickets"}
+                </div>
+                <button onClick={() => onViewSite(h)} style={{ marginTop: 2, fontSize: 11.5, fontWeight: 700, color: "#fff", background: "linear-gradient(135deg, #0d9488, #0f766e)", border: "none", borderRadius: 8, padding: "7px 0", cursor: "pointer", width: "100%", letterSpacing: 0.2, boxShadow: "0 2px 8px rgba(13,148,136,0.25)" }}>View Details →</button>
+              </div>
+            </div></Popup><Tooltip direction="top" offset={[0, -10]}>{displayName(h)}</Tooltip></Marker>); })}
+          </MapContainer>
+        </div>
+        {/* Pipeline pie */}
+        <div style={{ ...cardBase, display: "flex", flexDirection: "column" }}>
+          <div style={accentBar} />
+          <div style={cardHeader}><h3 style={cardTitle}>Ticket Pipeline</h3></div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "18px 16px" }}>
+            {pipeTotal > 0 ? (
+              <svg viewBox="0 0 42 42" style={{ width: 150, height: 150 }}>
+                <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#f0f3f2" strokeWidth="7" />
+                {pieSegments.filter(s => s.pct > 0).map(s => (
+                  <circle key={s.key} cx="21" cy="21" r="15.915" fill="transparent" stroke={s.color} strokeWidth="7" strokeDasharray={`${s.pct} ${100 - s.pct}`} strokeDashoffset={s.offset} transform="rotate(-90 21 21)" />
+                ))}
+                <text x="21" y="20" textAnchor="middle" style={{ fontSize: 8, fontWeight: 800, fill: T.ink }}>{pipeTotal}</text>
+                <text x="21" y="25.5" textAnchor="middle" style={{ fontSize: 2.8, fontWeight: 700, fill: T.mute, letterSpacing: "0.08em" }}>TOTAL</text>
+              </svg>
+            ) : <div style={{ fontSize: 13, color: T.mute, padding: "40px 0" }}>No tickets yet</div>}
+            {pipeTotal > 0 && (
+              <div style={{ width: "100%", marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+                {pieSegments.map(s => (
+                  <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 3, flexShrink: 0, background: s.color }} />
+                    <span style={{ color: T.slate, fontWeight: 600, flex: 1 }}>{s.key}</span>
+                    <span style={{ color: T.ink, fontWeight: 800 }}>{s.val}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Provider performance + Critical issues ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 14, marginBottom: 20 }}>
+        <div style={cardBase}>
+          <div style={accentBar} />
+          <div style={cardHeader}><h3 style={cardTitle}>Service Provider Performance</h3></div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                {["Provider", "Open", "Resolved (30d)", "Resolution Rate"].map((th, i) => (
+                  <th key={th} style={{ fontSize: 10, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.08em", padding: "12px 16px 8px", textAlign: i === 0 ? "left" : "center", borderBottom: `1px solid ${T.line}` }}>{th}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {providerRows.map(r => (
+                <tr key={r.prov}>
+                  <td style={{ padding: "15px 16px", borderBottom: `1px solid #f3f7f6`, textAlign: "left" }}>
+                    <span style={{ fontWeight: 700, color: T.ink, fontSize: 13 }}>{r.prov}</span>
+                    <span style={{ fontSize: 11, color: T.mute, fontWeight: 500, display: "block", marginTop: 1 }}>{r.siteCount} sites</span>
+                  </td>
+                  <td style={{ padding: "15px 16px", borderBottom: `1px solid #f3f7f6`, textAlign: "center" }}><span style={{ fontWeight: 700, fontSize: 15, color: T.ink }}>{r.open}</span></td>
+                  <td style={{ padding: "15px 16px", borderBottom: `1px solid #f3f7f6`, textAlign: "center" }}><span style={{ fontWeight: 700, fontSize: 15, color: T.ink }}>{r.resolved30}</span></td>
+                  <td style={{ padding: "15px 16px", borderBottom: `1px solid #f3f7f6`, textAlign: "center" }}>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+                      <span style={{ fontWeight: 700, fontSize: 15, color: T.ink }}>{r.rate}%</span>
+                      <div style={{ height: 4, borderRadius: 2, background: T.teal100, width: 64, overflow: "hidden" }}><div style={{ height: "100%", borderRadius: 2, background: T.teal500, width: `${r.rate}%` }} /></div>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div style={cardBase}>
+          <div style={accentBar} />
+          <div style={cardHeader}><h3 style={cardTitle}>Critical Issues</h3></div>
+          <div>
+            {criticalIssues.length > 0 ? criticalIssues.map(c => (
+              <div key={c.id} onClick={() => onViewSite(c.hospital)} style={{ padding: "13px 20px", display: "flex", alignItems: "center", gap: 11, borderBottom: `1px solid #f3f7f6`, cursor: "pointer" }} onMouseEnter={e => e.currentTarget.style.background = T.teal50} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                <div style={{ width: 3, alignSelf: "stretch", borderRadius: 2, flexShrink: 0, background: sevColor(c.sev) }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: T.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(c.hospital)}</div>
+                  <div style={{ fontSize: 11, color: T.slate, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</div>
+                </div>
+                <span style={{ fontSize: 10, fontWeight: 700, color: T.slate, whiteSpace: "nowrap", flexShrink: 0 }}>{c.days}d open</span>
+              </div>
+            )) : <div style={{ padding: "32px 20px", textAlign: "center", color: T.mute, fontSize: 13 }}>No open issues</div>}
+          </div>
+        </div>
+      </div>
+
+      {/* ── 6-month trend ── */}
+      <div style={cardBase}>
+        <div style={accentBar} />
+        <div style={cardHeader}><h3 style={cardTitle}>Tickets Opened vs Resolved — Last 6 Months</h3></div>
+        <div style={{ padding: "20px 22px 12px", display: "flex", alignItems: "flex-end", height: 200 }}>
+          {trend.map(m => (
+            <div key={m.label + m.year} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, height: "100%", justifyContent: "flex-end" }}>
+              <div style={{ display: "flex", gap: 4, alignItems: "flex-end", flex: 1, width: "100%", justifyContent: "center" }}>
+                <div title={`${m.opened} opened`} style={{ width: 15, borderRadius: "4px 4px 0 0", minHeight: 2, height: `${m.opened / trendMax * 100}%`, background: "#cfe0dd" }} />
+                <div title={`${m.resolved} resolved`} style={{ width: 15, borderRadius: "4px 4px 0 0", minHeight: 2, height: `${m.resolved / trendMax * 100}%`, background: T.teal500 }} />
+              </div>
+              <span style={{ fontSize: 10, color: T.mute, fontWeight: 600 }}>{m.label}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 22, justifyContent: "center", padding: "0 22px 18px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: T.slate, fontWeight: 600 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#cfe0dd" }} />Opened</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: T.slate, fontWeight: 600 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: T.teal500 }} />Resolved</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Homepage: map + program pulse, shown to every non-hospital account.
    Overview (the older site-list view) remains available as its own separate tab. ─── */
 function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user }) {
@@ -1381,54 +1614,16 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user })
   const sevCounts = { Critical: 0, High: 0, Low: 0 };
   openTickets.forEach(c => { const sev = c.severity || getDefaultSeverity(c.title); if (sevCounts[sev] !== undefined) sevCounts[sev]++; });
 
-  const verifiedThisMonth = scoped.filter(c => c.status === "Verified" && c.verified_at && new Date(c.verified_at) >= oneMonthAgo);
+  // Resolution rate: resolved (last 30d) vs raised (last 30d)
+  const raisedThisMonth = scoped.filter(c => c.created_at && new Date(c.created_at) >= oneMonthAgo);
+  const resolutionRate = raisedThisMonth.length > 0 ? Math.round(resolvedThisMonth.length / raisedThisMonth.length * 100) : (resolvedThisMonth.length > 0 ? 100 : 0);
+
+  if (isUndpCmu) {
+    return <UndpCmuDashboard hospitals={hospitals} groups={groups} complaints={complaints} siteNotes={siteNotes} onViewSite={onViewSite} pkBoundary={pkBoundary} pinColor={pinColor} scoped={scoped} funcCount={funcCount} openTickets={openTickets} sevCounts={sevCounts} resolvedThisMonth={resolvedThisMonth} resolutionRate={resolutionRate} raisedThisMonth={raisedThisMonth} stageCounts={stageCounts} />;
+  }
 
   return (
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      {isUndpCmu ? (
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 26 }}>
-        {/* Tile 1: Sites Operational */}
-        <div style={{ background: "linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)", borderRadius: 16, padding: "20px 22px", border: "1.5px solid #99f6e4", position: "relative", overflow: "hidden", boxShadow: "0 2px 10px rgba(13,148,136,0.08)", textAlign: "center" }}>
-          <div style={{ fontSize: 11.5, fontWeight: 700, color: "#0f766e", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Sites Operational</div>
-          <div style={{ fontSize: 36, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>
-            {funcCount}<span style={{ fontSize: 16, fontWeight: 500, color: "#94a3b8", marginLeft: 3 }}>/ {hospitals.length}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-            {shutdownSites.length > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#fef2f2", color: "#dc2626" }}>{shutdownSites.length} Shut Down</span>}
-            {hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Non Functional").length > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#f1f5f9", color: "#64748b" }}>{hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Non Functional").length} Non-Functional</span>}
-          </div>
-        </div>
-        {/* Tile 2: Open Tickets with severity breakdown */}
-        <div style={{ background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)", borderRadius: 16, padding: "20px 22px", border: "1.5px solid #fde68a", position: "relative", overflow: "hidden", boxShadow: "0 2px 10px rgba(217,119,6,0.06)", textAlign: "center" }}>
-          <div style={{ fontSize: 11.5, fontWeight: 700, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Open Tickets</div>
-          <div style={{ fontSize: 36, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>{openTickets.length}</div>
-          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-            {sevCounts.Critical > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#c0392b", color: "#fff" }}>{sevCounts.Critical} Critical</span>}
-            {sevCounts.High > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#d9822b", color: "#fff" }}>{sevCounts.High} High</span>}
-            {sevCounts.Low > 0 && <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#e2e8f0", color: "#555" }}>{sevCounts.Low} Low</span>}
-          </div>
-        </div>
-        {/* Tile 3: Resolved This Month */}
-        <div style={{ background: "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)", borderRadius: 16, padding: "20px 22px", border: "1.5px solid #a7f3d0", position: "relative", overflow: "hidden", boxShadow: "0 2px 10px rgba(22,163,74,0.06)", textAlign: "center" }}>
-          <div style={{ fontSize: 11.5, fontWeight: 700, color: "#166534", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Resolved This Month</div>
-          <div style={{ fontSize: 36, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>{resolvedThisMonth.length}</div>
-          <div style={{ marginTop: 10 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 20, background: "#dcfce7", color: "#16a34a" }}>{verifiedThisMonth.length} Verified</span>
-          </div>
-        </div>
-        {/* Tile 4: Avg Resolution Time */}
-        <div style={{ background: "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)", borderRadius: 16, padding: "20px 22px", border: "1.5px solid #bfdbfe", position: "relative", overflow: "hidden", boxShadow: "0 2px 10px rgba(37,99,235,0.06)", textAlign: "center" }}>
-          <div style={{ fontSize: 11.5, fontWeight: 700, color: "#1e40af", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>Avg Resolution Time</div>
-          <div style={{ fontSize: 36, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>
-            {(() => { const resolved = scoped.filter(c => c.resolved_at && c.created_at); if (resolved.length === 0) return "—"; const avg = resolved.reduce((sum, c) => sum + (new Date(c.resolved_at) - new Date(c.created_at)), 0) / resolved.length; const days = Math.round(avg / (1000 * 60 * 60 * 24)); return days; })()}
-            <span style={{ fontSize: 14, fontWeight: 500, color: "#94a3b8", marginLeft: 3 }}>days</span>
-          </div>
-          <div style={{ marginTop: 10 }}>
-            <span style={{ fontSize: 10, fontWeight: 600, padding: "3px 10px", borderRadius: 20, background: "#dbeafe", color: "#2563eb" }}>All-time average</span>
-          </div>
-        </div>
-      </div>
-      ) : (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 26 }}>
         {[
           { label: "Operational", value: funcCount, sub: `/ ${hospitals.length}`, tag: `${hospitals.length > 0 ? Math.round(funcCount / hospitals.length * 100) : 0}% uptime`, tagType: "green", gradient: "linear-gradient(90deg, #0f766e, #2dd4a8)" },
@@ -1450,7 +1645,6 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user })
           </div>
         ))}
       </div>
-      )}
       {/* Map + Mint-tinted Side Panel */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 14, marginBottom: 24 }}>
         <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid #e8ecf0", boxShadow: "0 1px 3px rgba(15,23,42,0.05)", height: 400, position: "relative", background: "#fff" }}>
