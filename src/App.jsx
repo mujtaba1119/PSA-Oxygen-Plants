@@ -2263,12 +2263,15 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
           if (catItems.length === 0) return null;
           return (<div key={cat.group} style={{ marginBottom: 26 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", color: gc.text, textTransform: "uppercase", marginBottom: 12, paddingLeft: 2 }}>{cat.group}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 20 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 24 }}>
               {catItems.map(item => (
-                <div key={item.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "10px", cursor: "default", transition: "transform 0.2s" }} onMouseEnter={e => e.currentTarget.style.transform = "translateY(-4px)"} onMouseLeave={e => e.currentTarget.style.transform = "none"}>
-                  <img src={`/equipment/${EQUIP_ICONS[item.key] || "equipment"}.svg`} alt={item.label} style={{ width: 96, height: 96, objectFit: "contain", filter: "drop-shadow(0 8px 16px rgba(15,23,25,0.18))" }} onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "block"; }} />
-                  <svg style={{ display: "none", width: 90, height: 90, filter: "drop-shadow(0 8px 16px rgba(15,23,25,0.18))" }} viewBox="0 0 24 24" fill="none" stroke={gc.border} strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1d21", fontFamily: "monospace", letterSpacing: 0.3, textAlign: "center", wordBreak: "break-all" }}>{equip[item.key]}</div>
+                <div key={item.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "10px", cursor: "default", transition: "transform 0.25s ease" }} onMouseEnter={e => e.currentTarget.style.transform = "translateY(-5px)"} onMouseLeave={e => e.currentTarget.style.transform = "none"}>
+                  <img src={`/equipment/${EQUIP_ICONS[item.key] || "equipment"}.svg`} alt={item.label} style={{ width: 128, height: 128, objectFit: "contain", filter: "drop-shadow(0 12px 20px rgba(15,23,25,0.2))" }} onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "block"; }} />
+                  <svg style={{ display: "none", width: 120, height: 120, filter: "drop-shadow(0 12px 20px rgba(15,23,25,0.2))" }} viewBox="0 0 24 24" fill="none" stroke={gc.border} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+                    <div style={{ fontSize: 11.5, fontWeight: 600, color: "#5f6b7a", letterSpacing: 0.2 }}>{item.label}</div>
+                    <div style={{ fontSize: 11.5, fontWeight: 700, color: gc.text, background: "#fff", border: `1px solid ${gc.border}33`, padding: "4px 12px", borderRadius: 20, letterSpacing: 0.4, fontFamily: "'DM Mono', ui-monospace, monospace", boxShadow: "0 1px 2px rgba(15,23,25,0.05)" }}>{equip[item.key]}</div>
+                  </div>
                 </div>
               ))}
             </div>
