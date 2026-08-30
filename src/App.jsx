@@ -2113,11 +2113,11 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
       <nav className="hosp-sidebar" style={sidebarStyles.nav}>
         <div style={{ padding: "16px 0 18px", display: "flex", flexDirection: "column", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: 8, width: "100%" }}>
           <SidebarVessel />
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#5eead4", letterSpacing: 2, textTransform: "uppercase", marginTop: 2 }}>OxyTrack</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#5eead4", letterSpacing: 2, textTransform: "uppercase", marginTop: -24 }}>OxyTrack</div>
         </div>
         {/* Ticket stats */}
         <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: 1.5, color: "rgba(94,234,212,0.7)", textTransform: "uppercase", paddingLeft: 2, marginBottom: 2 }}>Tickets</div>
+          <div style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: 1.5, color: "rgba(94,234,212,0.7)", textTransform: "uppercase", textAlign: "center", marginBottom: 2 }}>Tickets</div>
           <div style={{ background: "rgba(94,234,212,0.08)", border: "1px solid rgba(94,234,212,0.12)", borderRadius: 12, padding: "14px 12px", textAlign: "center" }}>
             <div style={{ fontSize: 28, fontWeight: 800, color: "#fff", lineHeight: 1 }}>{mine.length}</div>
             <div style={{ fontSize: 10, fontWeight: 600, color: "rgba(255,255,255,0.55)", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 5 }}>Total</div>
@@ -2142,8 +2142,9 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
         </TopBar>
         <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px" }}>
           <div style={{ marginBottom: 22 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>{user.name}</div>
-            <div style={{ fontSize: 13, color: "#8a9199", marginTop: 3 }}>PSA Oxygen Plant · {getProvider(user.name)}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>{displayName(user.name)}</div>
+            <div style={{ fontSize: 13, color: "#8a9199", marginTop: 4 }}>PSA Oxygen Plant</div>
+            <div style={{ fontSize: 13, color: "#8a9199", marginTop: 2 }}>Service Provider: {getProvider(user.name)}</div>
           </div>
           <section style={styles.formSectionTeal}>
           <h2 style={{ ...styles.sectionTitleTeal, borderLeft: "none", paddingLeft: 0, display: "flex", alignItems: "center", gap: 12 }}>
