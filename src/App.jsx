@@ -1779,7 +1779,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
             <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
               <span style={{ width: 9, height: 9, borderRadius: "50%", background: accent, flexShrink: 0 }} />
               {ticketNumber && <span style={{ fontSize: 12, fontWeight: 700, color: C.tealDark, background: C.white, border: `1px solid ${C.tealLight}`, borderRadius: 7, padding: "2px 9px", flexShrink: 0, letterSpacing: 0.3 }}>Ticket ID: {ticketNumber}</span>}
-              <strong style={{ fontSize: 16, fontWeight: 700, color: C.black, whiteSpace: expanded ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</strong>
+              <strong style={{ fontSize: 14.5, fontWeight: 700, color: C.black, whiteSpace: expanded ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</strong>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
               <SeverityBadge severity={c.severity} />
@@ -1876,11 +1876,15 @@ function ComplaintListView({ hospital, complaints, currentUser, canComment, isAd
       return () => clearTimeout(t);
     }
   }, [focusInfo]);
-  return (<>
+  return (<div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
     <button style={styles.backBtn} onClick={onBack}>&larr; Back</button>
-    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}><h2 style={{ ...styles.sectionTitle, margin: 0 }}>{hospital}</h2><span style={{ fontSize: 13, color: "#999" }}>({hc.length})</span><span style={{ fontSize: 12, color: "#555", background: "#f0f0f0", padding: "2px 8px" }}>{getProvider(hospital)}</span></div>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+      <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em", margin: 0 }}>{hospital}</h2>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: "#5f6b7a", background: "#f0f0ec", padding: "3px 10px", borderRadius: 20 }}>{getProvider(hospital)}</span>
+      <span style={{ fontSize: 12.5, fontWeight: 600, color: "#0f766e", background: "#e6f5f0", padding: "3px 10px", borderRadius: 20 }}>{hc.length} ticket{hc.length === 1 ? "" : "s"}</span>
+    </div>
     {hc.length === 0 && (
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 24px", textAlign: "center", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "50vh", padding: "60px 24px", textAlign: "center", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
         <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
           <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
         </div>
@@ -1895,7 +1899,7 @@ function ComplaintListView({ hospital, complaints, currentUser, canComment, isAd
         />
       </div>
     ))}
-  </>);
+  </div>);
 }
 
 /* ─── Hospital Dashboard ─── */
@@ -2870,7 +2874,7 @@ const styles = {
   cardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8, flexWrap: "wrap" },
   cardTitle: { fontSize: 15, fontWeight: 600, color: C.black },
   cardDate: { fontSize: 12, color: C.textLight, whiteSpace: "nowrap", marginTop: 2 },
-  cardDesc: { fontSize: 14, color: C.textMid, margin: 0, lineHeight: 1.7 },
+  cardDesc: { fontSize: 13.5, color: "#5f6b7a", margin: 0, lineHeight: 1.65 },
   empty: { fontSize: 14, color: C.textLight, fontStyle: "italic" },
   successMsg: { color: C.green, fontSize: 14, fontWeight: 600, marginTop: 12, textAlign: "center" },
   statsBar: { display: "flex", gap: 32, marginBottom: 28, flexWrap: "wrap", justifyContent: "center" },
