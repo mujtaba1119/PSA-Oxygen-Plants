@@ -1610,7 +1610,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
   );
 }
 
-function GroupedHospitalList({ groups, complaints, onSelect }) {
+function GroupedHospitalList({ groups, complaints, siteNotes, onSelect }) {
   const countFor = h => complaints.filter(c => hospitalMatches(c.hospital, h)).length;
   const openCountFor = h => complaints.filter(c => hospitalMatches(c.hospital, h) && !isClosedStatus(c.status)).length;
   const groupCountFor = hs => complaints.filter(c => hs.includes(c.hospital)).length;
@@ -1645,17 +1645,31 @@ function GroupedHospitalList({ groups, complaints, onSelect }) {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>
             {hs.map(h => {
               const total = countFor(h); const open = openCountFor(h);
+              const status = getSiteDisplayStatus(h, complaints, siteNotes);
+              const isNonFunc = status === "Non Functional" || status === "Shut Down";
+              // Header: grey if non-functional, brighter teal if open tickets, standard teal otherwise
+              const headerBg = isNonFunc
+                ? "linear-gradient(120deg, #4b5563, #6b7280)"
+                : open > 0
+                  ? "linear-gradient(120deg, #0f766e, #14b8a6)"
+                  : "linear-gradient(120deg, #0b3b38, #0f766e)";
+              const numColor = isNonFunc ? "#e5e7eb" : "#5eead4";
               return (
                 <div key={h} onClick={() => onSelect(h)} style={{ background: "#fff", border: "1px solid #e8ecf0", borderRadius: 16, overflow: "hidden", cursor: "pointer", boxShadow: "0 1px 3px rgba(15,23,25,0.05)", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 22px rgba(13,148,136,0.14)"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.borderColor = "#0d9488"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,25,0.05)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.borderColor = "#e8ecf0"; }}>
-                  <div style={{ background: "linear-gradient(120deg, #0b3b38, #0f766e)", padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ background: headerBg, padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div style={{ fontSize: 14.5, fontWeight: 700, color: "#fff" }}>{displayName(h)}</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: "#5eead4" }}>{total}</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: numColor }}>{total}</div>
                   </div>
                   <div style={{ padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "#8a9199" }}>{p}</span>
                     {open > 0
-                      ? <span style={{ fontSize: 11, fontWeight: 600, color: "#dc2626", background: "#fef2f2", padding: "3px 10px", borderRadius: 20 }}>{open} open</span>
-                      : <span style={{ fontSize: 11, fontWeight: 600, color: "#16a34a", background: "#ecfdf5", padding: "3px 10px", borderRadius: 20 }}>All clear</span>}
+                      ? <span style={{ fontSize: 11, fontWeight: 600, color: "#b45309", background: "#fef3e2", padding: "3px 10px", borderRadius: 20 }}>{open} open</span>
+                      : isNonFunc
+                        ? null
+                        : <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: "#16a34a", background: "#ecfdf5", padding: "3px 10px", borderRadius: 20 }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Clear
+                          </span>}
                   </div>
                 </div>
               );
@@ -2060,7 +2074,7 @@ function SidebarIcon({ name, size = 20 }) {
   const paths = {
     dashboard: <svg viewBox="0 0 24 24" style={s}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="4" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="11" width="7" height="10" rx="1"/></svg>,
     sites: <svg viewBox="0 0 24 24" style={s}><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
-    tickets: <svg viewBox="0 0 24 24" style={s}><path d="M15 5v2"/><path d="M15 11v2"/><path d="M15 17v2"/><path d="M5 5h14a2 2 0 012 2v3a2 2 0 000 4v3a2 2 0 01-2 2H5a2 2 0 01-2-2v-3a2 2 0 000-4V7a2 2 0 012-2z"/></svg>,
+    tickets: <svg viewBox="0 0 24 24" style={s}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 6 10-6"/></svg>,
     maintenance: <svg viewBox="0 0 24 24" style={s}><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>,
     analytics: <svg viewBox="0 0 24 24" style={s}><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>,
     users: <svg viewBox="0 0 24 24" style={s}><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
@@ -2521,7 +2535,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
               <button style={styles.tabActionBtn} onClick={() => downloadCSV(complaints, "All Tickets Data")}>↓ Download Data</button>
             </div>
-            <GroupedHospitalList groups={GROUPS} complaints={complaints} onSelect={setSelected} />
+            <GroupedHospitalList groups={GROUPS} complaints={complaints} siteNotes={siteNotes} onSelect={setSelected} />
           </>)}
           {tab === "tickets" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canComment={true} isAdmin={true} onBack={() => setSelected(null)} onAssign={handleAssign} onLogVisit={handleLogVisit} onMarkResolved={handleMarkResolved} onVerify={handleVerify} onRejectVerify={handleRejectVerify} onDelete={handleDelete} onRefresh={onRefresh} staffOptions={staffOptions} focusInfo={pendingFocus} />)}
           {tab === "submit" && (
@@ -2795,7 +2809,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
               <button style={styles.tabActionBtn} onClick={() => downloadCSV(myComplaints, "All Tickets Data")}>↓ Download Data</button>
             </div>
-            <GroupedHospitalList groups={myGroups} complaints={complaints} onSelect={setSelected} />
+            <GroupedHospitalList groups={myGroups} complaints={complaints} siteNotes={siteNotes} onSelect={setSelected} />
           </>)}
           {tab === "tickets" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onAssign={handleAssign} onLogVisit={handleLogVisit} onMarkResolved={handleMarkResolved} onVerify={handleVerify} onRejectVerify={handleRejectVerify} onDelete={() => {}} onRefresh={onRefresh} staffOptions={staffOptions} focusInfo={pendingFocus} />)}
           {tab === "maintenance" && <MaintenancePage />}
