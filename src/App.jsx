@@ -2022,7 +2022,7 @@ function SidebarIcon({ name, size = 20 }) {
     users: <svg viewBox="0 0 24 24" style={s}><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
     emails: <svg viewBox="0 0 24 24" style={s}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-8.97 5.7a1.94 1.94 0 01-2.06 0L2 7"/></svg>,
     submit: <svg viewBox="0 0 24 24" style={s}><path d="M12 5v14"/><path d="M5 12h14"/></svg>,
-    equipment: <svg viewBox="0 0 24 24" style={s}><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 1v3"/><path d="M15 1v3"/><path d="M9 20v3"/><path d="M15 20v3"/><path d="M20 9h3"/><path d="M20 14h3"/><path d="M1 9h3"/><path d="M1 14h3"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/><line x1="9" y1="15" x2="9.01" y2="15"/><line x1="15" y1="15" x2="15.01" y2="15"/></svg>,
+    equipment: <svg viewBox="0 0 24 24" style={s}><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>,
     settings: <svg viewBox="0 0 24 24" style={s}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33h.08a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.08a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>,
     refresh: <svg viewBox="0 0 24 24" style={s}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>,
     bell: <svg viewBox="0 0 24 24" style={s}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,
@@ -2289,7 +2289,7 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "#94a3b8", textTransform: "uppercase", marginBottom: 4 }}>Equipment inventory</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em", marginBottom: 4 }}>Equipment Inventory</div>
           <div style={{ fontSize: 13, color: "#555" }}>{ALL_HOSPITALS.length} sites · {Object.values(EQUIPMENT_DATA).reduce((s, e) => s + Object.keys(e).length, 0)} registered equipment</div>
         </div>
         <input style={{ padding: "8px 14px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", width: 220, background: "#fff", color: "#111" }} placeholder="Search sites..." value={search} onChange={e => setSearch(e.target.value)} onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.tealLight} />
