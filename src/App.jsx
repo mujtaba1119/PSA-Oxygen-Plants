@@ -2258,6 +2258,7 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
           @keyframes equipItemIn { from { opacity: 0; transform: translateY(16px) scale(0.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
           .equip-page { animation: equipPageIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
           .equip-item { animation: equipItemIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+          .equip-item:hover .equip-icon { transform: scale(1.12); }
         `}</style>
         <div className="equip-page">
         <button onClick={() => setSelectedSite(null)} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; All Sites</button>
@@ -2274,9 +2275,9 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
               {catItems.map(item => {
                 const delay = (idx++ * 0.05).toFixed(2);
                 return (
-                <div key={item.key} className="equip-item" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "10px", cursor: "default", transition: "transform 0.25s ease", animationDelay: `${delay}s` }} onMouseEnter={e => e.currentTarget.style.transform = "translateY(-5px)"} onMouseLeave={e => e.currentTarget.style.transform = "none"}>
-                  <img src={`/equipment/${EQUIP_ICONS[item.key] || "equipment"}.svg`} alt={item.label} style={{ width: 160, height: 160, objectFit: "contain", filter: "drop-shadow(0 14px 24px rgba(15,23,25,0.22))" }} onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "block"; }} />
-                  <svg style={{ display: "none", width: 150, height: 150, filter: "drop-shadow(0 14px 24px rgba(15,23,25,0.22))" }} viewBox="0 0 24 24" fill="none" stroke={gc.border} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
+                <div key={item.key} className="equip-item" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "10px", cursor: "pointer", animationDelay: `${delay}s` }}>
+                  <img src={`/equipment/${EQUIP_ICONS[item.key] || "equipment"}.svg`} alt={item.label} className="equip-icon" style={{ width: 160, height: 160, objectFit: "contain", filter: "drop-shadow(0 14px 24px rgba(15,23,25,0.22))", transition: "transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)" }} onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "block"; }} />
+                  <svg className="equip-icon" style={{ display: "none", width: 150, height: 150, filter: "drop-shadow(0 14px 24px rgba(15,23,25,0.22))", transition: "transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)" }} viewBox="0 0 24 24" fill="none" stroke={gc.border} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 700, color: "#1a1d21", letterSpacing: "-0.01em", textAlign: "center" }}>{item.label}</div>
                     <div style={{ fontSize: 12, fontWeight: 500, color: "#8a9199", letterSpacing: 0.8, fontFamily: "'DM Mono', ui-monospace, monospace" }}>{equip[item.key]}</div>
