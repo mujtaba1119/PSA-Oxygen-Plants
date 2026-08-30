@@ -593,7 +593,7 @@ function NotificationBell({ user, onNavigate, onFocusComplaint, light, complaint
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" />
         </svg>
-        {unread > 0 && <span style={{ position: "absolute", top: -3, right: -3, background: "#ef4444", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: "50%", width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", border: light ? "2px solid #0b3b38" : "2px solid #fff" }}>{unread > 9 ? "9+" : unread}</span>}
+        {unread > 0 && <span style={{ position: "absolute", top: -5, right: -7, minWidth: 18, height: 15, padding: "0 5px", borderRadius: 8, background: "#5eead4", color: "#062825", fontSize: 9, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", border: light ? "2px solid #0b3b38" : "2px solid #fff" }}>{unread > 9 ? "9+" : unread}</span>}
       </button>
       {open && createPortal(<>
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9998, background: "rgba(0,0,0,0.1)" }} onClick={() => setOpen(false)} />
@@ -2368,13 +2368,13 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {children}
-            <div style={{ display: "flex", alignItems: "center", gap: 0 }}>
-            <button className="refresh-btn tb-glass" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.25)", color: "rgba(255,255,255,0.85)", borderRadius: "10px 0 0 10px", cursor: "pointer", padding: "7px 16px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 500, letterSpacing: 0.3, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif", width: 118, boxSizing: "border-box" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <button className="refresh-btn tb-glass" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.25)", color: "rgba(255,255,255,0.85)", borderRadius: 10, cursor: "pointer", padding: "7px 16px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 500, letterSpacing: 0.3, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif", width: 118, boxSizing: "border-box" }}>
               <svg className={refreshing ? "refresh-icon spinning" : "refresh-icon"} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
               {!refreshing && "Refresh"}
               {refreshing && <svg className="spinning" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
             </button>
-            <button className="tb-glass" title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)", border: "none", color: "#062825", borderRadius: "0 10px 10px 0", cursor: "pointer", padding: "7px 16px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif", textTransform: "capitalize", width: 118, boxSizing: "border-box" }}>
+            <button className="tb-glass" title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)", border: "none", color: "#062825", borderRadius: 10, cursor: "pointer", padding: "7px 16px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif", textTransform: "capitalize", width: 118, boxSizing: "border-box" }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
               Sign Out
             </button>
