@@ -1810,6 +1810,9 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const [editDesc, setEditDesc] = useState(cleanDescription(complaint.description)); const [editSaving, setEditSaving] = useState(false);
   const [assigneePicks, setAssigneePicks] = useState([]);
   const [visitDatePick, setVisitDatePick] = useState("");
+  const [equipOpen, setEquipOpen] = useState(false);
+  const [equipPicks, setEquipPicks] = useState(() => extractSerials(complaint.description));
+  const [equipSaving, setEquipSaving] = useState(false);
   const c = complaint;
   const effStatus = getEffectiveStatus(c);
   // Open (unresolved/unverified) tickets start expanded; fully closed tickets start collapsed until clicked
@@ -1838,6 +1841,8 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const handleUndoReject = async () => { if (!window.confirm("Undo the last rejection? This restores the ticket to the state it was in right before it was rejected.")) return; setBusy(true); await undoReject(c.id); setBusy(false); await onRefresh(); };
   const handleDelete = async () => { if (window.confirm("Delete this complaint permanently?")) { await onDelete(c.id); await onRefresh(); } };
   const handleEditSave = async () => { if (!editTitle.trim() || !editDesc.trim()) return; setEditSaving(true); const preservedSerials = extractSerials(complaint.description); const newDesc = encodeSerials(editDesc.trim(), preservedSerials); await updateComplaintFields(c.id, { title: editTitle.trim(), description: newDesc }); setEditSaving(false); setEditing(false); await onRefresh(); };
+  const toggleEquipPick = (serial) => setEquipPicks(prev => prev.includes(serial) ? prev.filter(s => s !== serial) : [...prev, serial]);
+  const handleSaveEquip = async () => { setEquipSaving(true); const newDesc = encodeSerials(cleanDescription(c.description), equipPicks); await updateComplaintFields(c.id, { description: newDesc }); setEquipSaving(false); setEquipOpen(false); await onRefresh(); };
   const dateFmt = { year: "numeric", month: "short", day: "numeric" };
   const accentMap = { "Open": C.red, "In Progress": "#e0912f", "Resolved": "#2874a6", "Verified": C.green };
   const accent = accentMap[effStatus] || C.red;
@@ -1926,9 +1931,49 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               {isAdmin && c.pre_reject_snapshot && (
                 <button style={{ fontSize: 12, fontWeight: 600, color: "#5b3a9c", background: "#ede4fb", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer" }} onClick={handleUndoReject} disabled={busy}>↺ Undo Last Rejection</button>
               )}
+              {isAdmin && <button style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: C.tealBg, border: `1px solid ${C.tealLight}`, borderRadius: 8, padding: "8px 16px", cursor: "pointer" }} onClick={() => { setEquipPicks(extractSerials(c.description)); setEquipOpen(o => !o); }}>⚙ Assign Equipment</button>}
               {isAdmin && <button style={{ fontSize: 12, fontWeight: 500, color: C.black, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 16px", cursor: "pointer" }} onClick={() => setEditing(true)}>Edit</button>}
               {isAdmin && <button style={{ ...styles.deleteBtn, borderRadius: 8 }} onClick={handleDelete}>Delete</button>}
             </div>
+            {isAdmin && equipOpen && (() => {
+              const equip = EQUIPMENT_DATA[c.hospital] || {};
+              return (
+                <div style={{ marginTop: 12, border: `1px solid ${C.tealLight}`, borderRadius: 12, padding: 14, background: C.tealBg, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: C.tealDark, marginBottom: 4 }}>Assign this ticket to equipment</div>
+                  <div style={{ fontSize: 11.5, color: C.textMid, marginBottom: 12 }}>Tick the unit(s) this ticket relates to. It will be added to each unit's history.</div>
+                  {EQUIP_CATEGORIES.map(cat => {
+                    const items = cat.items.filter(it => equip[it.key]);
+                    if (items.length === 0) return null;
+                    return (
+                      <div key={cat.group} style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.06em", color: C.tealDark, textTransform: "uppercase", marginBottom: 6 }}>{cat.group}</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 6 }}>
+                          {items.map((it, i) => {
+                            const serial = equip[it.key]; const on = equipPicks.includes(serial);
+                            return (
+                              <div key={it.key} onClick={() => toggleEquipPick(serial)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 9, cursor: "pointer", background: on ? C.teal : "#fff", border: `1.5px solid ${on ? C.teal : C.tealLight}`, transition: "all 0.15s" }}>
+                                <span style={{ width: 15, height: 15, borderRadius: 4, flexShrink: 0, background: on ? "#fff" : "transparent", border: `1.5px solid ${on ? "#fff" : C.tealLight}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  {on && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                                </span>
+                                <div style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: 10.5, fontWeight: 600, color: on ? "rgba(255,255,255,0.85)" : C.textMid, lineHeight: 1.2 }}>{it.label}{cat.items.length > 1 ? ` ${i + 1}` : ""}</div>
+                                  <div style={{ fontSize: 11.5, fontWeight: 700, color: on ? "#fff" : C.black, fontFamily: "'DM Mono', ui-monospace, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{serial}</div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {Object.keys(equip).length === 0 && <div style={{ fontSize: 12, color: C.textMid, marginBottom: 10 }}>No equipment inventory recorded for this site.</div>}
+                  <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                    <button style={styles.btnTealSmall} onClick={handleSaveEquip} disabled={equipSaving}>{equipSaving ? "…" : "Save"}</button>
+                    <button style={{ fontSize: 12, fontWeight: 500, color: C.black, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 16px", cursor: "pointer" }} onClick={() => setEquipOpen(false)}>Cancel</button>
+                  </div>
+                </div>
+              );
+            })()}
             <CommentSection complaintId={c.id} hospital={c.hospital} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} highlightCommentText={highlightCommentText} />
           </div>
           )}
@@ -2399,7 +2444,7 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
   const [selectedSite, setSelectedSite] = useState(null);
   const [selectedEquip, setSelectedEquip] = useState(null); // { key, label, serial }
   const [search, setSearch] = useState("");
-  // Equipment history view — shows all tickets that referenced this unit's serial number.
+  // Equipment history view — a table of all tickets that referenced this unit's serial number.
   if (selectedSite && selectedEquip) {
     const history = complaintsForSerial(selectedEquip.serial, complaints);
     const statusMeta = (c) => {
@@ -2410,11 +2455,14 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
       return { label: "Open", color: "#dc2626", bg: "#fef2f2" };
     };
     const dateFmt = { year: "numeric", month: "short", day: "numeric" };
+    const fmt = (d) => d ? new Date(d).toLocaleDateString("en-PK", dateFmt) : "—";
+    const thStyle = { fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, padding: "13px 14px", textAlign: "left", whiteSpace: "nowrap" };
+    const tdStyle = { fontSize: 12.5, color: "#374151", padding: "13px 14px", verticalAlign: "top", borderBottom: "1px solid transparent", borderImage: "linear-gradient(90deg, #0b3b38, #0f766e, #0b3b38) 1" };
     return (
       <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
         <button onClick={() => setSelectedEquip(null)} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
         {/* Header: icon + identity */}
-        <div style={{ display: "flex", alignItems: "center", gap: 18, marginBottom: 26, padding: "20px 22px", background: "linear-gradient(135deg, #f0fdfa, #f7fdfb)", border: "1px solid #d5f0ea", borderRadius: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 18, marginBottom: 22, padding: "20px 22px", background: "linear-gradient(135deg, #f0fdfa, #f7fdfb)", border: "1px solid #d5f0ea", borderRadius: 16 }}>
           <img src={`/equipment/${EQUIP_ICONS[selectedEquip.key] || "equipment"}.svg`} alt={selectedEquip.label} style={{ width: 72, height: 72, objectFit: "contain", filter: "drop-shadow(0 8px 14px rgba(15,23,25,0.18))" }} onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "block"; }} />
           <svg style={{ display: "none", width: 66, height: 66 }} viewBox="0 0 24 24" fill="none" stroke="#0d9488" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
           <div>
@@ -2423,46 +2471,43 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
             <div style={{ fontSize: 12, color: "#8a9199", marginTop: 3 }}>{displayName(selectedSite)}</div>
           </div>
         </div>
-        {/* Ticket history */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", color: "#0f766e", textTransform: "uppercase" }}>Ticket History</span>
-          <span style={{ fontSize: 11, fontWeight: 600, color: "#5f6b7a", background: "#f4f4f0", padding: "2px 9px", borderRadius: 20 }}>{history.length}</span>
+        {/* History table */}
+        <div style={{ background: "#fff", border: "1px solid #e5e5e0", borderRadius: 12, overflow: "hidden", overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 720 }}>
+            <thead>
+              <tr style={{ background: "linear-gradient(120deg, #0b3b38, #0f766e 50%, #0b3b38)" }}>
+                <th style={{ ...thStyle, width: 40, textAlign: "center" }}>#</th>
+                <th style={thStyle}>Issue</th>
+                <th style={thStyle}>Description</th>
+                <th style={{ ...thStyle, textAlign: "center" }}>Severity</th>
+                <th style={{ ...thStyle, textAlign: "center" }}>Status</th>
+                <th style={{ ...thStyle, textAlign: "center" }}>Opened</th>
+                <th style={{ ...thStyle, textAlign: "center" }}>Visits</th>
+                <th style={{ ...thStyle, textAlign: "center" }}>Resolved</th>
+              </tr>
+            </thead>
+            <tbody>
+              {history.length === 0 ? (
+                <tr><td colSpan={8} style={{ padding: "40px 16px", textAlign: "center", fontSize: 13, color: "#94a3b8" }}>No records for this unit yet.</td></tr>
+              ) : history.map((c, i) => {
+                const sm = statusMeta(c);
+                const visits = hasVisits(c) ? visitDates(c).map(d => fmt(d)).join(", ") : "—";
+                return (
+                  <tr key={c.id}>
+                    <td style={{ ...tdStyle, textAlign: "center", color: "#b0b5ba", fontWeight: 600 }}>{history.length - i}</td>
+                    <td style={{ ...tdStyle, fontWeight: 700, color: "#1a1d21", minWidth: 130 }}>{c.title}</td>
+                    <td style={{ ...tdStyle, color: "#5f6b7a", lineHeight: 1.5, minWidth: 180, maxWidth: 280 }}>{cleanDescription(c.description) || "—"}</td>
+                    <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap" }}>{c.severity || "—"}</td>
+                    <td style={{ ...tdStyle, textAlign: "center" }}><span style={{ fontSize: 11, fontWeight: 700, color: sm.color, background: sm.bg, padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap" }}>{sm.label}</span></td>
+                    <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap" }}>{fmt(c.created_at)}</td>
+                    <td style={{ ...tdStyle, textAlign: "center", color: "#5f6b7a", whiteSpace: "nowrap" }}>{visits}</td>
+                    <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap", color: (c.status === "Resolved" || c.status === "Verified") && c.resolved_at ? "#16a34a" : "#94a3b8", fontWeight: 600 }}>{(c.status === "Resolved" || c.status === "Verified") ? fmt(c.resolved_at) : "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-        {history.length === 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "50px 24px", textAlign: "center" }}>
-            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            </div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#1a1d21" }}>No Issues Recorded</div>
-            <div style={{ fontSize: 12.5, color: "#8a9199", marginTop: 3 }}>This unit has a clean service record.</div>
-          </div>
-        ) : (
-          <div style={{ position: "relative", paddingLeft: 26 }}>
-            {/* timeline line */}
-            <div style={{ position: "absolute", left: 7, top: 6, bottom: 6, width: 2, background: "linear-gradient(180deg, #0f766e, #d5f0ea)" }} />
-            {history.map(c => {
-              const sm = statusMeta(c);
-              return (
-                <div key={c.id} style={{ position: "relative", marginBottom: 14 }}>
-                  {/* dot */}
-                  <div style={{ position: "absolute", left: -26, top: 18, width: 16, height: 16, borderRadius: "50%", background: "#fff", border: `3px solid ${sm.color}` }} />
-                  <div style={{ background: "#fff", border: "1px solid #e8ecf0", borderRadius: 14, padding: "14px 16px", boxShadow: "0 1px 3px rgba(15,23,25,0.04)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 8 }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#1a1d21" }}>{c.title}</div>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: sm.color, background: sm.bg, padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap", flexShrink: 0 }}>{sm.label}</span>
-                    </div>
-                    {cleanDescription(c.description) && <div style={{ fontSize: 13, color: "#5f6b7a", lineHeight: 1.6, marginBottom: 10 }}>{cleanDescription(c.description)}</div>}
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 14, fontSize: 12 }}>
-                      <span style={{ color: "#8a9199" }}>Opened: <span style={{ color: "#1a1d21", fontWeight: 600 }}>{new Date(c.created_at).toLocaleDateString("en-PK", dateFmt)}</span></span>
-                      {(c.status === "Resolved" || c.status === "Verified") && c.resolved_at && <span style={{ color: "#8a9199" }}>Resolved: <span style={{ color: "#16a34a", fontWeight: 600 }}>{new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt)}</span></span>}
-                      <span style={{ color: "#8a9199" }}>Severity: <span style={{ color: "#1a1d21", fontWeight: 600 }}>{c.severity || "—"}</span></span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
     );
   }
