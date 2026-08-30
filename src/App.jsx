@@ -2450,6 +2450,7 @@ function EquipmentTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) 
   const [maintDesc, setMaintDesc] = useState("");
   const [maintHours, setMaintHours] = useState("");
   const [maintSaving, setMaintSaving] = useState(false);
+  const [maintStatus, setMaintStatus] = useState("OK");
 
   // Read/write maintenance records from siteNotes JSON (keyed as _maint_{serial})
   const getNotesMap = (h) => { try { const raw = siteNotes.find(s => hospitalMatches(s.hospital, h))?.equipment_note || ""; const parsed = JSON.parse(raw); return typeof parsed === "object" && parsed !== null ? parsed : { _legacy: raw }; } catch { const raw = siteNotes.find(s => hospitalMatches(s.hospital, h))?.equipment_note || ""; return raw ? { _legacy: raw } : {}; } };
@@ -2477,31 +2478,35 @@ function EquipmentTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) 
     setMaintSaving(true);
     await saveMaintRecord(selectedSite, selectedEquip.serial, {
       type: maintType, date: maintDate, description: maintDesc.trim(),
-      runningHours: maintHours.trim() || "", status: "OK"
+      runningHours: maintHours.trim() || "", status: maintStatus
     });
-    setMaintDate(""); setMaintDesc(""); setMaintHours(""); setAddingMaint(false);
+    setMaintDate(""); setMaintDesc(""); setMaintHours(""); setMaintStatus("OK"); setAddingMaint(false);
     setMaintSaving(false);
     if (onRefresh) await onRefresh();
   };
   // Equipment history view — combines tickets + maintenance into one activity table.
   if (selectedSite && selectedEquip) {
-    const ticketRows = complaintsForSerial(selectedEquip.serial, complaints).map(c => ({
-      type: "Ticket", date: c.created_at, description: c.title,
-      runningHours: "", status: isClosedStatus(c.status) ? "OK" : "Pending",
-      isTicket: true, _c: c
-    }));
-    const maintRows = getMaintRecords(selectedSite, selectedEquip.serial).map((r, i) => ({
-      type: r.type || "Maintenance", date: r.date, description: r.description,
-      runningHours: r.runningHours || "", status: r.status || "OK",
-      isTicket: false, _idx: i
-    }));
-    const allRows = [...ticketRows, ...maintRows].sort((a, b) => new Date(b.date) - new Date(a.date));
     const dateFmt = { year: "numeric", month: "short", day: "numeric" };
     const fmt = (d) => d ? new Date(d).toLocaleDateString("en-PK", dateFmt) : "—";
+    const ticketRows = complaintsForSerial(selectedEquip.serial, complaints).map(c => {
+      const resolved = isClosedStatus(c.status);
+      return {
+        type: "Ticket", date: c.created_at, description: cleanDescription(c.description) || c.title,
+        runningHours: "", resolved,
+        statusText: resolved ? `Resolved · ${fmt(c.resolved_at)}` : "Pending",
+        isTicket: true, _c: c
+      };
+    });
+    const maintRows = getMaintRecords(selectedSite, selectedEquip.serial).map((r, i) => ({
+      type: r.type || "Maintenance", date: r.date, description: r.description,
+      runningHours: r.runningHours || "", resolved: r.status !== "Not OK",
+      statusText: r.status || "OK", isTicket: false, _idx: i
+    }));
+    const allRows = [...ticketRows, ...maintRows].sort((a, b) => new Date(b.date) - new Date(a.date));
     const thStyle = { fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, padding: "13px 14px", textAlign: "center", whiteSpace: "nowrap" };
     const tdStyle = { fontSize: 12.5, color: "#374151", padding: "13px 14px", verticalAlign: "top", borderBottom: "1px solid transparent", borderImage: "linear-gradient(90deg, #0b3b38, #0f766e, #0b3b38) 1" };
     return (
-      <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", minHeight: "75vh" }}>
         <button onClick={() => setSelectedEquip(null)} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
         {/* Header: icon + identity */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 22, padding: "20px 22px", background: "linear-gradient(135deg, #f0fdfa, #f7fdfb)", border: "1px solid #d5f0ea", borderRadius: 16 }}>
@@ -2535,7 +2540,7 @@ function EquipmentTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) 
                 <input type="date" value={maintDate} onChange={e => setMaintDate(e.target.value)} style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", color: "#111" }} />
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10, marginBottom: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
               <div>
                 <label style={{ fontSize: 11, fontWeight: 600, color: C.textMid, display: "block", marginBottom: 4 }}>Description</label>
                 <input value={maintDesc} onChange={e => setMaintDesc(e.target.value)} placeholder="What was done..." style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", color: "#111" }} />
@@ -2544,10 +2549,17 @@ function EquipmentTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) 
                 <label style={{ fontSize: 11, fontWeight: 600, color: C.textMid, display: "block", marginBottom: 4 }}>Running Hours</label>
                 <input value={maintHours} onChange={e => setMaintHours(e.target.value)} placeholder="e.g. 1200" style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", color: "#111" }} />
               </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 600, color: C.textMid, display: "block", marginBottom: 4 }}>Status</label>
+                <select value={maintStatus} onChange={e => setMaintStatus(e.target.value)} style={{ width: "100%", padding: "9px 12px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", background: "#fff", color: "#111", cursor: "pointer" }}>
+                  <option value="OK">OK</option>
+                  <option value="Not OK">Not OK</option>
+                </select>
+              </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={handleAddMaint} disabled={maintSaving || !maintDate || !maintDesc.trim()} style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: (!maintDate || !maintDesc.trim()) ? "#9db8b4" : C.teal, border: "none", borderRadius: 10, padding: "9px 18px", cursor: (!maintDate || !maintDesc.trim()) ? "not-allowed" : "pointer" }}>{maintSaving ? "Saving…" : "Save"}</button>
-              <button onClick={() => { setAddingMaint(false); setMaintDate(""); setMaintDesc(""); setMaintHours(""); }} style={{ fontSize: 12, fontWeight: 500, color: C.black, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 18px", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => { setAddingMaint(false); setMaintDate(""); setMaintDesc(""); setMaintHours(""); setMaintStatus("OK"); }} style={{ fontSize: 12, fontWeight: 500, color: C.black, background: "#fff", border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 18px", cursor: "pointer" }}>Cancel</button>
             </div>
           </div>
         )}
@@ -2556,26 +2568,31 @@ function EquipmentTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) 
           <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
             <thead>
               <tr style={{ background: "linear-gradient(120deg, #0b3b38, #0f766e 50%, #0b3b38)" }}>
+                <th style={{ ...thStyle, width: 44 }}>#</th>
                 <th style={{ ...thStyle, textAlign: "left", minWidth: 160 }}>Activity</th>
                 <th style={{ ...thStyle, minWidth: 110 }}>Date</th>
-                <th style={{ ...thStyle, textAlign: "left", minWidth: 200 }}>Description</th>
+                <th style={{ ...thStyle, textAlign: "left", minWidth: 220 }}>Description</th>
                 <th style={{ ...thStyle, minWidth: 100 }}>Running Hours</th>
-                <th style={{ ...thStyle, minWidth: 90 }}>Status</th>
+                <th style={{ ...thStyle, minWidth: 130 }}>Status</th>
               </tr>
             </thead>
             <tbody>
               {allRows.length === 0 ? (
-                <tr><td colSpan={5} style={{ padding: "44px 16px", textAlign: "center", fontSize: 13, color: "#94a3b8" }}>No records for this unit.</td></tr>
+                <tr><td colSpan={6} style={{ padding: "44px 16px", textAlign: "center", fontSize: 13, color: "#94a3b8" }}>No records for this unit.</td></tr>
               ) : allRows.map((row, i) => {
-                const isOk = row.status === "OK";
-                const actColor = row.type === "Ticket" ? { color: "#b45309", bg: "#fef3e2" } : row.type === "Warranty Maintenance" ? { color: "#0f766e", bg: "#e6f5f0" } : { color: "#6d28d9", bg: "#f3f0ff" };
+                // Activity pill color: Ticket = green if resolved, orange if not; maintenance = teal/purple
+                const actColor = row.type === "Ticket"
+                  ? (row.resolved ? { color: "#16a34a", bg: "#ecfdf5" } : { color: "#b45309", bg: "#fef3e2" })
+                  : row.type === "Warranty Maintenance" ? { color: "#0f766e", bg: "#e6f5f0" } : { color: "#6d28d9", bg: "#f3f0ff" };
+                const stOk = row.resolved;
                 return (
                   <tr key={row.isTicket ? row._c.id : `m-${row._idx}`}>
+                    <td style={{ ...tdStyle, textAlign: "center", color: "#b0b5ba", fontWeight: 600 }}>{allRows.length - i}</td>
                     <td style={{ ...tdStyle, textAlign: "left" }}><span style={{ fontSize: 11, fontWeight: 700, color: actColor.color, background: actColor.bg, padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap" }}>{row.type}</span></td>
-                    <td style={{ ...tdStyle, whiteSpace: "nowrap" }}>{fmt(row.date)}</td>
-                    <td style={{ ...tdStyle, textAlign: "left", color: "#1a1d21", fontWeight: 600 }}>{row.description || "—"}</td>
-                    <td style={{ ...tdStyle, fontFamily: "'DM Mono', ui-monospace, monospace", fontWeight: 600 }}>{row.runningHours || "—"}</td>
-                    <td style={{ ...tdStyle }}><span style={{ fontSize: 11, fontWeight: 700, color: isOk ? "#16a34a" : "#dc2626", background: isOk ? "#ecfdf5" : "#fef2f2", padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap" }}>{row.status}</span></td>
+                    <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap" }}>{fmt(row.date)}</td>
+                    <td style={{ ...tdStyle, textAlign: "left", color: "#374151", lineHeight: 1.5 }}>{row.description || "—"}</td>
+                    <td style={{ ...tdStyle, textAlign: "center", fontFamily: "'DM Mono', ui-monospace, monospace", fontWeight: 600 }}>{row.runningHours || "—"}</td>
+                    <td style={{ ...tdStyle, textAlign: "center" }}><span style={{ fontSize: 11, fontWeight: 700, color: stOk ? "#16a34a" : (row.isTicket ? "#b45309" : "#dc2626"), background: stOk ? "#ecfdf5" : (row.isTicket ? "#fef3e2" : "#fef2f2"), padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap" }}>{row.statusText}</span></td>
                   </tr>
                 );
               })}
