@@ -2293,7 +2293,7 @@ function EquipmentTab({ hospitals, complaints, siteNotes }) {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
         {Object.entries(GROUPS).map(([provider, sites]) => sites.filter(s => filtered.includes(s)).map(h => {
-          const imgSrc = `/sites/${SITE_CODES[h] || h.toLowerCase().replace(/\s+/g, "-")}.jpg`;
+          const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null;
           return (
             <div key={h} onClick={() => setSelectedSite(h)} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", cursor: "pointer", transition: "all 0.22s", border: "1px solid #e8ecf0", boxShadow: "0 1px 3px rgba(15,23,25,0.05)" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 28px rgba(15,118,110,0.14)"; e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.borderColor = "#0d9488"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,25,0.05)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.borderColor = "#e8ecf0"; }}>
               {/* Image */}
