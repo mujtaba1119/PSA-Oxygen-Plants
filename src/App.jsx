@@ -766,20 +766,28 @@ function AppHeader({ user, children, minimal }) {
 /* Partner logo footer — one line, in order: Global Fund, UNDP, Amex, Noxerior, CMU */
 function PartnerFooter() {
   return (
-    <footer className="pf-footer" style={{ background: "#0f766e", position: "relative", overflow: "hidden" }}>
-      <div style={{ padding: "18px 24px", position: "relative" }}>
-        <div className="pf-row" style={{ maxWidth: 940, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 30, flexWrap: "wrap" }}>
-          <img className="pf-img pf-3d pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 48, objectFit: "contain" }} />
-          <img className="pf-img pf-3d pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 58, objectFit: "contain" }} />
-          <img className="pf-img pf-3d pf-amex" src={LOGO_AMEX} alt="Amex" style={{ height: 42, objectFit: "contain" }} />
-          <img className="pf-img pf-nox" src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 38, objectFit: "contain" }} />
-          <img className="pf-img pf-cmu" src={LOGO_CMU} alt="CMU" style={{ height: 66, objectFit: "contain" }} />
+    <footer style={{ background: "#f4f6f7", boxShadow: "0 -4px 16px rgba(0,0,0,0.04)" }}>
+      {/* gradient accent line */}
+      <div style={{ height: 4, background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
+      <div style={{ padding: "28px 16px 20px" }}>
+        <div className="pf-row" style={{ maxWidth: 1040, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 24 }}>
+          <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 100, objectFit: "contain" }} />
+          <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
+          <img className="pf-img pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 72, objectFit: "contain" }} />
+          <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
+          <img className="pf-img pf-amex" src={LOGO_AMEX} alt="Amex" style={{ height: 54, objectFit: "contain" }} />
+          <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
+          <img className="pf-img pf-nox" src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 48, objectFit: "contain" }} />
+          <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
+          <img className="pf-img pf-cmu" src={LOGO_CMU} alt="CMU" style={{ height: 72, objectFit: "contain" }} />
         </div>
       </div>
+      {/* closing line */}
+      <div style={{ borderTop: "1px solid #e4e8ea", padding: "14px 24px", textAlign: "center" }}>
+        <span style={{ fontSize: 12, color: C.textLight, fontWeight: 500, letterSpacing: 0.3 }}>PSA Oxygen Plants · Management System</span>
+      </div>
       <style>{`
-        /* Official Leaflet fix for Chromium tile gaps (Leaflet PR #8891, shipped in 1.9.4).
-           Applied here explicitly so it works regardless of installed Leaflet version.
-           Note from the Leaflet maintainers: gaps can still show if BROWSER PAGE ZOOM is not 100%. */
+        /* Official Leaflet fix for Chromium tile gaps (Leaflet PR #8891, shipped in 1.9.4). */
         .leaflet-tile-container img.leaflet-tile { mix-blend-mode: plus-lighter; }
         .site-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 14px; overflow: hidden; box-shadow: none; background: transparent; border: none; }
         .site-popup .leaflet-popup-content { margin: 0; width: 316px !important; }
@@ -787,33 +795,7 @@ function PartnerFooter() {
         /* make the leaflet attribution as small and unobtrusive as possible */
         .leaflet-control-attribution { font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important; background: rgba(255,255,255,0.55) !important; opacity: 0.65; }
         .leaflet-control-attribution a { color: #64748b !important; }
-        /* partner logos kept in full colour, lifted off the teal with a dense white outline:
-           many tight white drop-shadows stacked in all directions build a continuous white
-           edge around every stroke — thick enough that even fine dark text stays readable. */
-        .pf-img { flex: 0 1 auto; min-width: 0; display: block; transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
-          filter:
-            drop-shadow(0.5px 0 0 #fff) drop-shadow(-0.5px 0 0 #fff)
-            drop-shadow(0 0.5px 0 #fff) drop-shadow(0 -0.5px 0 #fff)
-            drop-shadow(0.4px 0.4px 0 #fff) drop-shadow(-0.4px 0.4px 0 #fff)
-            drop-shadow(0.4px -0.4px 0 #fff) drop-shadow(-0.4px -0.4px 0 #fff); }
-        .pf-img:hover { transform: translateY(-3px); }
-        /* 3D treatment for the crisp SVG logos — a thin white base rim for legibility, then a
-           stack of progressively deeper shadows to give real extruded depth, plus a soft cast
-           shadow beneath. Vector edges keep it sharp at any size. */
-        .pf-3d { transform-style: preserve-3d; will-change: transform, filter;
-          filter:
-            drop-shadow(0.5px 0 0 rgba(255,255,255,0.95)) drop-shadow(-0.5px 0 0 rgba(255,255,255,0.95))
-            drop-shadow(0 0.5px 0 rgba(255,255,255,0.95)) drop-shadow(0 -0.5px 0 rgba(255,255,255,0.95))
-            drop-shadow(0 1px 0 rgba(0,0,0,0.28)) drop-shadow(0 2px 0 rgba(0,0,0,0.22))
-            drop-shadow(0 3px 1px rgba(0,0,0,0.16)) drop-shadow(0 6px 8px rgba(0,0,0,0.30));
-          transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), filter 0.4s ease; }
-        .pf-3d:hover { transform: translateY(-5px) scale(1.05) perspective(500px) rotateX(8deg);
-          filter:
-            drop-shadow(0.5px 0 0 #fff) drop-shadow(-0.5px 0 0 #fff)
-            drop-shadow(0 0.5px 0 #fff) drop-shadow(0 -0.5px 0 #fff)
-            drop-shadow(0 1px 0 rgba(0,0,0,0.30)) drop-shadow(0 2px 0 rgba(0,0,0,0.26)) drop-shadow(0 3px 0 rgba(0,0,0,0.20))
-            drop-shadow(0 5px 1px rgba(0,0,0,0.16)) drop-shadow(0 12px 16px rgba(0,0,0,0.4)); }
-        @media (prefers-reduced-motion: reduce) { .pf-img:hover, .pf-3d:hover { transform: none; } }
+        .pf-img { flex-shrink: 1; min-width: 0; }
         .refresh-icon { display: none; }
         .refresh-icon-desktop { display: inline; }
         .refresh-label { display: inline; line-height: 1.4; }
