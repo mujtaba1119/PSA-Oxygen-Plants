@@ -1601,17 +1601,17 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
         </div>
       </div>
 
-      {/* ── Full-width tablet screen: swipe between Map and Program Overview ── */}
+      {/* ── Full-width tablet: map + program overview, swipeable ── */}
       <div className="ox-in ox-in-d1" style={{ marginBottom: 20 }}>
-        <div style={{ borderRadius: 30, overflow: "hidden", boxShadow: "0 18px 44px rgba(11,59,56,0.32)", height: 460, background: "#0d5f56", position: "relative", padding: "16px 22px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-          {/* curved edge-screen highlights on left & right */}
-          <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: 22, background: "linear-gradient(90deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02) 55%, rgba(0,0,0,0.28))", pointerEvents: "none", zIndex: 6 }} />
-          <div style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: 22, background: "linear-gradient(270deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02) 55%, rgba(0,0,0,0.28))", pointerEvents: "none", zIndex: 6 }} />
-          {/* camera dot */}
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(94,234,212,0.5)", marginBottom: 9, flexShrink: 0, boxShadow: "0 0 5px rgba(94,234,212,0.4)" }} />
-          {/* screen */}
+        {/* device body — dark, big radius, even bezel all round like an iPad */}
+        <div style={{ borderRadius: 34, height: 476, background: "linear-gradient(145deg, #14524b, #0c3d38 60%, #0a332f)", position: "relative", padding: 18, boxShadow: "0 22px 50px rgba(11,59,56,0.38), inset 0 1px 1px rgba(255,255,255,0.14), inset 0 -2px 4px rgba(0,0,0,0.35)" }}>
+          {/* glossy top-edge highlight along the device */}
+          <div style={{ position: "absolute", top: 0, left: "12%", right: "12%", height: 34, borderRadius: "34px 34px 60% 60%", background: "linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0))", pointerEvents: "none" }} />
+          {/* front camera dot */}
+          <div style={{ position: "absolute", top: 8, left: "50%", transform: "translateX(-50%)", width: 5, height: 5, borderRadius: "50%", background: "rgba(255,255,255,0.28)", boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.4)", zIndex: 10 }} />
+          {/* screen — inset, rounded, recessed */}
           <div
-            style={{ flex: 1, width: "100%", borderRadius: 8, overflow: "hidden", background: "#dfeae8", position: "relative", boxShadow: "0 0 0 1px rgba(0,0,0,0.25)" }}
+            style={{ width: "100%", height: "100%", borderRadius: 20, overflow: "hidden", background: "#dfeae8", position: "relative", boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.06)" }}
             onTouchStart={e => { touchX.current = e.touches[0].clientX; }}
             onTouchMove={e => { if (touchX.current === null) return; }}
             onTouchEnd={e => { if (touchX.current === null) return; const dx = e.changedTouches[0].clientX - touchX.current; if (dx < -45 && slide === 0) setSlide(1); else if (dx > 45 && slide === 1) setSlide(0); touchX.current = null; }}
@@ -1679,11 +1679,11 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
               </div>
             </div>
           </div>
-          {/* dots */}
-          <div style={{ display: "flex", gap: 8, marginTop: 11, flexShrink: 0, alignItems: "center" }}>
+          {/* dots — floating page indicators at the bottom of the screen */}
+          <div style={{ position: "absolute", bottom: 30, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 8, alignItems: "center", zIndex: 10, background: "rgba(6,32,29,0.55)", backdropFilter: "blur(4px)", padding: "7px 12px", borderRadius: 20 }}>
             {["Map", "Program Overview"].map((label, i) => (
-              <button key={i} onClick={() => setSlide(i)} title={label} style={{ border: "none", cursor: "pointer", padding: 0, background: "transparent", display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ width: slide === i ? 22 : 8, height: 8, borderRadius: 5, background: slide === i ? "#5eead4" : "rgba(94,234,212,0.35)", transition: "all 0.35s cubic-bezier(0.16,1,0.3,1)", boxShadow: slide === i ? "0 0 8px rgba(94,234,212,0.5)" : "none" }} />
+              <button key={i} onClick={() => setSlide(i)} title={label} style={{ border: "none", cursor: "pointer", padding: 0, background: "transparent", display: "flex", alignItems: "center" }}>
+                <span style={{ width: slide === i ? 22 : 8, height: 8, borderRadius: 5, background: slide === i ? "#5eead4" : "rgba(255,255,255,0.4)", transition: "all 0.35s cubic-bezier(0.16,1,0.3,1)", boxShadow: slide === i ? "0 0 8px rgba(94,234,212,0.6)" : "none" }} />
               </button>
             ))}
           </div>
