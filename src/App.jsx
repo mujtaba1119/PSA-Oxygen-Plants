@@ -931,6 +931,13 @@ function GlobalAnimations() {
       .ox-imgzoom img { transition: transform 0.5s cubic-bezier(0.16,1,0.3,1); }
       .ox-imgzoom:hover img { transform: scale(1.06); }
 
+      /* pulsating circular map pins */
+      .ox-map-pin { position: relative; width: 16px; height: 16px; }
+      .ox-map-pin-dot { position: absolute; top: 50%; left: 50%; width: 11px; height: 11px; border-radius: 50%; background: var(--pin); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.35); transform: translate(-50%, -50%); z-index: 2; }
+      .ox-map-pin-ring { position: absolute; top: 50%; left: 50%; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--pin); transform: translate(-50%, -50%); opacity: 0.6; animation: ox-pin-pulse 1.7s ease-out infinite; z-index: 1; }
+      @keyframes ox-pin-pulse { 0% { width: 8px; height: 8px; opacity: 0.6; } 100% { width: 30px; height: 30px; opacity: 0; } }
+      @media (prefers-reduced-motion: reduce) { .ox-map-pin-ring { animation: none; opacity: 0; } }
+
       /* tab / page content entrance */
       .scale-in { animation: ox-scale-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
@@ -1388,18 +1395,18 @@ function AssignedTag({ complaint, isAdmin, onRemove }) {
 }
 
 /* ─── Overview Tab ─── */
-// Modern teardrop pin icon for the map, colored per site status
+// Pulsating circular dot marker for the map, colored per site status.
 function makePinIcon(color) {
-  const svg = `<svg width="30" height="40" viewBox="0 0 30 40" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));">
-    <path d="M15 0C6.7 0 0 6.7 0 15c0 11 15 25 15 25s15-14 15-25C30 6.7 23.3 0 15 0z" fill="${color}"/>
-    <circle cx="15" cy="15" r="6.5" fill="#fff"/>
-  </svg>`;
+  const html = `<div class="ox-map-pin" style="--pin:${color}">
+    <span class="ox-map-pin-ring"></span>
+    <span class="ox-map-pin-dot"></span>
+  </div>`;
   return L.divIcon({
-    html: svg,
+    html,
     className: "",
-    iconSize: [30, 40],
-    iconAnchor: [15, 40],
-    popupAnchor: [0, -36],
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+    popupAnchor: [0, -10],
   });
 }
 
@@ -1579,16 +1586,11 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
 
       {/* ── Map + Pipeline pie ── */}
       <div className="ox-in ox-in-d1" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 14, marginBottom: 20 }}>
-        <div style={{ borderRadius: 18, overflow: "hidden", border: "1px solid rgba(94,234,212,0.25)", boxShadow: "0 10px 30px rgba(11,59,56,0.30)", height: 360, background: "linear-gradient(180deg, #0d3330, #0b2b28)", position: "relative", padding: "10px 8px 8px", display: "flex", flexDirection: "column" }}>
-          {/* screen chrome bar */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 6px 8px" }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#5eead4", boxShadow: "0 0 6px rgba(94,234,212,0.6)" }} />
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(94,234,212,0.35)" }} />
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(94,234,212,0.2)" }} />
-            <span style={{ marginLeft: "auto", fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(94,234,212,0.7)", textTransform: "uppercase", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Live Network Map</span>
-          </div>
+        <div style={{ borderRadius: 26, overflow: "hidden", border: "1px solid rgba(94,234,212,0.2)", boxShadow: "0 14px 38px rgba(11,59,56,0.34)", height: 380, background: "linear-gradient(160deg, #123c38, #0b2b28)", position: "relative", padding: "14px 12px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          {/* camera dot */}
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(94,234,212,0.5)", marginBottom: 8, flexShrink: 0 }} />
           {/* screen */}
-          <div style={{ flex: 1, borderRadius: 10, overflow: "hidden", background: "#dfeae8", boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.15), inset 0 2px 8px rgba(0,0,0,0.2)", position: "relative" }}>
+          <div style={{ flex: 1, width: "100%", borderRadius: 14, overflow: "hidden", boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.2)", background: "#dfeae8" }}>
           <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
             <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
             {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: T.teal500, weight: 1.5, fillColor: T.teal100, fillOpacity: 0.15 }} />}
@@ -1607,6 +1609,8 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
             </div></Popup><Tooltip direction="top" offset={[0, -10]}>{displayName(h)}</Tooltip></Marker>); })}
           </MapContainer>
           </div>
+          {/* home bar */}
+          <div style={{ width: 44, height: 4, borderRadius: 3, background: "rgba(94,234,212,0.4)", marginTop: 9, flexShrink: 0 }} />
         </div>
         {/* Program Overview */}
         <div style={{ ...cardBase, display: "flex", flexDirection: "column" }}>
