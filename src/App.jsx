@@ -770,7 +770,7 @@ function PartnerFooter() {
       {/* gradient accent line */}
       <div style={{ height: 4, background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
       <div style={{ padding: "28px 16px 20px" }}>
-        <div className="pf-row" style={{ maxWidth: 1040, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 24 }}>
+        <div className="pf-row ox-stagger" style={{ maxWidth: 1040, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 24 }}>
           <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 100, objectFit: "contain" }} />
           <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
           <img className="pf-img pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 72, objectFit: "contain" }} />
@@ -790,7 +790,9 @@ function PartnerFooter() {
         .site-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 14px; overflow: hidden; box-shadow: none; background: transparent; border: none; }
         .site-popup .leaflet-popup-content { margin: 0; width: auto !important; }
         .site-popup .leaflet-popup-tip { background: #fff; box-shadow: 0 2px 8px rgba(15,118,110,0.08); }
-        .pf-img { flex-shrink: 1; min-width: 0; }
+        .pf-img { flex-shrink: 1; min-width: 0; filter: grayscale(0.35) opacity(0.88); transition: filter 0.4s ease, transform 0.4s cubic-bezier(0.16,1,0.3,1); }
+        .pf-img:hover { filter: grayscale(0) opacity(1); transform: translateY(-3px) scale(1.04); }
+        @media (prefers-reduced-motion: reduce) { .pf-img { filter: none; } .pf-img:hover { transform: none; } }
         .refresh-icon { display: none; }
         .refresh-icon-desktop { display: inline; }
         .refresh-label { display: inline; line-height: 1.4; }
@@ -903,7 +905,76 @@ class ErrorBoundary extends React.Component {
   }
 }
 export default function App() {
-  return <ErrorBoundary><AppInner /></ErrorBoundary>;
+  return <ErrorBoundary><GlobalAnimations /><AppInner /></ErrorBoundary>;
+}
+
+/* ─── Global animation library — mounted once, applies app-wide.
+   Defines entrance keyframes + reusable utility classes. Everything
+   respects prefers-reduced-motion. ─── */
+function GlobalAnimations() {
+  return (
+    <style>{`
+      @keyframes ox-fade-up { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
+      @keyframes ox-fade-in { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes ox-scale-in { from { opacity: 0; transform: scale(0.97) translateY(8px); } to { opacity: 1; transform: none; } }
+      @keyframes ox-pop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+      @keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+      @keyframes pulse { 0%,100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
+      @keyframes ox-shimmer { 0% { background-position: -180% 0; } 100% { background-position: 180% 0; } }
+      @keyframes ox-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+      @keyframes ox-sheen { 0% { transform: translateX(-120%) skewX(-18deg); } 60%,100% { transform: translateX(320%) skewX(-18deg); } }
+      @keyframes ox-grow-up { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+      .ox-bar { transform-origin: bottom; animation: ox-grow-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+      /* image gently zooms inside its frame when the parent card is hovered */
+      .ox-imgzoom img { transition: transform 0.5s cubic-bezier(0.16,1,0.3,1); }
+      .ox-imgzoom:hover img { transform: scale(1.06); }
+
+      /* tab / page content entrance */
+      .scale-in { animation: ox-scale-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+      /* staggered children entrance — add .ox-stagger to a container */
+      .ox-stagger > * { opacity: 0; animation: ox-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      .ox-stagger > *:nth-child(1) { animation-delay: 0.04s; }
+      .ox-stagger > *:nth-child(2) { animation-delay: 0.10s; }
+      .ox-stagger > *:nth-child(3) { animation-delay: 0.16s; }
+      .ox-stagger > *:nth-child(4) { animation-delay: 0.22s; }
+      .ox-stagger > *:nth-child(5) { animation-delay: 0.28s; }
+      .ox-stagger > *:nth-child(6) { animation-delay: 0.34s; }
+      .ox-stagger > *:nth-child(7) { animation-delay: 0.40s; }
+      .ox-stagger > *:nth-child(8) { animation-delay: 0.46s; }
+
+      /* single-element entrances with delay helpers */
+      .ox-in { opacity: 0; animation: ox-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+      .ox-in-d1 { animation-delay: 0.08s; }
+      .ox-in-d2 { animation-delay: 0.16s; }
+      .ox-in-d3 { animation-delay: 0.24s; }
+      .ox-in-d4 { animation-delay: 0.32s; }
+
+      .ox-float { animation: ox-float 5s ease-in-out infinite; }
+
+      /* lift-on-hover — subtle, professional */
+      .ox-lift { transition: transform 0.28s cubic-bezier(0.16,1,0.3,1), box-shadow 0.28s cubic-bezier(0.16,1,0.3,1); }
+      .ox-lift:hover { transform: translateY(-3px); box-shadow: 0 14px 34px rgba(15,118,110,0.12); }
+
+      /* sheen sweep across an element on hover (add to a position:relative, overflow:hidden parent) */
+      .ox-sheen { position: relative; overflow: hidden; }
+      .ox-sheen::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 40%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+        transform: translateX(-120%) skewX(-18deg); pointer-events: none; opacity: 0; }
+      .ox-sheen:hover::after { opacity: 1; animation: ox-sheen 0.9s ease; }
+
+      /* number count-up shimmer for big stats */
+      .ox-shimmer-text { background: linear-gradient(90deg, currentColor 30%, rgba(94,234,212,0.5) 50%, currentColor 70%);
+        background-size: 200% auto; -webkit-background-clip: text; background-clip: text; }
+
+      @media (prefers-reduced-motion: reduce) {
+        .scale-in, .ox-stagger > *, .ox-in, .ox-float, .ox-lift, .ox-sheen::after { animation: none !important; opacity: 1 !important; transform: none !important; }
+        .ox-lift:hover { transform: none; }
+      }
+    `}</style>
+  );
 }
 const SESSION_KEY = "psa_session_user";
 
@@ -1394,7 +1465,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
   return (
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       {/* ── Stat tiles ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.7fr 1fr", gap: 14, marginBottom: 20 }}>
+      <div className="ox-stagger" style={{ display: "grid", gridTemplateColumns: "1fr 1.7fr 1fr", gap: 14, marginBottom: 20 }}>
         {/* Sites Functional */}
         <div style={{ ...cardBase, padding: 22 }}>
           <div style={accentBar} />
@@ -1439,7 +1510,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
       </div>
 
       {/* ── Map + Pipeline pie ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 14, marginBottom: 20 }}>
+      <div className="ox-in ox-in-d1" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 14, marginBottom: 20 }}>
         <div style={{ borderRadius: 16, overflow: "hidden", border: `1px solid ${T.line}`, boxShadow: "0 1px 2px rgba(15,76,71,0.04)", height: 360, background: "#fff" }}>
           <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
             <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
@@ -1490,7 +1561,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
       </div>
 
       {/* ── Provider performance + Critical issues ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 14, marginBottom: 20 }}>
+      <div className="ox-in ox-in-d2" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 14, marginBottom: 20 }}>
         <div style={cardBase}>
           <div style={accentBar} />
           <div style={cardHeader}><h3 style={cardTitle}>Service Provider Performance</h3></div>
@@ -1542,15 +1613,15 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
       </div>
 
       {/* ── 6-month trend ── */}
-      <div style={cardBase}>
+      <div className="ox-in ox-in-d3" style={cardBase}>
         <div style={accentBar} />
         <div style={cardHeader}><h3 style={cardTitle}>Tickets Opened vs Resolved — Last 6 Months</h3></div>
         <div style={{ padding: "20px 22px 12px", display: "flex", alignItems: "flex-end", height: 200 }}>
-          {trend.map(m => (
+          {trend.map((m, mi) => (
             <div key={m.label + m.year} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, height: "100%", justifyContent: "flex-end" }}>
               <div style={{ display: "flex", gap: 4, alignItems: "flex-end", flex: 1, width: "100%", justifyContent: "center" }}>
-                <div title={`${m.opened} opened`} style={{ width: 15, borderRadius: "4px 4px 0 0", minHeight: 2, height: `${m.opened / trendMax * 100}%`, background: "#cfe0dd" }} />
-                <div title={`${m.resolved} resolved`} style={{ width: 15, borderRadius: "4px 4px 0 0", minHeight: 2, height: `${m.resolved / trendMax * 100}%`, background: T.teal500 }} />
+                <div title={`${m.opened} opened`} className="ox-bar" style={{ width: 15, borderRadius: "4px 4px 0 0", minHeight: 2, height: `${m.opened / trendMax * 100}%`, background: "#cfe0dd", animationDelay: `${mi * 0.08}s` }} />
+                <div title={`${m.resolved} resolved`} className="ox-bar" style={{ width: 15, borderRadius: "4px 4px 0 0", minHeight: 2, height: `${m.resolved / trendMax * 100}%`, background: T.teal500, boxShadow: "0 0 8px rgba(94,234,212,0.35)", animationDelay: `${mi * 0.08 + 0.04}s` }} />
               </div>
               <span style={{ fontSize: 10, color: T.mute, fontWeight: 600 }}>{m.label}</span>
             </div>
@@ -1624,14 +1695,14 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user })
 
   return (
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 26 }}>
+      <div className="ox-stagger" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 14, marginBottom: 26 }}>
         {[
           { label: "Operational", value: funcCount, sub: `/ ${hospitals.length}`, tag: `${hospitals.length > 0 ? Math.round(funcCount / hospitals.length * 100) : 0}% uptime`, tagType: "green", gradient: "linear-gradient(90deg, #0f766e, #2dd4a8)" },
           { label: "Open tickets", value: scoped.filter(c => !isClosedStatus(c.status)).length, tag: shutdownSites.length > 0 ? `${shutdownSites.length} critical` : null, tagType: "red", gradient: "linear-gradient(90deg, #d97706, #f59e0b)" },
           { label: "Resolved this week", value: resolvedThisWeek.length, tag: "Last 7 days", tagType: "green", gradient: "linear-gradient(90deg, #16a34a, #22c55e)" },
           { label: "Attention needed", value: attentionSites.length, tag: issueSites.length > 0 ? `${issueSites.length} with issues` : null, tagType: "amber", gradient: "linear-gradient(90deg, #dc2626, #ef4444)" },
         ].map((card, i) => (
-          <div key={i} style={{ background: "#fff", borderRadius: 16, padding: "22px", border: "1px solid #e8ecf0", position: "relative", overflow: "hidden", boxShadow: "0 1px 3px rgba(15,23,42,0.05)", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(15,118,110,0.08)"; e.currentTarget.style.transform = "translateY(-1px)"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,42,0.05)"; e.currentTarget.style.transform = "none"; }}>
+          <div key={i} className="ox-sheen" style={{ background: "#fff", borderRadius: 16, padding: "22px", border: "1px solid #e8ecf0", position: "relative", overflow: "hidden", boxShadow: "0 1px 3px rgba(15,23,42,0.05)", transition: "all 0.28s cubic-bezier(0.16,1,0.3,1)" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 12px 30px rgba(15,118,110,0.12)"; e.currentTarget.style.transform = "translateY(-3px)"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,42,0.05)"; e.currentTarget.style.transform = "none"; }}>
             <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 3, borderRadius: "0 0 3px 3px", background: card.gradient }} />
             <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>{card.label}</div>
             <div style={{ fontSize: 32, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>
@@ -2701,7 +2772,7 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
               {!refreshing && "Refresh"}
               {refreshing && <svg className="spinning" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>}
             </button>
-            <button className="tb-glass" title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)", border: "none", color: "#062825", borderRadius: 10, cursor: "pointer", padding: "7px 16px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif", textTransform: "capitalize", width: 118, boxSizing: "border-box" }}>
+            <button className="tb-glass ox-sheen" title="Sign Out" aria-label="Sign Out" onClick={onLogout} style={{ background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)", border: "none", color: "#062825", borderRadius: 10, cursor: "pointer", padding: "7px 16px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 700, letterSpacing: 0.5, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif", textTransform: "capitalize", width: 118, boxSizing: "border-box" }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
               Sign Out
             </button>
@@ -2982,11 +3053,11 @@ function EquipmentTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) 
         <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>Equipment Inventory</div>
         <input style={{ padding: "8px 14px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", width: 220, background: "#fff", color: "#111" }} placeholder="Search sites..." value={search} onChange={e => setSearch(e.target.value)} onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.tealLight} />
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
+      <div className="ox-stagger" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
         {Object.entries(GROUPS).map(([provider, sites]) => sites.filter(s => filtered.includes(s)).map(h => {
           const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null;
           return (
-            <div key={h} onClick={() => setSelectedSite(h)} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", cursor: "pointer", transition: "all 0.22s", border: "1px solid #e8ecf0", boxShadow: "0 1px 3px rgba(15,23,25,0.05)" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 28px rgba(15,118,110,0.14)"; e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.borderColor = "#0d9488"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,25,0.05)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.borderColor = "#e8ecf0"; }}>
+            <div key={h} onClick={() => setSelectedSite(h)} className="ox-imgzoom" style={{ background: "#fff", borderRadius: 16, overflow: "hidden", cursor: "pointer", transition: "all 0.28s cubic-bezier(0.16,1,0.3,1)", border: "1px solid #e8ecf0", boxShadow: "0 1px 3px rgba(15,23,25,0.05)" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 12px 32px rgba(15,118,110,0.16)"; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.borderColor = "#0d9488"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,25,0.05)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.borderColor = "#e8ecf0"; }}>
               {/* Image */}
               <div style={{ position: "relative", width: "100%", aspectRatio: "4 / 3", background: "linear-gradient(135deg, #0b3b38, #0f766e)", overflow: "hidden" }}>
                 <img src={imgSrc} alt={displayName(h)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
