@@ -1782,6 +1782,96 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
   );
 }
 
+/* ─── Novair Manager dashboard — Novair is the manufacturer for all 36 sites, so this shows
+   three territory sections (Novair, Intexim, Z-Corps). Each section: summary tiles + a card
+   per open complaint with dates, assignees and quick access to the ticket's actions. ─── */
+function NovairDashboard({ complaints, siteNotes, onViewSite }) {
+  const T = { ink: "#12211f", slate: "#5a6b68", mute: "#94a3a0", line: "#e7edec", card: "#fff", teal900: "#0b3b38", teal700: "#0f766e", teal500: "#0d9488", teal300: "#5eead4", teal100: "#ccfbf1", teal50: "#f0fdfa" };
+  const SEV = { Critical: "#c0392b", High: "#d9822b", Low: "#94a3a0" };
+  const provColor = { Novair: "#0f766e", Intexim: "#7c5cbf", "Z-Corps": "#2f9e58" };
+  const provTint = { Novair: "#f0fdfa", Intexim: "#f1edfa", "Z-Corps": "#eaf6ee" };
+
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }) : null;
+  const daysOpen = (c) => c.created_at ? Math.max(0, Math.floor((Date.now() - new Date(c.created_at)) / (1000 * 60 * 60 * 24))) : 0;
+  const statusColor = (s) => s === "Open" ? "#c0392b" : s === "Assigned" ? "#d9822b" : s === "In Progress" ? "#0f766e" : s === "Resolved" ? "#0d9488" : "#16a34a";
+  const statusBg = (s) => s === "Open" ? "#fdecec" : s === "Assigned" ? "#fef6ec" : s === "In Progress" ? "#e6f7f2" : "#e6f7f2";
+
+  const sections = ["Novair", "Intexim", "Z-Corps"].map(prov => {
+    const sites = GROUPS[prov] || [];
+    const provComplaints = complaints.filter(c => getProvider(c.hospital) === prov);
+    const open = provComplaints.filter(c => !isClosedStatus(c.status));
+    const openCards = open
+      .map(c => ({ ...c, eff: getEffectiveStatus(c), sev: c.severity || getDefaultSeverity(c.title), days: daysOpen(c) }))
+      .sort((a, b) => { const r = { Critical: 0, High: 1, Low: 2 }; return (r[a.sev] - r[b.sev]) || (b.days - a.days); });
+    const inProgress = open.filter(c => getEffectiveStatus(c) === "In Progress").length;
+    const overdue = open.filter(c => daysOpen(c) > 10).length;
+    const oneMonthAgo = new Date(); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    const resolvedMo = provComplaints.filter(c => isClosedStatus(c.status) && c.resolved_at && new Date(c.resolved_at) >= oneMonthAgo).length;
+    return { prov, siteCount: sites.length, openCount: open.length, inProgress, overdue, resolvedMo, openCards };
+  });
+
+  const cardBase = { background: T.card, borderRadius: 16, border: `1px solid ${T.line}`, boxShadow: "0 1px 2px rgba(15,76,71,0.04)", position: "relative", overflow: "hidden" };
+
+  return (
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      {sections.map((sec, si) => (
+        <div key={sec.prov} className="ox-in" style={{ marginBottom: 34, animationDelay: `${si * 0.08}s` }}>
+          {/* section header */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+            <span style={{ width: 12, height: 12, borderRadius: 4, background: provColor[sec.prov], flexShrink: 0 }} />
+            <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-0.3px", color: T.ink }}>{sec.prov} Sites</span>
+            <span style={{ fontSize: 12, color: T.mute, fontWeight: 600 }}>{sec.siteCount} sites{sec.prov === "Novair" ? " · serviced by Novair" : " · Novair resolves as manufacturer"}</span>
+            <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", padding: "4px 10px", borderRadius: 20, background: provTint[sec.prov], color: provColor[sec.prov] }}>{sec.prov === "Novair" ? "Your territory" : "Manufacturer support"}</span>
+          </div>
+          {/* summary tiles */}
+          <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
+            {[{ v: sec.openCount, l: "Open", c: "#c0392b" }, { v: sec.inProgress, l: "In Progress", c: "#d9822b" }, { v: sec.overdue, l: "Overdue", c: "#c0392b" }, { v: sec.resolvedMo, l: "Resolved (mo)", c: T.teal700 }].map((t, i) => (
+              <div key={i} style={{ flex: 1, ...cardBase, padding: "14px 16px", textAlign: "center" }}>
+                <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, color: t.c }}>{t.v}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 6 }}>{t.l}</div>
+              </div>
+            ))}
+          </div>
+          {/* complaint cards */}
+          {sec.openCards.length > 0 ? sec.openCards.map(c => {
+            const names = assigneeNames(c);
+            const visits = visitDates(c);
+            const lastVisit = visits.length ? fmtDate(visits.sort((a, b) => new Date(b) - new Date(a))[0]) : null;
+            return (
+              <div key={c.id} style={{ ...cardBase, marginBottom: 12 }}>
+                <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: SEV[c.sev] }} />
+                {/* top */}
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "15px 18px 12px 22px" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14.5, fontWeight: 800, color: T.ink, letterSpacing: "-0.2px" }}>{displayName(c.hospital)}</div>
+                    <div style={{ fontSize: 12.5, color: T.slate, marginTop: 2 }}>{c.title}</div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
+                    <span style={{ fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.04em", background: statusBg(c.eff), color: statusColor(c.eff) }}>{c.eff}</span>
+                    <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 6, color: "#fff", textTransform: "uppercase", background: SEV[c.sev] }}>{c.sev}</span>
+                  </div>
+                </div>
+                {/* meta */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 18, padding: "0 18px 12px 22px", borderBottom: `1px solid #f3f7f6` }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Reported</span><span style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>{fmtDate(c.created_at) || "—"}</span></div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Days Open</span><span style={{ fontSize: 12, fontWeight: 600, color: c.days > 10 ? "#c0392b" : T.ink }}>{c.days} day{c.days === 1 ? "" : "s"}</span></div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Assigned To</span>{names.length ? <span style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>{names.map(n => <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: T.teal50, border: `1px solid ${T.teal100}`, borderRadius: 20, padding: "2px 9px 2px 3px", fontSize: 11, fontWeight: 600, color: T.teal700 }}><span style={{ width: 16, height: 16, borderRadius: "50%", background: T.teal500, color: "#fff", fontSize: 7.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{initialsFor(n)}</span>{n}</span>)}</span> : <span style={{ fontSize: 12, fontWeight: 500, color: T.mute }}>— not assigned</span>}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Last Visit</span><span style={{ fontSize: 12, fontWeight: 600, color: lastVisit ? T.ink : T.mute }}>{lastVisit || "—"}</span></div>
+                </div>
+                {/* actions */}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: "12px 18px 14px 22px", background: "#fafcfb" }}>
+                  <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 14px", cursor: "pointer", border: "none", background: "linear-gradient(135deg, #0d9488, #0f766e)", color: "#fff", boxShadow: "0 2px 6px rgba(13,148,136,0.22)" }}>{names.length ? "Manage Ticket →" : "Assign Staff →"}</button>
+                  <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 14px", cursor: "pointer", background: "#fff", border: `1.5px solid ${T.teal300}`, color: T.teal700 }}>View Details</button>
+                </div>
+              </div>
+            );
+          }) : <div style={{ ...cardBase, padding: "26px 20px", textAlign: "center", color: T.mute, fontSize: 13 }}>No open complaints in {sec.prov} sites</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ─── Homepage: map + program pulse, shown to every non-hospital account.
    Overview (the older site-list view) remains available as its own separate tab. ─── */
 function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user }) {
@@ -3656,7 +3746,9 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
         </TopBar>
         <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px", width: "100%", flex: 1 }}>
           <div key={tab} className="scale-in">
-          {tab === "dashboard" && <HomeTab hospitals={myHospitals} groups={myGroups} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} user={user} />}
+          {tab === "dashboard" && (companyName === "Novair" && isManagerUser(user)
+            ? <NovairDashboard complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />
+            : <HomeTab hospitals={myHospitals} groups={myGroups} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} user={user} />)}
           {tab === "sites" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "equipment" && <EquipmentTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} isAdmin={false} onRefresh={onRefresh} />}
           {tab === "tickets" && !selected && (<>
