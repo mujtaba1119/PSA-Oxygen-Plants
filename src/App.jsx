@@ -1003,7 +1003,7 @@ function loadSessionUser() {
 
 function saveSessionUser(u) {
   if (!u) sessionStorage.removeItem(SESSION_KEY);
-  else sessionStorage.setItem(SESSION_KEY, JSON.stringify({ id: u.id, name: u.name, role: u.role, company: u.company || null }));
+  else sessionStorage.setItem(SESSION_KEY, JSON.stringify({ id: u.id, name: u.name, role: u.role, company: u.company || null, company_role: u.company_role || null }));
 }
 
 function LoadingScreen() {
