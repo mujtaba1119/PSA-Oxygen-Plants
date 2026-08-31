@@ -766,14 +766,14 @@ function AppHeader({ user, children, minimal }) {
 /* Partner logo footer — one line, in order: Global Fund, UNDP, Amex, Noxerior, CMU */
 function PartnerFooter() {
   return (
-    <footer style={{ background: "#0f766e", position: "relative", overflow: "hidden" }}>
-      <div style={{ padding: "20px 24px", position: "relative" }}>
-        <div className="pf-row" style={{ maxWidth: 820, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 22, flexWrap: "wrap" }}>
-          <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 74, objectFit: "contain" }} />
-          <img className="pf-img pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 46, objectFit: "contain" }} />
-          <img className="pf-img pf-amex" src={LOGO_AMEX} alt="Amex" style={{ height: 34, objectFit: "contain" }} />
-          <img className="pf-img pf-nox" src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 31, objectFit: "contain" }} />
-          <img className="pf-img pf-cmu" src={LOGO_CMU} alt="CMU" style={{ height: 58, objectFit: "contain" }} />
+    <footer style={{ background: "#0f766e", position: "relative", overflow: "hidden", marginTop: -1, borderTop: "1px solid #0f766e" }}>
+      <div style={{ padding: "18px 24px", position: "relative" }}>
+        <div className="pf-row" style={{ maxWidth: 940, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 26, flexWrap: "wrap" }}>
+          <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 96, objectFit: "contain" }} />
+          <img className="pf-img pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 60, objectFit: "contain" }} />
+          <img className="pf-img pf-amex" src={LOGO_AMEX} alt="Amex" style={{ height: 44, objectFit: "contain" }} />
+          <img className="pf-img pf-nox" src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 40, objectFit: "contain" }} />
+          <img className="pf-img pf-cmu" src={LOGO_CMU} alt="CMU" style={{ height: 74, objectFit: "contain" }} />
         </div>
       </div>
       <style>{`
@@ -787,10 +787,10 @@ function PartnerFooter() {
         /* make the leaflet attribution as small and unobtrusive as possible */
         .leaflet-control-attribution { font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important; background: rgba(255,255,255,0.55) !important; opacity: 0.65; }
         .leaflet-control-attribution a { color: #64748b !important; }
-        /* partner logos on the teal band — a thin, even white edge glow that precisely
-           separates every logo (dark or light) from the background without looking overdone. */
-        .pf-img { flex: 0 1 auto; min-width: 0; opacity: 1; transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), filter 0.35s ease; filter: drop-shadow(0 0 1.5px rgba(255,255,255,0.9)) drop-shadow(0 0 3px rgba(255,255,255,0.5)); }
-        .pf-img:hover { transform: translateY(-3px); filter: drop-shadow(0 0 1.5px rgba(255,255,255,1)) drop-shadow(0 0 6px rgba(255,255,255,0.6)); }
+        /* partner logos on the teal band — a precise thin white contour that traces each
+           logo's edge so it pops cleanly, calibrated not to bloom or look overdone. */
+        .pf-img { flex: 0 1 auto; min-width: 0; opacity: 1; transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), filter 0.35s ease; filter: drop-shadow(0 0 1px rgba(255,255,255,0.95)) drop-shadow(0 0 2px rgba(255,255,255,0.7)); }
+        .pf-img:hover { transform: translateY(-3px); filter: drop-shadow(0 0 1px rgba(255,255,255,1)) drop-shadow(0 0 4px rgba(255,255,255,0.8)); }
         @media (prefers-reduced-motion: reduce) { .pf-img:hover { transform: none; } }
         .refresh-icon { display: none; }
         .refresh-icon-desktop { display: inline; }
@@ -804,12 +804,12 @@ function PartnerFooter() {
           .refresh-label { display: none !important; }
           .refresh-btn { padding: 8px 10px !important; gap: 0 !important; }
           .tab-download-btn { position: static !important; transform: none !important; width: 100%; margin-top: 10px; text-align: center; }
-          .pf-row { gap: 6px !important; }
-          .pf-gf { height: 52px !important; }
-          .pf-undp { height: 34px !important; }
-          .pf-amex { height: 26px !important; }
-          .pf-nox { height: 24px !important; }
-          .pf-cmu { height: 42px !important; }
+          .pf-row { gap: 8px !important; }
+          .pf-gf { height: 64px !important; }
+          .pf-undp { height: 42px !important; }
+          .pf-amex { height: 30px !important; }
+          .pf-nox { height: 28px !important; }
+          .pf-cmu { height: 50px !important; }
         }
         @media (max-width: 400px) {
           .pf-row { gap: 5px !important; }
