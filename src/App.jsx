@@ -3461,7 +3461,8 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         
         
         
-        .tb-glass:hover { background: rgba(255,255,255,0.12) !important; border-color: rgba(255,255,255,0.25) !important; }
+        .refresh-btn.tb-glass:hover { background: rgba(255,255,255,0.12) !important; border-color: rgba(255,255,255,0.25) !important; }
+        .tb-glass.ox-sheen:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(13,148,136,0.35); }
         @keyframes refresh-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .spinning { animation: refresh-spin 0.7s linear infinite; transform-origin: center; }
         @media (max-width: 768px) {
