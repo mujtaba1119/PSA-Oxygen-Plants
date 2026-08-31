@@ -1910,7 +1910,12 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user })
   const providerEntries = Object.entries(groups || {}).filter(([, sites]) => sites.some(s => hospitals.includes(s)));
   const showProviderBreakdown = providerEntries.length > 1;
 
-  const isUndpCmu = user && user.role === "company" && ["UNDP", "CMU"].includes(getCompanyName(user));
+  // The UNDP/CMU oversight dashboard is also used by admin and Amex managers.
+  const isUndpCmu = user && (
+    user.role === "admin" ||
+    (user.role === "company" && ["UNDP", "CMU"].includes(getCompanyName(user))) ||
+    (user.role === "company" && getCompanyName(user) === "Amex" && isManagerUser(user))
+  );
 
   const oneMonthAgo = new Date(); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
   const resolvedThisMonth = scoped
