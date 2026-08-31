@@ -2909,8 +2909,20 @@ function SidebarNav({ items, active, onSelect, bottomItems }) {
 function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, children }) {
   return (
     <div style={{ position: "sticky", top: 0, zIndex: 90, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      <div style={{ background: "linear-gradient(120deg, #0b3b38 0%, #0f766e 50%, #0b3b38 100%)", color: "#fff", position: "relative", paddingBottom: 30 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", height: 64 }}>
+      <div style={{ position: "relative", paddingBottom: 30 }}>
+        {/* Teal header shape with a curved bottom edge — this IS the boundary. Everything
+            below the curve is transparent, so page content scrolls up behind the curve. */}
+        <svg viewBox="0 0 1200 94" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", zIndex: -1 }}>
+          <defs>
+            <linearGradient id="tb-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#0b3b38" />
+              <stop offset="0.5" stopColor="#0f766e" />
+              <stop offset="1" stopColor="#0b3b38" />
+            </linearGradient>
+          </defs>
+          <path d="M0,0 L1200,0 L1200,76 C1000,78 1000,90 750,90 C500,90 200,80 0,94 Z" fill="url(#tb-grad)" />
+        </svg>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", height: 64, color: "#fff", position: "relative" }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", letterSpacing: 1.5, textTransform: "uppercase" }}>
               {typeof title === "string" && title.includes("Oxygen") ? (<>
@@ -2934,10 +2946,6 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
             </div>
           </div>
         </div>
-        {/* Curve cutout — fills with content bg color, sits inside the gradient div. No seam possible. */}
-        <svg viewBox="0 0 1200 36" preserveAspectRatio="none" style={{ position: "absolute", bottom: 0, left: 0, width: "100%", height: 36, display: "block" }}>
-          <path d="M0,18 C200,36 500,28 750,14 C1000,0 1200,2 1200,0 L1200,36 L0,36 Z" fill="#f7f8fa"/>
-        </svg>
       </div>
     </div>
   );
