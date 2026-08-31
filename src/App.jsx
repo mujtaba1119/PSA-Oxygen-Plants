@@ -787,6 +787,10 @@ function PartnerFooter() {
         <span style={{ fontSize: 12, color: C.textLight, fontWeight: 500, letterSpacing: 0.3 }}>PSA Oxygen Plants · Management System</span>
       </div>
       <style>{`
+        /* Chrome tile seam fix: scale the whole tile layer container by a hair so the
+           sub-pixel gaps between adjacent tiles close. Scaling the container (not each
+           positioned tile) does not disturb Leaflet's per-tile placement. */
+        .leaflet-tile-container { transform: scale(1.002); transform-origin: 0 0; }
         .site-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 14px; overflow: hidden; box-shadow: none; background: transparent; border: none; }
         .site-popup .leaflet-popup-content { margin: 0; width: 316px !important; }
         .site-popup .leaflet-popup-tip { background: #fff; box-shadow: 0 2px 8px rgba(15,118,110,0.08); }
@@ -1602,7 +1606,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
 
       {/* ── Full-width tablet screen: swipe between Map and Program Overview ── */}
       <div className="ox-in ox-in-d1" style={{ marginBottom: 20 }}>
-        <div style={{ borderRadius: 30, overflow: "hidden", boxShadow: "0 18px 44px rgba(11,59,56,0.30)", height: 460, background: "#128074", position: "relative", padding: "16px 22px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ borderRadius: 30, overflow: "hidden", boxShadow: "0 18px 44px rgba(11,59,56,0.32)", height: 460, background: "#0d5f56", position: "relative", padding: "16px 22px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           {/* curved edge-screen highlights on left & right */}
           <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: 22, background: "linear-gradient(90deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02) 55%, rgba(0,0,0,0.28))", pointerEvents: "none", zIndex: 6 }} />
           <div style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: 22, background: "linear-gradient(270deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02) 55%, rgba(0,0,0,0.28))", pointerEvents: "none", zIndex: 6 }} />
