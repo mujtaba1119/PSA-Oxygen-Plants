@@ -560,8 +560,16 @@ function NotificationBell({ user, onNavigate, onFocusComplaint, light, complaint
 
   const loadNotifs = useCallback(async () => {
     const data = await fetchNotifications(userId, companyName);
-    setNotifs(data);
-  }, [userId, companyName]);
+    // Drop orphaned notifications: if a notification references a complaint that no longer
+    // exists (e.g. the ticket was deleted), it's stale — don't show it.
+    const validIds = Array.isArray(complaints) ? new Set(complaints.map(c => c.id)) : null;
+    const cleaned = (data || []).filter(n => {
+      if (!n.complaint_id) return true; // non-ticket notifications (general) stay
+      if (!validIds) return true; // complaints not loaded yet — don't hide anything
+      return validIds.has(n.complaint_id);
+    });
+    setNotifs(cleaned);
+  }, [userId, companyName, complaints]);
 
   useEffect(() => { loadNotifs(); const iv = setInterval(loadNotifs, 5000); return () => clearInterval(iv); }, [loadNotifs]);
 
