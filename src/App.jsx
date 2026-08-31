@@ -1494,6 +1494,8 @@ function Speedometer({ value, teal, dark }) {
 function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite, pkBoundary, pinColor, scoped, funcCount, openTickets, sevCounts, resolvedThisMonth, resolutionRate, raisedThisMonth, stageCounts, closedAll }) {
   const T = { ink: "#12211f", slate: "#5a6b68", mute: "#94a3a0", line: "#e7edec", card: "#fff", teal900: "#0f4c47", teal700: "#0f766e", teal500: "#0d9488", teal300: "#5eead4", teal100: "#ccfbf1", teal50: "#f0fdfa" };
   const [hoverMonth, setHoverMonth] = useState(null);
+  const [slide, setSlide] = useState(0); // 0 = Map, 1 = Program Overview
+  const touchX = useRef(null);
 
   // Critical issues: open tickets sorted by severity (Critical first) then age
   const sevRank = { Critical: 0, High: 1, Low: 2 };
@@ -1593,61 +1595,91 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
         </div>
       </div>
 
-      {/* ── Map + Pipeline pie ── */}
-      <div className="ox-in ox-in-d1" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 14, marginBottom: 20 }}>
-        <div style={{ borderRadius: 26, overflow: "hidden", border: "1px solid rgba(94,234,212,0.2)", boxShadow: "0 14px 38px rgba(11,59,56,0.34)", height: 380, background: "#0f5650", position: "relative", padding: "14px 12px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+      {/* ── Full-width tablet screen: swipe between Map and Program Overview ── */}
+      <div className="ox-in ox-in-d1" style={{ marginBottom: 20 }}>
+        <div style={{ borderRadius: 26, overflow: "hidden", border: "1px solid rgba(94,234,212,0.2)", boxShadow: "0 14px 38px rgba(11,59,56,0.34)", height: 460, background: "#0f5650", position: "relative", padding: "14px 12px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           {/* camera dot */}
           <div style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(94,234,212,0.5)", marginBottom: 8, flexShrink: 0 }} />
           {/* screen */}
-          <div style={{ flex: 1, width: "100%", borderRadius: 14, overflow: "hidden", boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.2)", background: "#dfeae8" }}>
-          <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
-            <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
-            {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: T.teal500, weight: 1.5, fillColor: T.teal100, fillOpacity: 0.15 }} />}
-            {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={330} maxWidth={370} className="site-popup"><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "row", border: "1.5px solid #e2e8f0", borderRadius: 14, overflow: "hidden", background: "#fff", boxShadow: "0 2px 12px rgba(15,118,110,0.08)" }}>
-              {imgSrc && <div style={{ width: 115, flexShrink: 0, position: "relative" }}><img src={imgSrc} alt={h} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", minHeight: 130 }} onError={e => { e.target.parentElement.style.display = "none"; }} /><div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, transparent 60%, rgba(255,255,255,0.15) 100%)" }} /></div>}
-              <div style={{ padding: "12px 16px 14px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 6, flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a", lineHeight: 1.2, letterSpacing: -0.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(h)}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#f08c00" : "#16a34a" }} /><span style={{ fontSize: 11.5, fontWeight: 600, color: s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#d97706" : "#16a34a" }}>{s}</span></div>
-                <div style={{ fontSize: 11.5, color: "#64748b", lineHeight: 1.3 }}>Service Provider: <span style={{ fontWeight: 700, color: "#0f766e" }}>{getProvider(h)}</span></div>
-                <div style={{ fontSize: 11.5, fontWeight: 600, color: openCount > 0 ? "#dc2626" : "#16a34a", display: "flex", alignItems: "center", gap: 5 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  {openCount > 0 ? `Open Tickets (${openCount})` : "No open tickets"}
+          <div
+            style={{ flex: 1, width: "100%", borderRadius: 14, overflow: "hidden", boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.2)", background: "#dfeae8", position: "relative" }}
+            onTouchStart={e => { touchX.current = e.touches[0].clientX; }}
+            onTouchEnd={e => { if (touchX.current === null) return; const dx = e.changedTouches[0].clientX - touchX.current; if (dx < -50 && slide === 0) setSlide(1); else if (dx > 50 && slide === 1) setSlide(0); touchX.current = null; }}
+          >
+            {/* slide track */}
+            <div style={{ display: "flex", width: "200%", height: "100%", transform: `translateX(-${slide * 50}%)`, transition: "transform 0.55s cubic-bezier(0.16,1,0.3,1)" }}>
+              {/* ── Panel 1: Map ── */}
+              <div style={{ width: "50%", height: "100%", position: "relative" }}>
+                <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
+                  <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+                  {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: T.teal500, weight: 1.5, fillColor: T.teal100, fillOpacity: 0.15 }} />}
+                  {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={330} maxWidth={370} className="site-popup"><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "row", border: "1.5px solid #e2e8f0", borderRadius: 14, overflow: "hidden", background: "#fff", boxShadow: "0 2px 12px rgba(15,118,110,0.08)" }}>
+                    {imgSrc && <div style={{ width: 115, flexShrink: 0, position: "relative" }}><img src={imgSrc} alt={h} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", minHeight: 130 }} onError={e => { e.target.parentElement.style.display = "none"; }} /><div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, transparent 60%, rgba(255,255,255,0.15) 100%)" }} /></div>}
+                    <div style={{ padding: "12px 16px 14px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 6, flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a", lineHeight: 1.2, letterSpacing: -0.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(h)}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#f08c00" : "#16a34a" }} /><span style={{ fontSize: 11.5, fontWeight: 600, color: s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#d97706" : "#16a34a" }}>{s}</span></div>
+                      <div style={{ fontSize: 11.5, color: "#64748b", lineHeight: 1.3 }}>Service Provider: <span style={{ fontWeight: 700, color: "#0f766e" }}>{getProvider(h)}</span></div>
+                      <div style={{ fontSize: 11.5, fontWeight: 600, color: openCount > 0 ? "#dc2626" : "#16a34a", display: "flex", alignItems: "center", gap: 5 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        {openCount > 0 ? `Open Tickets (${openCount})` : "No open tickets"}
+                      </div>
+                      <button onClick={() => onViewSite(h)} style={{ marginTop: 2, fontSize: 11.5, fontWeight: 700, color: "#fff", background: "linear-gradient(135deg, #0d9488, #0f766e)", border: "none", borderRadius: 8, padding: "7px 0", cursor: "pointer", width: "100%", letterSpacing: 0.2, boxShadow: "0 2px 8px rgba(13,148,136,0.25)" }}>View Details →</button>
+                    </div>
+                  </div></Popup><Tooltip direction="top" offset={[0, -10]}>{displayName(h)}</Tooltip></Marker>); })}
+                </MapContainer>
+                {/* peek edge → overview */}
+                {slide === 0 && (
+                  <div onClick={() => setSlide(1)} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 34, cursor: "pointer", background: "linear-gradient(90deg, rgba(15,86,80,0), rgba(15,86,80,0.85))", display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 6, zIndex: 500 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                )}
+              </div>
+              {/* ── Panel 2: Program Overview ── */}
+              <div style={{ width: "50%", height: "100%", position: "relative", background: "#fff", overflowY: "auto" }}>
+                {/* peek edge → map */}
+                {slide === 1 && (
+                  <div onClick={() => setSlide(0)} style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 34, cursor: "pointer", background: "linear-gradient(270deg, rgba(15,86,80,0), rgba(15,86,80,0.12))", display: "flex", alignItems: "center", justifyContent: "flex-start", paddingLeft: 6, zIndex: 5 }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.teal700} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                  </div>
+                )}
+                <div style={{ padding: "26px 40px", height: "100%", display: "flex", flexDirection: "column" }}>
+                  {/* headline */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
+                    <div style={{ width: 52, height: 52, borderRadius: 14, background: T.teal50, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={T.teal700} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 20h20M4 20V10l4-2v12M8 20V6l6-3v17M14 20v-9l6 2v7"/></svg>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 24, fontWeight: 800, color: T.ink, lineHeight: 1, letterSpacing: "-0.02em" }}>36 PSA Oxygen Plants</div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: T.mute, marginTop: 4 }}>Funded by the Global Fund</div>
+                    </div>
+                  </div>
+                  {/* 2x2 grid of points */}
+                  <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignContent: "center" }}>
+                    {[
+                      { icon: (<><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 20 10.2C20 17.5 12 22 12 22z"/><circle cx="12" cy="10" r="2.5"/></>), title: "Decentralized access", text: <>Installed at <b style={{ color: T.ink }}>District & Tehsil hospitals</b> to ease pressure on major-city tertiary care.</> },
+                      { icon: (<><path d="M12 2v6M12 8l3.5 3.5M12 8L8.5 11.5"/><circle cx="12" cy="16" r="6"/></>), title: "On-site generation", text: <>Medical-grade oxygen via Pressure Swing Adsorption — a <b style={{ color: T.ink }}>dual-unit (duplex) system, 37.5 Nm³/h per unit</b>.</> },
+                      { icon: (<><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M8 4v6M13 4v6M18 4v6"/></>), title: "Bedside delivery", text: <>Piped oxygen supply to <b style={{ color: T.ink }}>50 bed-head panels</b> in every hospital.</> },
+                      { icon: (<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></>), title: "Local ownership", text: <>Staff trained and plants <b style={{ color: T.ink }}>handed to hospital management</b> for day-to-day operations.</> },
+                    ].map((p, i) => (
+                      <div key={i} style={{ background: T.teal50, borderRadius: 14, padding: "18px 18px", border: `1px solid ${T.line}` }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 8 }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.teal600 || T.teal500} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>{p.icon}</svg>
+                          <div style={{ fontSize: 13.5, fontWeight: 800, color: T.teal700, letterSpacing: "-0.01em" }}>{p.title}</div>
+                        </div>
+                        <div style={{ fontSize: 12.5, color: T.slate, lineHeight: 1.5 }}>{p.text}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <button onClick={() => onViewSite(h)} style={{ marginTop: 2, fontSize: 11.5, fontWeight: 700, color: "#fff", background: "linear-gradient(135deg, #0d9488, #0f766e)", border: "none", borderRadius: 8, padding: "7px 0", cursor: "pointer", width: "100%", letterSpacing: 0.2, boxShadow: "0 2px 8px rgba(13,148,136,0.25)" }}>View Details →</button>
-              </div>
-            </div></Popup><Tooltip direction="top" offset={[0, -10]}>{displayName(h)}</Tooltip></Marker>); })}
-          </MapContainer>
-          </div>
-          {/* home bar */}
-          <div style={{ width: 44, height: 4, borderRadius: 3, background: "rgba(94,234,212,0.4)", marginTop: 9, flexShrink: 0 }} />
-        </div>
-        {/* Program Overview */}
-        <div style={{ ...cardBase, display: "flex", flexDirection: "column" }}>
-          <div style={accentBar} />
-          <div style={cardHeader}><h3 style={cardTitle}>Program Overview</h3></div>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 18px", gap: 13 }}>
-            {/* headline: 36 plants */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 11, background: T.teal50, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.teal700} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 20h20M4 20V10l4-2v12M8 20V6l6-3v17M14 20v-9l6 2v7"/></svg>
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 20, fontWeight: 800, color: T.ink, lineHeight: 1, letterSpacing: "-0.02em" }}>36 PSA Oxygen Plants</div>
-                <div style={{ fontSize: 10.5, fontWeight: 600, color: T.mute, marginTop: 3 }}>Funded by the Global Fund</div>
               </div>
             </div>
-            <div style={{ height: 1, background: T.line }} />
-            {/* verified project points */}
-            {[
-              { icon: (<><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 20 10.2C20 17.5 12 22 12 22z"/><circle cx="12" cy="10" r="2.5"/></>), text: <>Installed at <b style={{ color: T.ink }}>District & Tehsil hospitals</b> to ease pressure on major-city tertiary care</> },
-              { icon: (<><path d="M12 2v6M12 8l3.5 3.5M12 8L8.5 11.5"/><circle cx="12" cy="16" r="6"/></>), text: <>On-site medical-grade oxygen via PSA, <b style={{ color: T.ink }}>37.5 Nm³/h</b> per plant</> },
-              { icon: (<><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M8 4v6M13 4v6M18 4v6"/></>), text: <><b style={{ color: T.ink }}>50 bed-head panels</b> per hospital — 10 × 1500 mm and 40 × 1200 mm</> },
-              { icon: (<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></>), text: <>Local staff trained; plants <b style={{ color: T.ink }}>handed to hospital management</b> for long-term upkeep</> },
-            ].map((p, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.teal500} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>{p.icon}</svg>
-                <div style={{ fontSize: 11.5, color: T.slate, lineHeight: 1.4 }}>{p.text}</div>
-              </div>
+          </div>
+          {/* dots */}
+          <div style={{ display: "flex", gap: 8, marginTop: 11, flexShrink: 0, alignItems: "center" }}>
+            {["Map", "Program Overview"].map((label, i) => (
+              <button key={i} onClick={() => setSlide(i)} title={label} style={{ border: "none", cursor: "pointer", padding: 0, background: "transparent", display: "flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: slide === i ? 22 : 8, height: 8, borderRadius: 5, background: slide === i ? "#5eead4" : "rgba(94,234,212,0.35)", transition: "all 0.35s cubic-bezier(0.16,1,0.3,1)", boxShadow: slide === i ? "0 0 8px rgba(94,234,212,0.5)" : "none" }} />
+              </button>
             ))}
           </div>
         </div>
