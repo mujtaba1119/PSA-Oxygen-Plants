@@ -773,7 +773,7 @@ function PartnerFooter() {
     delay: -Math.random() * 8,
   })), []);
   return (
-    <footer style={{ background: "linear-gradient(180deg, #0c332f 0%, #0b2b28 100%)", position: "relative", overflow: "hidden" }}>
+    <footer style={{ background: "linear-gradient(180deg, #0b3b38 0%, #0f5650 55%, #0f766e 100%)", position: "relative", overflow: "hidden" }}>
       {/* drifting oxygen bubbles */}
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }} aria-hidden="true">
         {bubbles.map((b, i) => (
@@ -802,8 +802,9 @@ function PartnerFooter() {
         /* make the leaflet attribution as small and unobtrusive as possible */
         .leaflet-control-attribution { font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important; background: rgba(255,255,255,0.55) !important; opacity: 0.65; }
         .leaflet-control-attribution a { color: #64748b !important; }
-        /* partner logos on the dark molecule band — logos are light/white marks so shown as-is */
-        .pf-img { flex: 0 1 auto; min-width: 0; opacity: 0.92; transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1); }
+        /* partner logos on the dark teal band — a soft white halo lifts dark/low-contrast
+           logos so they stay visible without adding a background plate. */
+        .pf-img { flex: 0 1 auto; min-width: 0; opacity: 0.95; transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1); filter: drop-shadow(0 0 1px rgba(255,255,255,0.9)) drop-shadow(0 0 6px rgba(255,255,255,0.55)) brightness(1.04); }
         .pf-img:hover { opacity: 1; transform: translateY(-4px); }
         /* drifting oxygen bubbles */
         .pf-bubble { position: absolute; bottom: -14px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, rgba(138,255,234,0.65), rgba(13,148,136,0)); animation-name: pf-drift; animation-timing-function: linear; animation-iteration-count: infinite; }
