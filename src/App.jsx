@@ -768,12 +768,12 @@ function PartnerFooter() {
   return (
     <footer className="pf-footer" style={{ background: "#0f766e", position: "relative", overflow: "hidden" }}>
       <div style={{ padding: "18px 24px", position: "relative" }}>
-        <div className="pf-row" style={{ maxWidth: 960, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 18, flexWrap: "wrap" }}>
-          <div className="pf-plate"><img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 62, objectFit: "contain" }} /></div>
-          <div className="pf-plate"><img className="pf-img pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 52, objectFit: "contain" }} /></div>
-          <div className="pf-plate"><img className="pf-img pf-amex" src={LOGO_AMEX} alt="Amex" style={{ height: 40, objectFit: "contain" }} /></div>
-          <div className="pf-plate"><img className="pf-img pf-nox" src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 36, objectFit: "contain" }} /></div>
-          <div className="pf-plate"><img className="pf-img pf-cmu" src={LOGO_CMU} alt="CMU" style={{ height: 60, objectFit: "contain" }} /></div>
+        <div className="pf-row" style={{ maxWidth: 940, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 30, flexWrap: "wrap" }}>
+          <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 60, objectFit: "contain" }} />
+          <img className="pf-img pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 58, objectFit: "contain" }} />
+          <img className="pf-img pf-amex" src={LOGO_AMEX} alt="Amex" style={{ height: 42, objectFit: "contain" }} />
+          <img className="pf-img pf-nox" src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 38, objectFit: "contain" }} />
+          <img className="pf-img pf-cmu" src={LOGO_CMU} alt="CMU" style={{ height: 66, objectFit: "contain" }} />
         </div>
       </div>
       <style>{`
@@ -787,12 +787,18 @@ function PartnerFooter() {
         /* make the leaflet attribution as small and unobtrusive as possible */
         .leaflet-control-attribution { font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important; background: rgba(255,255,255,0.55) !important; opacity: 0.65; }
         .leaflet-control-attribution a { color: #64748b !important; }
-        /* each partner logo sits on a soft white rounded plate so full brand colours and
-           small text stay perfectly legible against the teal footer. */
-        .pf-plate { background: #ffffff; border-radius: 14px; padding: 14px 22px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(0,0,0,0.14); transition: transform 0.3s cubic-bezier(0.16,1,0.3,1), box-shadow 0.3s ease; }
-        .pf-plate:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,0.20); }
-        .pf-img { flex: 0 1 auto; min-width: 0; display: block; }
-        @media (prefers-reduced-motion: reduce) { .pf-plate:hover { transform: none; } }
+        /* partner logos kept in full colour, lifted off the teal with a dense white outline:
+           many tight white drop-shadows stacked in all directions build a continuous white
+           edge around every stroke — thick enough that even fine dark text stays readable. */
+        .pf-img { flex: 0 1 auto; min-width: 0; display: block; transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+          filter:
+            drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff)
+            drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)
+            drop-shadow(0.7px 0.7px 0 #fff) drop-shadow(-0.7px 0.7px 0 #fff)
+            drop-shadow(0.7px -0.7px 0 #fff) drop-shadow(-0.7px -0.7px 0 #fff)
+            drop-shadow(0 0 2px rgba(255,255,255,0.9)); }
+        .pf-img:hover { transform: translateY(-3px); }
+        @media (prefers-reduced-motion: reduce) { .pf-img:hover { transform: none; } }
         .refresh-icon { display: none; }
         .refresh-icon-desktop { display: inline; }
         .refresh-label { display: inline; line-height: 1.4; }
