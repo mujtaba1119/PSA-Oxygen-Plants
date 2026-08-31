@@ -1886,6 +1886,57 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
     );
   };
 
+  // Novair ticket tile: site+title top-left, equipment icon+serial top-right, dates+actions in body
+  const renderNovairTicket = (c) => {
+    const names = assigneeNames(c);
+    const visits = visitDates(c);
+    const lastVisit = visits.length ? fmtDate(visits.sort((a, b) => new Date(b) - new Date(a))[0]) : null;
+    const metaItem = (label, value, dim) => (
+      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+        <span style={{ fontSize: 9, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: dim ? T.mute : T.ink }}>{value}</span>
+      </div>
+    );
+    return (
+      <div key={c.id} style={{ ...cardBase, marginBottom: 12 }}>
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: SEV[c.sev] }} />
+        {/* header: site+title | equipment icon + serial */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "16px 20px 14px 24px", borderBottom: `1px solid #f3f7f6` }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: T.ink, letterSpacing: "-0.2px", lineHeight: 1.2 }}>{displayName(c.hospital)}</div>
+            <div style={{ fontSize: 12.5, color: T.slate, marginTop: 4, fontWeight: 500 }}>{c.title}</div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 11, background: T.teal50, border: `1px solid ${T.teal100}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.teal700} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+            </div>
+            <span style={{ fontSize: 10, fontWeight: 700, color: c.serials.length ? T.teal700 : T.mute, fontFamily: "'DM Mono', monospace" }}>{c.serials.length ? c.serials.join(", ") : "—"}</span>
+          </div>
+        </div>
+        {/* body: status + dates + assignees */}
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 22, padding: "13px 20px 13px 24px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>Status</span>
+            <span style={{ fontSize: 11, fontWeight: 800, color: statusColor(c.eff) }}>{c.eff}</span>
+          </div>
+          {metaItem("Opened", fmtDate(c.created_at) || "—")}
+          {c.assigned_at && metaItem("Assigned", fmtDate(c.assigned_at))}
+          {metaItem("Days Open", `${c.days} day${c.days === 1 ? "" : "s"}`)}
+          {lastVisit && metaItem("Last Visit", lastVisit)}
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <span style={{ fontSize: 9, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>Assigned To</span>
+            {names.length ? <span style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>{names.map(n => <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: T.teal50, border: `1px solid ${T.teal100}`, borderRadius: 20, padding: "2px 9px 2px 3px", fontSize: 11, fontWeight: 600, color: T.teal700 }}><span style={{ width: 16, height: 16, borderRadius: "50%", background: T.teal500, color: "#fff", fontSize: 7.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{initialsFor(n)}</span>{n}</span>)}</span> : <span style={{ fontSize: 12, fontWeight: 500, color: T.mute }}>— not assigned</span>}
+          </div>
+        </div>
+        {/* actions */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: "12px 20px 14px 24px", background: "#fafcfb", borderTop: `1px solid #f3f7f6` }}>
+          <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 14px", cursor: "pointer", border: "none", background: "linear-gradient(135deg, #0d9488, #0f766e)", color: "#fff", boxShadow: "0 2px 6px rgba(13,148,136,0.22)" }}>{names.length ? "Manage Ticket →" : "Assign Staff →"}</button>
+          <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 14px", cursor: "pointer", background: "#fff", border: `1.5px solid ${T.teal300}`, color: T.teal700 }}>View Details</button>
+        </div>
+      </div>
+    );
+  };
+
   // renders one territory (Intexim / Z-Corps) with collapse + summary tiles
   const renderTerritory = (sec) => {
     const isCollapsed = collapsed[sec.prov];
@@ -1975,15 +2026,22 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
 
       {/* ── Novair own sites ── */}
       <div className="ox-in" style={{ marginBottom: 30 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-          <span style={{ width: 12, height: 12, borderRadius: 4, background: provColor.Novair, flexShrink: 0 }} />
-          <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.3px", color: T.ink }}>Novair</span>
-          <span style={{ fontSize: 13, color: T.mute, fontWeight: 600 }}>— {novair.siteCount} sites</span>
+        {/* dark table heading */}
+        <div style={{ ...darkCard, padding: "14px 22px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={darkAccent} />
+          <div style={{ width: 38, height: 38, borderRadius: 11, background: "rgba(94,234,212,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5eead4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M6 21V8l6-4 6 4v13"/><path d="M10 21v-5h4v5"/><circle cx="12" cy="10" r="1.5"/></svg>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", letterSpacing: "-0.3px" }}>Novair</div>
+            <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.6)", fontWeight: 600, marginTop: 2 }}>{novair.siteCount} sites serviced</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 26, fontWeight: 800, color: novair.openCount > 0 ? "#5eead4" : "#fff", lineHeight: 1 }}>{novair.openCount}</div>
+            <div style={{ fontSize: 9.5, fontWeight: 700, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 4 }}>Open Tickets</div>
+          </div>
         </div>
-        <div style={{ fontSize: 13, color: T.slate, fontWeight: 600, marginBottom: 16 }}>
-          <b style={{ color: novair.openCount > 0 ? "#c0392b" : T.teal700, fontSize: 15 }}>{novair.openCount}</b> open ticket{novair.openCount === 1 ? "" : "s"}
-        </div>
-        {novair.openCards.length > 0 ? novair.openCards.map(renderCard) : (
+        {novair.openCards.length > 0 ? novair.openCards.map(renderNovairTicket) : (
           <div style={{ ...cardBase, padding: "16px 20px", display: "flex", alignItems: "center", gap: 10, color: T.teal700, fontSize: 13, fontWeight: 600 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.teal500} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             All clear — no open tickets in Novair sites
