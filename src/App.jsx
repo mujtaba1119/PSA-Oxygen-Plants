@@ -2954,7 +2954,7 @@ function MaintenancePage() {
       </div>
       <h2 style={{ fontSize: 20, fontWeight: 700, color: C.black, margin: "0 0 8px" }}>Maintenance Records</h2>
       <p style={{ fontSize: 14, color: C.textLight, maxWidth: 400, margin: "0 auto", lineHeight: 1.6 }}>
-        Preventive and corrective maintenance records for each site will be managed here. Track running hours, parts replaced, and upload PDF service reports.
+        Preventive and corrective maintenance records for each site will be managed here.
       </p>
       <div style={{ marginTop: 24, padding: "14px 24px", background: C.tealBg, border: `1px solid ${C.tealLight}`, display: "inline-block", fontSize: 12, fontWeight: 600, color: C.tealDark, letterSpacing: 0.5 }}>COMING SOON</div>
     </div>
@@ -2969,7 +2969,7 @@ function AnalyticsPage() {
       </div>
       <h2 style={{ fontSize: 20, fontWeight: 700, color: C.black, margin: "0 0 8px" }}>Analytics & Insights</h2>
       <p style={{ fontSize: 14, color: C.textLight, maxWidth: 400, margin: "0 auto", lineHeight: 1.6 }}>
-        Data visualization and analysis — resolution time trends, failure rates by equipment type, provider performance comparison, and site uptime tracking.
+        Data visualization and analysis.
       </p>
       <div style={{ marginTop: 24, padding: "14px 24px", background: C.tealBg, border: `1px solid ${C.tealLight}`, display: "inline-block", fontSize: 12, fontWeight: 600, color: C.tealDark, letterSpacing: 0.5 }}>COMING SOON</div>
     </div>
