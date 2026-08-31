@@ -1618,8 +1618,10 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
                   {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; const sc = s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#d97706" : "#16a34a"; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={340} maxWidth={340} className="site-popup"><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "row", alignItems: "stretch", border: "1.5px solid #e2e8f0", borderRadius: 16, background: "#fff", boxShadow: "0 6px 20px rgba(15,118,110,0.14)", padding: 12, gap: 12 }}>
                     {/* image column — fixed square, does not stretch */}
                     <div style={{ flexShrink: 0, width: 96, height: 96, alignSelf: "center", borderRadius: 12, overflow: "hidden", background: "linear-gradient(135deg, #0b3b38, #0f766e)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-                      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="rgba(94,234,212,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
-                      {imgSrc && <img src={imgSrc} alt={fullHospitalName(h)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; }} />}
+                      {imgSrc ? (
+                        <img src={imgSrc} alt={fullHospitalName(h)} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.target.style.display = "none"; if (e.target.nextSibling) e.target.nextSibling.style.display = "block"; }} />
+                      ) : null}
+                      <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="rgba(94,234,212,0.5)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: imgSrc ? "none" : "block" }}><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
                     </div>
                     {/* right: info + button */}
                     <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1, gap: 5 }}>
@@ -1683,40 +1685,44 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
       {/* ── Provider performance + Critical issues ── */}
       <div className="ox-in ox-in-d2" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 14, marginBottom: 20 }}>
         <div style={cardBase}>
-          <div style={accentBar} />
+          <div style={{ ...accentBar, background: "linear-gradient(90deg, #0f766e, #14b8a6)", opacity: 0.75 }} />
           <div style={cardHeader}><h3 style={cardTitle}>Service Provider Performance</h3></div>
-          <div style={{ padding: "6px 18px 14px" }}>
-            {providerRows.map((r, i) => (
-              <div key={r.prov} style={{ padding: "16px 0", borderBottom: i < providerRows.length - 1 ? `1px solid #f3f7f6` : "none" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                  <div style={{ width: 38, height: 38, borderRadius: 11, background: provColors[r.prov] || T.teal700, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 13, flexShrink: 0, letterSpacing: 0.3 }}>{r.prov[0]}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: T.ink }}>{r.prov}</div>
-                    <div style={{ fontSize: 11, color: T.mute, fontWeight: 500 }}>{r.siteCount} sites · {r.total} tickets all-time</div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 18, fontWeight: 800, color: r.rate === null ? T.mute : T.ink, lineHeight: 1 }}>{r.rate === null ? "—" : `${r.rate}%`}</div>
-                    <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: T.mute, marginTop: 3 }}>Resolution</div>
-                  </div>
-                </div>
-                {/* rate bar */}
-                <div style={{ height: 6, borderRadius: 4, background: "#eef4f2", overflow: "hidden", marginBottom: 10 }}>
-                  <div style={{ height: "100%", borderRadius: 4, width: `${r.rate || 0}%`, background: `linear-gradient(90deg, ${provColors[r.prov] || T.teal700}, ${T.teal300})`, transition: "width 1s cubic-bezier(0.16,1,0.3,1)" }} />
-                </div>
-                {/* open / closed chips */}
-                <div style={{ display: "flex", gap: 8 }}>
-                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "6px 0", borderRadius: 8, background: r.open > 0 ? "#fef6ec" : "#f4f7f6" }}>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: r.open > 0 ? "#d9822b" : T.mute }}>{r.open}</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: T.slate }}>Open</span>
-                  </div>
-                  <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "6px 0", borderRadius: 8, background: "#f0fdfa" }}>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: T.teal700 }}>{r.closed}</span>
-                    <span style={{ fontSize: 10, fontWeight: 600, color: T.slate }}>Closed</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                {["Provider", "Sites", "Open", "Closed", "Resolution Rate"].map((th, i) => (
+                  <th key={th} style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.07em", padding: "12px 14px 9px", textAlign: i === 0 ? "left" : i === 4 ? "left" : "center", borderBottom: `1px solid ${T.line}` }}>{th}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {providerRows.map((r, i) => (
+                <tr key={r.prov} style={{ borderBottom: i < providerRows.length - 1 ? `1px solid #f3f7f6` : "none" }}>
+                  <td style={{ padding: "13px 14px", textAlign: "left" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                      <span style={{ width: 26, height: 26, borderRadius: 8, background: provColors[r.prov] || T.teal700, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 11, flexShrink: 0 }}>{r.prov[0]}</span>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: T.ink }}>{r.prov}</span>
+                    </div>
+                  </td>
+                  <td style={{ padding: "13px 14px", textAlign: "center", fontSize: 13, fontWeight: 600, color: T.slate }}>{r.siteCount}</td>
+                  <td style={{ padding: "13px 14px", textAlign: "center", fontSize: 13, fontWeight: 800, color: r.open > 0 ? "#d9822b" : T.mute }}>{r.open}</td>
+                  <td style={{ padding: "13px 14px", textAlign: "center", fontSize: 13, fontWeight: 800, color: T.teal700 }}>{r.closed}</td>
+                  <td style={{ padding: "13px 14px", textAlign: "left", minWidth: 130 }}>
+                    {r.rate === null ? (
+                      <span style={{ fontSize: 13, fontWeight: 700, color: T.mute }}>—</span>
+                    ) : (
+                      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                        <div style={{ flex: 1, height: 6, borderRadius: 4, background: "#eef4f2", overflow: "hidden" }}>
+                          <div style={{ height: "100%", borderRadius: 4, width: `${r.rate}%`, background: `linear-gradient(90deg, ${provColors[r.prov] || T.teal700}, ${T.teal300})`, transition: "width 1s cubic-bezier(0.16,1,0.3,1)" }} />
+                        </div>
+                        <span style={{ fontSize: 12.5, fontWeight: 800, color: T.ink, minWidth: 34, textAlign: "right" }}>{r.rate}%</span>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         <div style={cardBase}>
