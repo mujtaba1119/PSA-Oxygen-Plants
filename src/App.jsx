@@ -766,7 +766,7 @@ function AppHeader({ user, children, minimal }) {
 /* Partner logo footer — one line, in order: Global Fund, UNDP, Amex, Noxerior, CMU */
 function PartnerFooter() {
   return (
-    <footer style={{ background: "#0f766e", position: "relative", overflow: "hidden", marginTop: -1, borderTop: "1px solid #0f766e" }}>
+    <footer className="pf-footer" style={{ background: "#0f766e", position: "relative", overflow: "hidden" }}>
       <div style={{ padding: "18px 24px", position: "relative" }}>
         <div className="pf-row" style={{ maxWidth: 940, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 26, flexWrap: "wrap" }}>
           <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 96, objectFit: "contain" }} />
@@ -787,10 +787,11 @@ function PartnerFooter() {
         /* make the leaflet attribution as small and unobtrusive as possible */
         .leaflet-control-attribution { font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important; background: rgba(255,255,255,0.55) !important; opacity: 0.65; }
         .leaflet-control-attribution a { color: #64748b !important; }
-        /* partner logos on the teal band — a precise thin white contour that traces each
-           logo's edge so it pops cleanly, calibrated not to bloom or look overdone. */
-        .pf-img { flex: 0 1 auto; min-width: 0; opacity: 1; transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), filter 0.35s ease; filter: drop-shadow(0 0 1px rgba(255,255,255,0.95)) drop-shadow(0 0 2px rgba(255,255,255,0.7)); }
-        .pf-img:hover { transform: translateY(-3px); filter: drop-shadow(0 0 1px rgba(255,255,255,1)) drop-shadow(0 0 4px rgba(255,255,255,0.8)); }
+        /* partner logos on the teal band — rendered as clean white marks so every stroke,
+           including small text (Amex, Noxerior, CMU), is fully visible. Standard practice
+           for logos on a dark brand surface. */
+        .pf-img { flex: 0 1 auto; min-width: 0; opacity: 1; transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.35s ease; filter: brightness(0) invert(1); opacity: 0.94; }
+        .pf-img:hover { transform: translateY(-3px); opacity: 1; }
         @media (prefers-reduced-motion: reduce) { .pf-img:hover { transform: none; } }
         .refresh-icon { display: none; }
         .refresh-icon-desktop { display: inline; }
@@ -2969,7 +2970,7 @@ function AnalyticsPage() {
 
 /* ─── Sidebar Styles ─── */
 const sidebarStyles = {
-  nav: { background: "linear-gradient(180deg, #0b3b38 0%, #0f5650 55%, #0f766e 100%)", display: "flex", flexDirection: "column", padding: 0, alignItems: "stretch", width: 180, minHeight: "100vh", position: "fixed", top: 0, left: 0, zIndex: 100, fontFamily: "'DM Sans', system-ui, sans-serif" },
+  nav: { background: "linear-gradient(180deg, #0b3b38 0%, #0f5650 40%, #0f766e 65%, #0f766e 100%)", display: "flex", flexDirection: "column", padding: 0, alignItems: "stretch", width: 180, minHeight: "100vh", position: "fixed", top: 0, left: 0, zIndex: 100, fontFamily: "'DM Sans', system-ui, sans-serif" },
   items: { display: "flex", flexDirection: "column", gap: 2, padding: "4px 8px" },
   item: { display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, cursor: "pointer", transition: "all 0.2s", position: "relative" },
   itemActive: { background: "rgba(94,234,212,0.1)", border: "1px solid rgba(94,234,212,0.12)" },
@@ -3762,3 +3763,4 @@ const styles = {
   ovCellOpen: { flex: 1, minWidth: 170 },
   ovCellNote: { flex: 1, minWidth: 170, borderRight: "none" },
 };
+
