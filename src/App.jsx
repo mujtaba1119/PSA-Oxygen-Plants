@@ -1034,6 +1034,7 @@ function AppInner() {
   const reload = useCallback(async () => {
     const [c, u, e, s] = await Promise.all([fetchComplaints(), fetchUsers(), fetchEmails(), fetchSiteNotes()]);
     setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s);
+    return u;
   }, []);
 
   useEffect(() => { setReady(true); }, []);
@@ -1045,7 +1046,22 @@ function AppInner() {
     }
     let cancelled = false;
     setDataReady(false);
-    reload().then(() => { if (!cancelled) setDataReady(true); });
+    reload().then((freshUsers) => {
+      if (cancelled) return;
+      // Re-hydrate the logged-in user from the fresh DB record. A restored session may be
+      // missing fields like company_role (older sessions didn't store it), which would make
+      // role-based dashboard routing fall back to the wrong (old) view until re-login. Merging
+      // the fresh record in fixes that without forcing a sign-out.
+      if (Array.isArray(freshUsers) && user?.id != null) {
+        const full = freshUsers.find(x => x.id === user.id);
+        if (full && (full.company_role !== user.company_role || full.company !== user.company || full.role !== user.role)) {
+          const merged = { ...user, ...full };
+          saveSessionUser(merged);
+          setUser(merged);
+        }
+      }
+      setDataReady(true);
+    });
     return () => { cancelled = true; };
   }, [user, reload]);
 
