@@ -2911,10 +2911,11 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
       <div style={{ position: "relative", paddingBottom: 30 }}>
         {/* Teal header shape with a curved bottom edge — this IS the boundary. Everything
             below the curve is transparent, so page content scrolls up behind the curve. */}
-        <svg viewBox="0 0 1200 94" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", zIndex: -1 }}>
+        <svg viewBox="0 0 1200 94" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", zIndex: 0 }}>
           <defs>
             <linearGradient id="tb-grad" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stopColor="#0b3b38" />
+              <stop offset="0.12" stopColor="#0d524c" />
               <stop offset="0.5" stopColor="#0f766e" />
               <stop offset="1" stopColor="#0b3b38" />
             </linearGradient>
