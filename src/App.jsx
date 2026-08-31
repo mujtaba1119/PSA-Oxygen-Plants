@@ -1605,30 +1605,30 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
         <div style={{ ...cardBase, display: "flex", flexDirection: "column" }}>
           <div style={accentBar} />
           <div style={cardHeader}><h3 style={cardTitle}>Program Overview</h3></div>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 18px", gap: 14 }}>
-            {/* headline facts */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 18px", gap: 13 }}>
+            {/* headline: 36 plants */}
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 40, height: 40, borderRadius: 11, background: T.teal50, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.teal700} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01"/></svg>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 20, fontWeight: 800, color: T.ink, lineHeight: 1, letterSpacing: "-0.02em" }}>36 PSA Oxygen Plants</div>
+                <div style={{ fontSize: 10.5, fontWeight: 600, color: T.mute, marginTop: 3 }}>Funded by the Global Fund</div>
+              </div>
+            </div>
+            <div style={{ height: 1, background: T.line }} />
+            {/* unique project points */}
             {[
-              { icon: (<><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01"/></>), label: "PSA Oxygen Plants", value: "36" },
-              { icon: (<><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>), label: "Total Investment", value: "$52M" },
-              { icon: (<><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>), label: "Provinces + ICT", value: "4 + 1" },
-            ].map((f, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 38, height: 38, borderRadius: 11, background: T.teal50, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={T.teal700} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{f.icon}</svg>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 19, fontWeight: 800, color: T.ink, lineHeight: 1, letterSpacing: "-0.02em" }}>{f.value}</div>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 3 }}>{f.label}</div>
-                </div>
+              { icon: (<><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 20 10.2C20 17.5 12 22 12 22z"/><circle cx="12" cy="10" r="2.5"/></>), text: <>Installed at <b style={{ color: T.ink }}>District & Tehsil hospitals</b> to ease pressure on major-city tertiary care</> },
+              { icon: (<><path d="M12 2v6M12 8l3.5 3.5M12 8L8.5 11.5"/><circle cx="12" cy="16" r="6"/></>), text: <>On-site <b style={{ color: T.ink }}>medical-grade oxygen</b> via Pressure Swing Adsorption</> },
+              { icon: (<><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></>), text: <>Solar-powered climate systems for <b style={{ color: T.ink }}>energy resilience</b></> },
+              { icon: (<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></>), text: <>Local staff <b style={{ color: T.ink }}>trained & handed ownership</b> for long-term upkeep</> },
+            ].map((p, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.teal500} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>{p.icon}</svg>
+                <div style={{ fontSize: 11.5, color: T.slate, lineHeight: 1.4 }}>{p.text}</div>
               </div>
             ))}
-            {/* divider */}
-            <div style={{ height: 1, background: T.line, margin: "2px 0" }} />
-            {/* partners + tech */}
-            <div style={{ fontSize: 11, color: T.slate, lineHeight: 1.5 }}>
-              Funded by the <b style={{ color: T.teal700 }}>Global Fund</b>, delivered by <b style={{ color: T.teal700 }}>UNDP</b> with the Ministry of Health's <b style={{ color: T.teal700 }}>CMU</b>. Pressure Swing Adsorption (PSA) technology supplying medical-grade oxygen to public hospitals nationwide.
-            </div>
-            <div style={{ fontSize: 10, color: T.mute, fontWeight: 600, letterSpacing: "0.03em" }}>Mar 2022 — Dec 2025</div>
           </div>
         </div>
       </div>
