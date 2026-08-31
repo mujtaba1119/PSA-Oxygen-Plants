@@ -1618,7 +1618,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
             {/* slide track */}
             <div style={{ display: "flex", width: "200%", height: "100%", transform: `translateX(-${slide * 50}%)`, transition: "transform 0.6s cubic-bezier(0.65, 0, 0.35, 1)" }}>
               {/* ── Panel 1: Map ── */}
-              <div style={{ width: "50%", height: "100%", position: "relative", transition: "opacity 0.6s ease, filter 0.6s ease", opacity: slide === 0 ? 1 : 0.4, filter: slide === 0 ? "none" : "blur(1px)" }}>
+              <div style={{ width: "50%", height: "100%", position: "relative" }}>
                 <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
                   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
                   {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: T.teal500, weight: 1.5, fillColor: T.teal100, fillOpacity: 0.15 }} />}
@@ -1645,7 +1645,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
                 </MapContainer>
               </div>
               {/* ── Panel 2: Program Overview ── */}
-              <div style={{ width: "50%", height: "100%", position: "relative", background: "#fff", overflowY: "auto", transition: "opacity 0.6s ease, filter 0.6s ease", opacity: slide === 1 ? 1 : 0.4, filter: slide === 1 ? "none" : "blur(1px)" }}>
+              <div style={{ width: "50%", height: "100%", position: "relative", background: "#fff", overflowY: "auto" }}>
                 <div style={{ padding: "26px 40px", height: "100%", display: "flex", flexDirection: "column" }}>
                   {/* headline */}
                   <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
