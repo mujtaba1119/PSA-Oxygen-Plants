@@ -766,25 +766,17 @@ function AppHeader({ user, children, minimal }) {
 /* Partner logo footer — one line, in order: Global Fund, UNDP, Amex, Noxerior, CMU */
 function PartnerFooter() {
   return (
-    <footer style={{ background: "#f4f6f7", boxShadow: "0 -4px 16px rgba(0,0,0,0.04)" }}>
-      {/* gradient accent line */}
-      <div style={{ height: 4, background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
-      <div style={{ padding: "28px 16px 20px" }}>
-        <div className="pf-row ox-stagger" style={{ maxWidth: 1040, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 24 }}>
-          <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 100, objectFit: "contain" }} />
-          <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
-          <img className="pf-img pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 72, objectFit: "contain" }} />
-          <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
-          <img className="pf-img pf-amex" src={LOGO_AMEX} alt="Amex" style={{ height: 54, objectFit: "contain" }} />
-          <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
-          <img className="pf-img pf-nox" src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 48, objectFit: "contain" }} />
-          <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
-          <img className="pf-img pf-cmu" src={LOGO_CMU} alt="CMU" style={{ height: 72, objectFit: "contain" }} />
+    <footer style={{ background: "linear-gradient(180deg, #ffffff 0%, #f2f6f5 100%)", borderTop: "1px solid #e6edeb", position: "relative" }}>
+      {/* soft teal glow accent at the very top edge */}
+      <div style={{ position: "absolute", top: -1, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, rgba(13,148,136,0.35), transparent)" }} />
+      <div style={{ padding: "34px 24px 30px" }}>
+        <div className="pf-row" style={{ maxWidth: 980, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 40, flexWrap: "wrap" }}>
+          <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 86, objectFit: "contain" }} />
+          <img className="pf-img pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 64, objectFit: "contain" }} />
+          <img className="pf-img pf-amex" src={LOGO_AMEX} alt="Amex" style={{ height: 48, objectFit: "contain" }} />
+          <img className="pf-img pf-nox" src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 42, objectFit: "contain" }} />
+          <img className="pf-img pf-cmu" src={LOGO_CMU} alt="CMU" style={{ height: 64, objectFit: "contain" }} />
         </div>
-      </div>
-      {/* closing line */}
-      <div style={{ borderTop: "1px solid #e4e8ea", padding: "14px 24px", textAlign: "center" }}>
-        <span style={{ fontSize: 12, color: C.textLight, fontWeight: 500, letterSpacing: 0.3 }}>PSA Oxygen Plants · Management System</span>
       </div>
       <style>{`
         /* Official Leaflet fix for Chromium tile gaps (Leaflet PR #8891, shipped in 1.9.4).
@@ -797,9 +789,9 @@ function PartnerFooter() {
         /* make the leaflet attribution as small and unobtrusive as possible */
         .leaflet-control-attribution { font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important; background: rgba(255,255,255,0.55) !important; opacity: 0.65; }
         .leaflet-control-attribution a { color: #64748b !important; }
-        .pf-img { flex-shrink: 1; min-width: 0; filter: grayscale(0.35) opacity(0.88); transition: filter 0.4s ease, transform 0.4s cubic-bezier(0.16,1,0.3,1); }
-        .pf-img:hover { filter: grayscale(0) opacity(1); transform: translateY(-3px) scale(1.04); }
-        @media (prefers-reduced-motion: reduce) { .pf-img { filter: none; } .pf-img:hover { transform: none; } }
+        .pf-img { flex: 0 1 auto; min-width: 0; opacity: 0.9; transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1); }
+        .pf-img:hover { opacity: 1; transform: translateY(-4px); }
+        @media (prefers-reduced-motion: reduce) { .pf-img:hover { transform: none; } }
         .refresh-icon { display: none; }
         .refresh-icon-desktop { display: inline; }
         .refresh-label { display: inline; line-height: 1.4; }
