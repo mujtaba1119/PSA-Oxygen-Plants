@@ -1733,11 +1733,11 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
       </div>
 
       {/* ── 12-month trend ── */}
-      <div className="ox-in ox-in-d3" style={cardBase}>
-        <div style={accentBar} />
-        <div style={{ padding: "18px 20px 14px", borderBottom: `1px solid ${T.line}`, textAlign: "center" }}>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, letterSpacing: -0.3, color: T.ink }}>Tickets Opened vs Resolved</h3>
-          <div style={{ fontSize: 10.5, fontWeight: 600, color: T.mute, textTransform: "uppercase", letterSpacing: "0.12em", marginTop: 5 }}>Last 12 Months</div>
+      <div className="ox-in ox-in-d3" style={darkCard}>
+        <div style={darkAccent} />
+        <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)", textAlign: "center" }}>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: 0.3, color: "#ffffff" }}>Opened <span style={{ fontWeight: 500, color: "rgba(255,255,255,0.55)", fontStyle: "italic", margin: "0 4px" }}>vs</span> Resolved</h3>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(94,234,212,0.75)", textTransform: "uppercase", letterSpacing: "0.14em", marginTop: 6 }}>Last 12 Months</div>
         </div>
         <div style={{ padding: "28px 22px 12px", display: "flex", alignItems: "flex-end", height: 210, position: "relative" }}>
           {trend.map((m, mi) => {
@@ -1746,27 +1746,27 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
               <div key={m.label + m.year} onMouseEnter={() => setHoverMonth(mi)} onMouseLeave={() => setHoverMonth(null)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, height: "100%", justifyContent: "flex-end", position: "relative", cursor: "default" }}>
                 {/* Hover popup */}
                 {isHover && (
-                  <div style={{ position: "absolute", bottom: "calc(100% - 18px)", left: "50%", transform: "translateX(-50%)", background: T.ink, borderRadius: 8, padding: "7px 10px", boxShadow: "0 4px 14px rgba(0,0,0,0.18)", zIndex: 5, whiteSpace: "nowrap", pointerEvents: "none" }}>
+                  <div style={{ position: "absolute", bottom: "calc(100% - 18px)", left: "50%", transform: "translateX(-50%)", background: "#06201d", border: "1px solid rgba(94,234,212,0.2)", borderRadius: 8, padding: "7px 10px", boxShadow: "0 4px 14px rgba(0,0,0,0.35)", zIndex: 5, whiteSpace: "nowrap", pointerEvents: "none" }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: "#fff", marginBottom: 4, textAlign: "center" }}>{m.label} {m.year}</div>
                     <div style={{ display: "flex", gap: 10 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "#cfe0dd" }} /><span style={{ fontSize: 10.5, color: "#e7edec", fontWeight: 600 }}>{m.opened} opened</span></div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: 2, background: T.teal300 }} /><span style={{ fontSize: 10.5, color: "#e7edec", fontWeight: 600 }}>{m.resolved} resolved</span></div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "rgba(255,255,255,0.4)" }} /><span style={{ fontSize: 10.5, color: "#e7edec", fontWeight: 600 }}>{m.opened} opened</span></div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "#5eead4" }} /><span style={{ fontSize: 10.5, color: "#e7edec", fontWeight: 600 }}>{m.resolved} resolved</span></div>
                     </div>
-                    <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: `5px solid ${T.ink}` }} />
+                    <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid #06201d" }} />
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 3, alignItems: "flex-end", flex: 1, width: "100%", justifyContent: "center" }}>
-                  <div className="ox-bar" style={{ width: 11, borderRadius: "3px 3px 0 0", minHeight: 2, height: `${m.opened / trendMax * 100}%`, background: isHover ? "#b8d4d0" : "#cfe0dd", transition: "background 0.15s", animationDelay: `${mi * 0.04}s` }} />
-                  <div className="ox-bar" style={{ width: 11, borderRadius: "3px 3px 0 0", minHeight: 2, height: `${m.resolved / trendMax * 100}%`, background: T.teal500, boxShadow: isHover ? "0 0 10px rgba(94,234,212,0.5)" : "0 0 8px rgba(94,234,212,0.3)", transition: "box-shadow 0.15s", animationDelay: `${mi * 0.04 + 0.03}s` }} />
+                  <div className="ox-bar" style={{ width: 11, borderRadius: "3px 3px 0 0", minHeight: 2, height: `${m.opened / trendMax * 100}%`, background: isHover ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.28)", transition: "background 0.15s", animationDelay: `${mi * 0.04}s` }} />
+                  <div className="ox-bar" style={{ width: 11, borderRadius: "3px 3px 0 0", minHeight: 2, height: `${m.resolved / trendMax * 100}%`, background: "#5eead4", boxShadow: isHover ? "0 0 12px rgba(94,234,212,0.7)" : "0 0 8px rgba(94,234,212,0.4)", transition: "box-shadow 0.15s", animationDelay: `${mi * 0.04 + 0.03}s` }} />
                 </div>
-                <span style={{ fontSize: 9.5, color: isHover ? T.teal700 : T.mute, fontWeight: isHover ? 700 : 600, transition: "color 0.15s" }}>{m.label}</span>
+                <span style={{ fontSize: 9.5, color: isHover ? "#5eead4" : "rgba(255,255,255,0.5)", fontWeight: isHover ? 700 : 600, transition: "color 0.15s" }}>{m.label}</span>
               </div>
             );
           })}
         </div>
         <div style={{ display: "flex", gap: 22, justifyContent: "center", padding: "0 22px 18px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: T.slate, fontWeight: 600 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#cfe0dd" }} />Opened</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: T.slate, fontWeight: 600 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: T.teal500 }} />Resolved</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 600 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "rgba(255,255,255,0.28)" }} />Opened</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 600 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#5eead4" }} />Resolved</div>
         </div>
       </div>
     </div>
