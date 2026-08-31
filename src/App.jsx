@@ -1407,7 +1407,21 @@ function makePinIcon(color) {
    Used for the Resolution Rate tile. ─── */
 function Speedometer({ value, teal, dark }) {
   const target = value === null || value === undefined ? 0 : value;
-  const sweep = target;
+  const [sweep, setSweep] = useState(0);
+  useEffect(() => {
+    setSweep(0);
+    let raf, start;
+    const dur = 1300;
+    const step = (t) => {
+      if (!start) start = t;
+      const p = Math.min((t - start) / dur, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setSweep(target * eased);
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target]);
 
   const CX = 110, CY = 110, R = 88;
   const startA = 140, endA = 400; // 260° sweep
@@ -1428,7 +1442,7 @@ function Speedometer({ value, teal, dark }) {
   });
 
   return (
-    <svg viewBox="0 0 220 220" style={{ width: "100%", maxWidth: 170, display: "block", margin: "2px auto 2px", filter: "drop-shadow(0 0 18px rgba(94,234,212,0.12))" }}>
+    <svg viewBox="0 0 220 220" style={{ width: "100%", maxWidth: 138, display: "block", margin: "0 auto", filter: "drop-shadow(0 0 18px rgba(94,234,212,0.12))" }}>
       <defs>
         <linearGradient id="rr-arc" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#0d9488" />
@@ -1452,7 +1466,7 @@ function Speedometer({ value, teal, dark }) {
       {/* needle dot */}
       <circle cx={ex} cy={ey} r="5" fill="#5eead4" style={{ filter: "drop-shadow(0 0 6px #5eead4)" }} />
       {/* center readout */}
-      <text x={CX} y={CY - 2} textAnchor="middle" fill={teal.ink} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 40, fontWeight: 800, letterSpacing: -1 }}>{value === null || value === undefined ? "—" : value}</text>
+      <text x={CX} y={CY - 2} textAnchor="middle" fill={teal.ink} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 40, fontWeight: 800, letterSpacing: -1 }}>{value === null || value === undefined ? "—" : Math.round(sweep)}</text>
       {value !== null && value !== undefined && <text x={CX + 42} y={CY - 18} textAnchor="middle" fill={teal.mute} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 16, fontWeight: 600 }}>%</text>}
       <text x={CX} y={CY + 22} textAnchor="middle" fill={teal.mute} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: 2 }}>RESOLVED</text>
     </svg>
@@ -1528,62 +1542,62 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
   const gradHeading = { fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", textAlign: "center", background: "linear-gradient(135deg, #5eead4, #ccfbf1)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "transparent" };
   const SEV = { Critical: "#f08a86", High: "#f0b968", Low: "#c4d0cd" };
   const darkCard = { background: "linear-gradient(180deg, #0b3b38 0%, #0f5650 55%, #0f766e 100%)", borderRadius: 16, border: "1px solid rgba(94,234,212,0.14)", boxShadow: "0 6px 22px rgba(11,59,56,0.28)", overflow: "hidden", position: "relative" };
-  const darkAccent = { position: "absolute", top: 0, left: 22, right: 22, height: 3, borderRadius: "0 0 3px 3px", background: "linear-gradient(90deg, #2dd4a8, #5eead4)" };
+  const darkAccent = { position: "absolute", top: 0, left: 20, right: 20, height: 3, borderRadius: "0 0 3px 3px", background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)" };
 
   return (
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       {/* ── Stat tiles ── */}
       <div className="ox-stagger" style={{ display: "grid", gridTemplateColumns: "1fr 1.7fr 1fr", gap: 14, marginBottom: 20, alignItems: "stretch" }}>
         {/* Sites Functional */}
-        <div style={{ ...darkCard, padding: "16px 20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ ...darkCard, padding: "12px 16px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div style={darkAccent} />
-          <div style={{ ...gradHeading, height: 14, marginBottom: 16 }}>Sites Functional</div>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(94,234,212,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eead4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>
+          <div style={{ ...gradHeading, height: 13, marginBottom: 12 }}>Sites Functional</div>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(94,234,212,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#5eead4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>
             </div>
-            <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: "#ffffff" }}>{funcCount}<span style={{ fontSize: 15, fontWeight: 500, color: "rgba(255,255,255,0.55)", marginLeft: 3 }}>/ {hospitals.length}</span></div>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: "#ffffff" }}>{funcCount}<span style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.55)", marginLeft: 3 }}>/ {hospitals.length}</span></div>
           </div>
         </div>
 
         {/* Tickets Overview (wide) */}
-        <div style={{ ...darkCard, padding: "16px 20px", display: "flex", flexDirection: "column" }}>
+        <div style={{ ...darkCard, padding: "12px 16px", display: "flex", flexDirection: "column" }}>
           <div style={darkAccent} />
-          <div style={{ ...gradHeading, height: 14, marginBottom: 16 }}>Tickets Overview</div>
+          <div style={{ ...gradHeading, height: 13, marginBottom: 12 }}>Tickets Overview</div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flex: 1 }}>
             {/* Open Now */}
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: "#ffffff" }}>{openTickets.length}</div>
-              <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 6, color: "rgba(255,255,255,0.6)", textAlign: "center" }}>Open Now</div>
+              <div style={{ fontSize: 25, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: "#ffffff" }}>{openTickets.length}</div>
+              <div style={{ fontSize: 8.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 5, color: "rgba(255,255,255,0.6)", textAlign: "center" }}>Open Now</div>
             </div>
-            <div style={{ width: 1, alignSelf: "stretch", background: "rgba(255,255,255,0.12)", margin: "6px 0" }} />
+            <div style={{ width: 1, alignSelf: "stretch", background: "rgba(255,255,255,0.12)", margin: "4px 0" }} />
             {/* Severity — plain colored text */}
             <div style={{ flex: 1.5, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "rgba(255,255,255,0.6)", marginBottom: 10 }}>By Severity</div>
-              <div style={{ display: "flex", gap: 16 }}>
+              <div style={{ fontSize: 8.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "rgba(255,255,255,0.6)", marginBottom: 8 }}>By Severity</div>
+              <div style={{ display: "flex", gap: 14 }}>
                 {[{ n: sevCounts.Critical, l: "Critical", c: SEV.Critical }, { n: sevCounts.High, l: "High", c: SEV.High }, { n: sevCounts.Low, l: "Low", c: SEV.Low }].map(x => (
-                  <div key={x.l} style={{ textAlign: "center", minWidth: 40 }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1, color: x.c }}>{x.n}</div>
-                    <div style={{ marginTop: 5, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: x.c }}>{x.l}</div>
+                  <div key={x.l} style={{ textAlign: "center", minWidth: 38 }}>
+                    <div style={{ fontSize: 18, fontWeight: 800, lineHeight: 1, color: x.c }}>{x.n}</div>
+                    <div style={{ marginTop: 4, fontSize: 8.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: x.c }}>{x.l}</div>
                   </div>
                 ))}
               </div>
             </div>
-            <div style={{ width: 1, alignSelf: "stretch", background: "rgba(255,255,255,0.12)", margin: "6px 0" }} />
+            <div style={{ width: 1, alignSelf: "stretch", background: "rgba(255,255,255,0.12)", margin: "4px 0" }} />
             {/* Resolved this month */}
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-              <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: "#ffffff" }}>{resolvedThisMonth.length}</div>
-              <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 6, color: "rgba(255,255,255,0.6)", textAlign: "center", lineHeight: 1.3 }}>Resolved<br />This Month</div>
+              <div style={{ fontSize: 25, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: "#ffffff" }}>{resolvedThisMonth.length}</div>
+              <div style={{ fontSize: 8.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 5, color: "rgba(255,255,255,0.6)", textAlign: "center", lineHeight: 1.3 }}>Resolved<br />This Month</div>
             </div>
           </div>
         </div>
 
         {/* Resolution Rate */}
-        <div style={{ ...darkCard, padding: "16px 20px 12px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ ...darkCard, padding: "12px 16px 10px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div style={darkAccent} />
-          <div style={{ ...gradHeading, height: 14, marginBottom: 8 }}>Resolution Rate</div>
+          <div style={{ ...gradHeading, height: 13, marginBottom: 4 }}>Resolution Rate</div>
           <Speedometer value={resolutionRate} teal={{ ink: "#ffffff", mute: "rgba(255,255,255,0.6)" }} dark />
-          <div style={{ textAlign: "center", fontSize: 10.5, color: "rgba(255,255,255,0.7)", fontWeight: 600, marginTop: 2 }}><b style={{ color: "#5eead4" }}>{closedAll}</b> closed of <b style={{ color: "#5eead4" }}>{scoped.length}</b> total</div>
+          <div style={{ textAlign: "center", fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: 600, marginTop: 0 }}><b style={{ color: "#5eead4" }}>{closedAll}</b> closed of <b style={{ color: "#5eead4" }}>{scoped.length}</b> total</div>
         </div>
       </div>
 
