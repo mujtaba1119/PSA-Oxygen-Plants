@@ -1626,7 +1626,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
                       <div style={{ fontWeight: 800, fontSize: 13, color: "#0f172a", lineHeight: 1.25, letterSpacing: -0.2 }}>{fullHospitalName(h)}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: sc, flexShrink: 0 }} /><span style={{ fontSize: 11.5, fontWeight: 700, color: sc }}>{s}</span></div>
                       <div style={{ fontSize: 11.5, color: "#64748b" }}>Service Provider: <span style={{ fontWeight: 700, color: "#0f766e" }}>{getProvider(h)}</span></div>
-                      <div style={{ fontSize: 11.5, fontWeight: 600, color: openCount > 0 ? "#dc2626" : "#16a34a", display: "flex", alignItems: "center", gap: 5 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 600, color: sc, display: "flex", alignItems: "center", gap: 5 }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
                         {openCount > 0 ? `${openCount} open ticket${openCount > 1 ? "s" : ""}` : "No open tickets"}
                       </div>
