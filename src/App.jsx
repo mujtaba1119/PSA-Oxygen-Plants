@@ -769,7 +769,7 @@ function PartnerFooter() {
     <footer style={{ background: "#f4f6f7", boxShadow: "0 -4px 16px rgba(0,0,0,0.04)" }}>
       {/* gradient accent line */}
       <div style={{ height: 4, background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
-      <div style={{ padding: "28px 16px 20px" }}>
+      <div style={{ padding: "28px 16px 24px" }}>
         <div className="pf-row" style={{ maxWidth: 1040, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 24 }}>
           <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 62, objectFit: "contain" }} />
           <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
@@ -781,10 +781,6 @@ function PartnerFooter() {
           <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
           <img className="pf-img pf-cmu" src={LOGO_CMU} alt="CMU" style={{ height: 72, objectFit: "contain" }} />
         </div>
-      </div>
-      {/* closing line */}
-      <div style={{ borderTop: "1px solid #e4e8ea", padding: "14px 24px", textAlign: "center" }}>
-        <span style={{ fontSize: 12, color: C.textLight, fontWeight: 500, letterSpacing: 0.3 }}>PSA Oxygen Plants · Management System</span>
       </div>
       <style>{`
         /* Official Leaflet fix for Chromium tile gaps (Leaflet PR #8891, shipped in 1.9.4). */
@@ -2673,11 +2669,11 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
         </div>
         <div style={{ flex: 1 }} />
       </nav>
-      <div className="hosp-main" style={{ flex: 1, marginLeft: 180, background: "#f7f8fa", minHeight: "100vh" }}>
+      <div className="hosp-main" style={{ flex: 1, marginLeft: 180, background: "#f7f8fa", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <TopBar title="PSA Oxygen Plants" user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleFocusComplaint} light={true} complaints={complaints} />
         </TopBar>
-        <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px" }}>
+        <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px", width: "100%", flex: 1 }}>
           <div style={{ marginBottom: 24, padding: "22px 24px", background: "linear-gradient(135deg, #f0fdfa, #f7fdfb)", border: "1px solid #d5f0ea", borderRadius: 16, display: "flex", alignItems: "center", gap: 16 }}>
             <div style={{ width: 52, height: 52, borderRadius: 14, background: "linear-gradient(135deg, #0b3b38, #0f766e)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 4px 12px rgba(13,148,136,0.25)" }}>
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#5eead4" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
@@ -3379,11 +3375,11 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} bottomItems={NAV_BOTTOM} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f7f8fa", minHeight: "100vh" }}>
+      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f7f8fa", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${ALL_HOSPITALS.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} light={true} />
         </TopBar>
-        <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px" }}>
+        <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px", width: "100%", flex: 1 }}>
           <div key={tab} className="scale-in">
           {tab === "dashboard" && <HomeTab hospitals={ALL_HOSPITALS} groups={GROUPS} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} user={user} />}
           {tab === "sites" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
@@ -3654,11 +3650,11 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
         }
       `}</style>
       <SidebarNav items={NAV_ITEMS} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
-      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f7f8fa", minHeight: "100vh" }}>
+      <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f7f8fa", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${myHospitals.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
           <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} light={true} />
         </TopBar>
-        <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px" }}>
+        <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px", width: "100%", flex: 1 }}>
           <div key={tab} className="scale-in">
           {tab === "dashboard" && <HomeTab hospitals={myHospitals} groups={myGroups} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} user={user} />}
           {tab === "sites" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
