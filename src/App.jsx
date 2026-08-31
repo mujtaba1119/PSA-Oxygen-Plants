@@ -1791,18 +1791,26 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
   const provColor = { Novair: "#0f766e", Intexim: "#7c5cbf", "Z-Corps": "#2f9e58" };
   const provTint = { Novair: "#f0fdfa", Intexim: "#f1edfa", "Z-Corps": "#eaf6ee" };
 
+  const [filter, setFilter] = useState("all"); // all | unassigned | overdue | critical
+  const [collapsed, setCollapsed] = useState({}); // prov -> bool
+
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }) : null;
   const daysOpen = (c) => c.created_at ? Math.max(0, Math.floor((Date.now() - new Date(c.created_at)) / (1000 * 60 * 60 * 24))) : 0;
-  const statusColor = (s) => s === "Open" ? "#c0392b" : s === "Assigned" ? "#d9822b" : s === "In Progress" ? "#0f766e" : s === "Resolved" ? "#0d9488" : "#16a34a";
-  const statusBg = (s) => s === "Open" ? "#fdecec" : s === "Assigned" ? "#fef6ec" : s === "In Progress" ? "#e6f7f2" : "#e6f7f2";
+  const statusColor = (s) => s === "Open" ? "#c0392b" : s === "Assigned" ? "#d9822b" : s === "In Progress" ? "#0f766e" : "#16a34a";
+  const statusBg = (s) => s === "Open" ? "#fdecec" : s === "Assigned" ? "#fef6ec" : "#e6f7f2";
 
   const sections = ["Novair", "Intexim", "Z-Corps"].map(prov => {
     const sites = GROUPS[prov] || [];
     const provComplaints = complaints.filter(c => getProvider(c.hospital) === prov);
     const open = provComplaints.filter(c => !isClosedStatus(c.status));
-    const openCards = open
-      .map(c => ({ ...c, eff: getEffectiveStatus(c), sev: c.severity || getDefaultSeverity(c.title), days: daysOpen(c) }))
-      .sort((a, b) => { const r = { Critical: 0, High: 1, Low: 2 }; return (r[a.sev] - r[b.sev]) || (b.days - a.days); });
+    let openCards = open.map(c => ({ ...c, eff: getEffectiveStatus(c), sev: c.severity || getDefaultSeverity(c.title), days: daysOpen(c), serials: extractSerials(c.description) }));
+    // apply filter
+    if (filter === "unassigned") openCards = openCards.filter(c => !hasAssignees(c));
+    else if (filter === "overdue") openCards = openCards.filter(c => c.days > 10);
+    else if (filter === "critical") openCards = openCards.filter(c => c.sev === "Critical");
+    // sort: overdue first, then severity, then oldest
+    const r = { Critical: 0, High: 1, Low: 2 };
+    openCards.sort((a, b) => (Number(b.days > 10) - Number(a.days > 10)) || (r[a.sev] - r[b.sev]) || (b.days - a.days));
     const inProgress = open.filter(c => getEffectiveStatus(c) === "In Progress").length;
     const overdue = open.filter(c => daysOpen(c) > 10).length;
     const oneMonthAgo = new Date(); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
@@ -1811,63 +1819,88 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
   });
 
   const cardBase = { background: T.card, borderRadius: 16, border: `1px solid ${T.line}`, boxShadow: "0 1px 2px rgba(15,76,71,0.04)", position: "relative", overflow: "hidden" };
+  const filters = [{ k: "all", l: "All Open" }, { k: "unassigned", l: "Unassigned" }, { k: "overdue", l: "Overdue" }, { k: "critical", l: "Critical" }];
 
   return (
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-      {sections.map((sec, si) => (
-        <div key={sec.prov} className="ox-in" style={{ marginBottom: 34, animationDelay: `${si * 0.08}s` }}>
-          {/* section header */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-            <span style={{ width: 12, height: 12, borderRadius: 4, background: provColor[sec.prov], flexShrink: 0 }} />
-            <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-0.3px", color: T.ink }}>{sec.prov} Sites</span>
-            <span style={{ fontSize: 12, color: T.mute, fontWeight: 600 }}>{sec.siteCount} sites{sec.prov === "Novair" ? " · serviced by Novair" : " · Novair resolves as manufacturer"}</span>
-            <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", padding: "4px 10px", borderRadius: 20, background: provTint[sec.prov], color: provColor[sec.prov] }}>{sec.prov === "Novair" ? "Your territory" : "Manufacturer support"}</span>
-          </div>
-          {/* summary tiles */}
-          <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
-            {[{ v: sec.openCount, l: "Open", c: "#c0392b" }, { v: sec.inProgress, l: "In Progress", c: "#d9822b" }, { v: sec.overdue, l: "Overdue", c: "#c0392b" }, { v: sec.resolvedMo, l: "Resolved (mo)", c: T.teal700 }].map((t, i) => (
-              <div key={i} style={{ flex: 1, ...cardBase, padding: "14px 16px", textAlign: "center" }}>
-                <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, color: t.c }}>{t.v}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 6 }}>{t.l}</div>
-              </div>
-            ))}
-          </div>
-          {/* complaint cards */}
-          {sec.openCards.length > 0 ? sec.openCards.map(c => {
-            const names = assigneeNames(c);
-            const visits = visitDates(c);
-            const lastVisit = visits.length ? fmtDate(visits.sort((a, b) => new Date(b) - new Date(a))[0]) : null;
-            return (
-              <div key={c.id} style={{ ...cardBase, marginBottom: 12 }}>
-                <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: SEV[c.sev] }} />
-                {/* top */}
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "15px 18px 12px 22px" }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14.5, fontWeight: 800, color: T.ink, letterSpacing: "-0.2px" }}>{displayName(c.hospital)}</div>
-                    <div style={{ fontSize: 12.5, color: T.slate, marginTop: 2 }}>{c.title}</div>
+      {/* filter bar */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 22, flexWrap: "wrap" }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em", marginRight: 4 }}>Filter</span>
+        {filters.map(f => (
+          <button key={f.k} onClick={() => setFilter(f.k)} style={{ fontSize: 12, fontWeight: 700, padding: "7px 14px", borderRadius: 20, cursor: "pointer", border: filter === f.k ? "1.5px solid transparent" : `1.5px solid ${T.line}`, background: filter === f.k ? "linear-gradient(135deg, #0d9488, #0f766e)" : "#fff", color: filter === f.k ? "#fff" : T.slate, boxShadow: filter === f.k ? "0 2px 8px rgba(13,148,136,0.22)" : "none", transition: "all 0.2s" }}>{f.l}</button>
+        ))}
+      </div>
+
+      {sections.map((sec, si) => {
+        const isCollapsed = collapsed[sec.prov];
+        const allClear = sec.openCount === 0;
+        return (
+          <div key={sec.prov} className="ox-in" style={{ marginBottom: 30, animationDelay: `${si * 0.08}s` }}>
+            {/* section header (click to collapse) */}
+            <div onClick={() => setCollapsed(p => ({ ...p, [sec.prov]: !p[sec.prov] }))} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, cursor: "pointer", userSelect: "none" }}>
+              <span style={{ width: 12, height: 12, borderRadius: 4, background: provColor[sec.prov], flexShrink: 0 }} />
+              <span style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-0.3px", color: T.ink }}>{sec.prov} Sites</span>
+              <span style={{ fontSize: 12, color: T.mute, fontWeight: 600 }}>{sec.siteCount} sites{sec.prov === "Novair" ? " · serviced by Novair" : " · Novair resolves as manufacturer"}</span>
+              <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", padding: "4px 10px", borderRadius: 20, background: provTint[sec.prov], color: provColor[sec.prov] }}>{sec.prov === "Novair" ? "Your territory" : "Manufacturer support"}</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.mute} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isCollapsed ? "rotate(-90deg)" : "none", transition: "transform 0.25s" }}><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </div>
+
+            {!isCollapsed && (<>
+              {/* summary tiles */}
+              <div style={{ display: "flex", gap: 12, marginBottom: allClear ? 0 : 14 }}>
+                {[{ v: sec.openCount, l: "Open", c: "#c0392b" }, { v: sec.inProgress, l: "In Progress", c: "#d9822b" }, { v: sec.overdue, l: "Overdue", c: "#c0392b" }, { v: sec.resolvedMo, l: "Resolved (mo)", c: T.teal700 }].map((t, i) => (
+                  <div key={i} style={{ flex: 1, ...cardBase, padding: "14px 16px", textAlign: "center" }}>
+                    <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, color: t.c }}>{t.v}</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 6 }}>{t.l}</div>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0 }}>
-                    <span style={{ fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.04em", background: statusBg(c.eff), color: statusColor(c.eff) }}>{c.eff}</span>
-                    <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 6, color: "#fff", textTransform: "uppercase", background: SEV[c.sev] }}>{c.sev}</span>
-                  </div>
-                </div>
-                {/* meta */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 18, padding: "0 18px 12px 22px", borderBottom: `1px solid #f3f7f6` }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Reported</span><span style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>{fmtDate(c.created_at) || "—"}</span></div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Days Open</span><span style={{ fontSize: 12, fontWeight: 600, color: c.days > 10 ? "#c0392b" : T.ink }}>{c.days} day{c.days === 1 ? "" : "s"}</span></div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Assigned To</span>{names.length ? <span style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>{names.map(n => <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: T.teal50, border: `1px solid ${T.teal100}`, borderRadius: 20, padding: "2px 9px 2px 3px", fontSize: 11, fontWeight: 600, color: T.teal700 }}><span style={{ width: 16, height: 16, borderRadius: "50%", background: T.teal500, color: "#fff", fontSize: 7.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{initialsFor(n)}</span>{n}</span>)}</span> : <span style={{ fontSize: 12, fontWeight: 500, color: T.mute }}>— not assigned</span>}</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Last Visit</span><span style={{ fontSize: 12, fontWeight: 600, color: lastVisit ? T.ink : T.mute }}>{lastVisit || "—"}</span></div>
-                </div>
-                {/* actions */}
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: "12px 18px 14px 22px", background: "#fafcfb" }}>
-                  <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 14px", cursor: "pointer", border: "none", background: "linear-gradient(135deg, #0d9488, #0f766e)", color: "#fff", boxShadow: "0 2px 6px rgba(13,148,136,0.22)" }}>{names.length ? "Manage Ticket →" : "Assign Staff →"}</button>
-                  <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 14px", cursor: "pointer", background: "#fff", border: `1.5px solid ${T.teal300}`, color: T.teal700 }}>View Details</button>
-                </div>
+                ))}
               </div>
-            );
-          }) : <div style={{ ...cardBase, padding: "26px 20px", textAlign: "center", color: T.mute, fontSize: 13 }}>No open complaints in {sec.prov} sites</div>}
-        </div>
-      ))}
+
+              {/* complaint cards */}
+              {allClear ? (
+                <div style={{ ...cardBase, padding: "16px 20px", display: "flex", alignItems: "center", gap: 10, marginTop: 14, color: T.teal700, fontSize: 13, fontWeight: 600 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.teal500} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  All clear — no open complaints in {sec.prov} sites
+                </div>
+              ) : sec.openCards.length === 0 ? (
+                <div style={{ ...cardBase, padding: "20px", textAlign: "center", color: T.mute, fontSize: 13 }}>No complaints match this filter</div>
+              ) : sec.openCards.map(c => {
+                const names = assigneeNames(c);
+                const visits = visitDates(c);
+                const lastVisit = visits.length ? fmtDate(visits.sort((a, b) => new Date(b) - new Date(a))[0]) : null;
+                return (
+                  <div key={c.id} style={{ ...cardBase, marginBottom: 12 }}>
+                    <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: SEV[c.sev] }} />
+                    {c.days > 10 && <div style={{ position: "absolute", top: 12, right: 0, background: "#c0392b", color: "#fff", fontSize: 9, fontWeight: 800, padding: "3px 10px 3px 8px", borderRadius: "20px 0 0 20px", textTransform: "uppercase", letterSpacing: "0.04em" }}>Overdue</div>}
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "15px 18px 12px 22px" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14.5, fontWeight: 800, color: T.ink, letterSpacing: "-0.2px" }}>{displayName(c.hospital)}</div>
+                        <div style={{ fontSize: 12.5, color: T.slate, marginTop: 2 }}>{c.title}{c.serials.length > 0 && <span style={{ color: T.mute }}> · SN {c.serials.join(", ")}</span>}</div>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6, flexShrink: 0, marginRight: c.days > 10 ? 4 : 0 }}>
+                        <span style={{ fontSize: 10, fontWeight: 800, padding: "4px 10px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.04em", background: statusBg(c.eff), color: statusColor(c.eff) }}>{c.eff}</span>
+                        <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 7px", borderRadius: 6, color: "#fff", textTransform: "uppercase", background: SEV[c.sev] }}>{c.sev}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 18, padding: "0 18px 12px 22px", borderBottom: `1px solid #f3f7f6` }}>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Reported</span><span style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>{fmtDate(c.created_at) || "—"}</span></div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Days Open</span><span style={{ fontSize: 12, fontWeight: 600, color: c.days > 10 ? "#c0392b" : T.ink }}>{c.days} day{c.days === 1 ? "" : "s"}</span></div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Assigned To</span>{names.length ? <span style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>{names.map(n => <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: T.teal50, border: `1px solid ${T.teal100}`, borderRadius: 20, padding: "2px 9px 2px 3px", fontSize: 11, fontWeight: 600, color: T.teal700 }}><span style={{ width: 16, height: 16, borderRadius: "50%", background: T.teal500, color: "#fff", fontSize: 7.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{initialsFor(n)}</span>{n}</span>)}</span> : <span style={{ fontSize: 12, fontWeight: 500, color: T.mute }}>— not assigned</span>}</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Last Visit</span><span style={{ fontSize: 12, fontWeight: 600, color: lastVisit ? T.ink : T.mute }}>{lastVisit || "—"}</span></div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: "12px 18px 14px 22px", background: "#fafcfb" }}>
+                      <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 14px", cursor: "pointer", border: "none", background: "linear-gradient(135deg, #0d9488, #0f766e)", color: "#fff", boxShadow: "0 2px 6px rgba(13,148,136,0.22)" }}>{names.length ? "Manage Ticket →" : "Assign Staff →"}</button>
+                      <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 14px", cursor: "pointer", background: "#fff", border: `1.5px solid ${T.teal300}`, color: T.teal700 }}>View Details</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </>)}
+          </div>
+        );
+      })}
     </div>
   );
 }
