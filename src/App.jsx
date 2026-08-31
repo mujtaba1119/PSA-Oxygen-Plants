@@ -790,8 +790,9 @@ function PartnerFooter() {
         .site-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 14px; overflow: hidden; box-shadow: none; background: transparent; border: none; }
         .site-popup .leaflet-popup-content { margin: 0; width: auto !important; }
         .site-popup .leaflet-popup-tip { background: #fff; box-shadow: 0 2px 8px rgba(15,118,110,0.08); }
-        /* fix hairline tile seams by nudging tile size up a touch */
-        .leaflet-container .leaflet-tile { width: 256.5px !important; height: 256.5px !important; }
+        /* fix hairline tile seams (vertical + horizontal white lines) */
+        .leaflet-container .leaflet-tile { width: 257px !important; height: 257px !important; }
+        .leaflet-tile-container img { outline: 1px solid transparent; }
         /* make the leaflet attribution as small and unobtrusive as possible */
         .leaflet-control-attribution { font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important; background: rgba(255,255,255,0.55) !important; opacity: 0.65; }
         .leaflet-control-attribution a { color: #64748b !important; }
@@ -1597,19 +1598,23 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
 
       {/* ── Full-width tablet screen: swipe between Map and Program Overview ── */}
       <div className="ox-in ox-in-d1" style={{ marginBottom: 20 }}>
-        <div style={{ borderRadius: 26, overflow: "hidden", border: "1px solid rgba(94,234,212,0.2)", boxShadow: "0 14px 38px rgba(11,59,56,0.34)", height: 460, background: "#0f5650", position: "relative", padding: "14px 12px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ borderRadius: 30, overflow: "hidden", boxShadow: "0 18px 44px rgba(11,59,56,0.38)", height: 460, background: "#0b3b38", position: "relative", padding: "16px 22px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          {/* curved edge-screen highlights on left & right */}
+          <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: 22, background: "linear-gradient(90deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02) 55%, rgba(0,0,0,0.28))", pointerEvents: "none", zIndex: 6 }} />
+          <div style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: 22, background: "linear-gradient(270deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02) 55%, rgba(0,0,0,0.28))", pointerEvents: "none", zIndex: 6 }} />
           {/* camera dot */}
-          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(94,234,212,0.5)", marginBottom: 8, flexShrink: 0 }} />
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(94,234,212,0.5)", marginBottom: 9, flexShrink: 0, boxShadow: "0 0 5px rgba(94,234,212,0.4)" }} />
           {/* screen */}
           <div
-            style={{ flex: 1, width: "100%", borderRadius: 14, overflow: "hidden", boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.2)", background: "#dfeae8", position: "relative" }}
+            style={{ flex: 1, width: "100%", borderRadius: 8, overflow: "hidden", background: "#dfeae8", position: "relative", boxShadow: "0 0 0 1px rgba(0,0,0,0.25)" }}
             onTouchStart={e => { touchX.current = e.touches[0].clientX; }}
-            onTouchEnd={e => { if (touchX.current === null) return; const dx = e.changedTouches[0].clientX - touchX.current; if (dx < -50 && slide === 0) setSlide(1); else if (dx > 50 && slide === 1) setSlide(0); touchX.current = null; }}
+            onTouchMove={e => { if (touchX.current === null) return; }}
+            onTouchEnd={e => { if (touchX.current === null) return; const dx = e.changedTouches[0].clientX - touchX.current; if (dx < -45 && slide === 0) setSlide(1); else if (dx > 45 && slide === 1) setSlide(0); touchX.current = null; }}
           >
             {/* slide track */}
-            <div style={{ display: "flex", width: "200%", height: "100%", transform: `translateX(-${slide * 50}%)`, transition: "transform 0.55s cubic-bezier(0.16,1,0.3,1)" }}>
+            <div style={{ display: "flex", width: "200%", height: "100%", transform: `translateX(-${slide * 50}%)`, transition: "transform 0.6s cubic-bezier(0.65, 0, 0.35, 1)" }}>
               {/* ── Panel 1: Map ── */}
-              <div style={{ width: "50%", height: "100%", position: "relative" }}>
+              <div style={{ width: "50%", height: "100%", position: "relative", transition: "opacity 0.6s ease, filter 0.6s ease", opacity: slide === 0 ? 1 : 0.4, filter: slide === 0 ? "none" : "blur(1px)" }}>
                 <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
                   <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
                   {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: T.teal500, weight: 1.5, fillColor: T.teal100, fillOpacity: 0.15 }} />}
@@ -1627,21 +1632,9 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
                     </div>
                   </div></Popup><Tooltip direction="top" offset={[0, -10]}>{displayName(h)}</Tooltip></Marker>); })}
                 </MapContainer>
-                {/* peek edge → overview */}
-                {slide === 0 && (
-                  <div onClick={() => setSlide(1)} style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 34, cursor: "pointer", background: "linear-gradient(90deg, rgba(15,86,80,0), rgba(15,86,80,0.85))", display: "flex", alignItems: "center", justifyContent: "flex-end", paddingRight: 6, zIndex: 500 }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                  </div>
-                )}
               </div>
               {/* ── Panel 2: Program Overview ── */}
-              <div style={{ width: "50%", height: "100%", position: "relative", background: "#fff", overflowY: "auto" }}>
-                {/* peek edge → map */}
-                {slide === 1 && (
-                  <div onClick={() => setSlide(0)} style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 34, cursor: "pointer", background: "linear-gradient(270deg, rgba(15,86,80,0), rgba(15,86,80,0.12))", display: "flex", alignItems: "center", justifyContent: "flex-start", paddingLeft: 6, zIndex: 5 }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.teal700} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-                  </div>
-                )}
+              <div style={{ width: "50%", height: "100%", position: "relative", background: "#fff", overflowY: "auto", transition: "opacity 0.6s ease, filter 0.6s ease", opacity: slide === 1 ? 1 : 0.4, filter: slide === 1 ? "none" : "blur(1px)" }}>
                 <div style={{ padding: "26px 40px", height: "100%", display: "flex", flexDirection: "column" }}>
                   {/* headline */}
                   <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 20 }}>
