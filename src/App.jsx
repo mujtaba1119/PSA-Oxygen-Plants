@@ -1690,35 +1690,24 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                {["Provider", "Sites", "Open", "Closed", "Resolution Rate"].map((th, i) => (
-                  <th key={th} style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.07em", padding: "12px 14px 9px", textAlign: i === 0 ? "left" : i === 4 ? "left" : "center", borderBottom: `1px solid ${T.line}` }}>{th}</th>
+                {["Provider", "Sites", "Open", "Closed", "Resolution"].map((th, i) => (
+                  <th key={th} style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.08em", padding: "14px 18px 10px", textAlign: i === 0 ? "left" : "center", borderBottom: `1px solid ${T.line}` }}>{th}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {providerRows.map((r, i) => (
-                <tr key={r.prov} style={{ borderBottom: i < providerRows.length - 1 ? `1px solid #f3f7f6` : "none" }}>
-                  <td style={{ padding: "13px 14px", textAlign: "left" }}>
+                <tr key={r.prov} style={{ borderBottom: i < providerRows.length - 1 ? `1px solid #f5f8f7` : "none" }}>
+                  <td style={{ padding: "16px 18px", textAlign: "left" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                      <span style={{ width: 26, height: 26, borderRadius: 8, background: provColors[r.prov] || T.teal700, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 11, flexShrink: 0 }}>{r.prov[0]}</span>
-                      <span style={{ fontSize: 12.5, fontWeight: 700, color: T.ink }}>{r.prov}</span>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: provColors[r.prov] || T.teal700, flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{r.prov}</span>
                     </div>
                   </td>
-                  <td style={{ padding: "13px 14px", textAlign: "center", fontSize: 13, fontWeight: 600, color: T.slate }}>{r.siteCount}</td>
-                  <td style={{ padding: "13px 14px", textAlign: "center", fontSize: 13, fontWeight: 800, color: r.open > 0 ? "#d9822b" : T.mute }}>{r.open}</td>
-                  <td style={{ padding: "13px 14px", textAlign: "center", fontSize: 13, fontWeight: 800, color: T.teal700 }}>{r.closed}</td>
-                  <td style={{ padding: "13px 14px", textAlign: "left", minWidth: 130 }}>
-                    {r.rate === null ? (
-                      <span style={{ fontSize: 13, fontWeight: 700, color: T.mute }}>—</span>
-                    ) : (
-                      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                        <div style={{ flex: 1, height: 6, borderRadius: 4, background: "#eef4f2", overflow: "hidden" }}>
-                          <div style={{ height: "100%", borderRadius: 4, width: `${r.rate}%`, background: `linear-gradient(90deg, ${provColors[r.prov] || T.teal700}, ${T.teal300})`, transition: "width 1s cubic-bezier(0.16,1,0.3,1)" }} />
-                        </div>
-                        <span style={{ fontSize: 12.5, fontWeight: 800, color: T.ink, minWidth: 34, textAlign: "right" }}>{r.rate}%</span>
-                      </div>
-                    )}
-                  </td>
+                  <td style={{ padding: "16px 18px", textAlign: "center", fontSize: 13, fontWeight: 600, color: T.slate }}>{r.siteCount}</td>
+                  <td style={{ padding: "16px 18px", textAlign: "center", fontSize: 13, fontWeight: 700, color: r.open > 0 ? "#d9822b" : T.mute }}>{r.open}</td>
+                  <td style={{ padding: "16px 18px", textAlign: "center", fontSize: 13, fontWeight: 700, color: T.slate }}>{r.closed}</td>
+                  <td style={{ padding: "16px 18px", textAlign: "center", fontSize: 15, fontWeight: 800, color: r.rate === null ? T.mute : T.teal600 || T.teal500, letterSpacing: "-0.02em" }}>{r.rate === null ? "—" : `${r.rate}%`}</td>
                 </tr>
               ))}
             </tbody>
