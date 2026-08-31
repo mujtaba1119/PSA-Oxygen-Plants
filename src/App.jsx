@@ -1405,15 +1405,17 @@ function makePinIcon(color) {
 
 /* ─── UNDP / CMU oversight dashboard — donor/coordinator view focused on after-sales service.
    Teal-monochrome palette, provider performance, critical issues, 6-month trend. ─── */
-function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite, pkBoundary, pinColor, scoped, funcCount, openTickets, sevCounts, resolvedThisMonth, resolutionRate, raisedThisMonth, stageCounts }) {
+function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite, pkBoundary, pinColor, scoped, funcCount, openTickets, sevCounts, resolvedThisMonth, resolutionRate, raisedThisMonth, stageCounts, closedAll }) {
   const T = { ink: "#12211f", slate: "#5a6b68", mute: "#94a3a0", line: "#e7edec", card: "#fff", teal900: "#0f4c47", teal700: "#0f766e", teal500: "#0d9488", teal300: "#5eead4", teal100: "#ccfbf1", teal50: "#f0fdfa" };
+  const [hoverMonth, setHoverMonth] = useState(null);
 
-  // Ticket pipeline (Open, Assigned, In Progress, Resolved) — no Verified
+  // Ticket pipeline (Open, Assigned, In Progress, Resolved) — no Verified.
+  // Clearly stepped shades from deep teal to pale mint for distinguishability.
   const pipeStages = [
-    { key: "Open", color: T.teal900 },
-    { key: "Assigned", color: T.teal700 },
-    { key: "In Progress", color: T.teal500 },
-    { key: "Resolved", color: T.teal300 },
+    { key: "Open", color: "#0b3b38" },
+    { key: "Assigned", color: "#0d9488" },
+    { key: "In Progress", color: "#2dd4bf" },
+    { key: "Resolved", color: "#99f6e4" },
   ];
   const pipeTotal = pipeStages.reduce((sum, s) => sum + (stageCounts[s.key] || 0), 0);
 
@@ -1440,14 +1442,14 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
     const provComplaints = scoped.filter(c => getProvider(c.hospital) === prov);
     const open = provComplaints.filter(c => !isClosedStatus(c.status)).length;
     const resolved30 = resolvedThisMonth.filter(c => getProvider(c.hospital) === prov).length;
-    const raised30 = raisedThisMonth.filter(c => getProvider(c.hospital) === prov).length;
-    const rate = raised30 > 0 ? Math.round(resolved30 / raised30 * 100) : (resolved30 > 0 ? 100 : 0);
+    const closed = provComplaints.filter(c => isClosedStatus(c.status)).length;
+    const rate = provComplaints.length > 0 ? Math.round(closed / provComplaints.length * 100) : null;
     return { prov, siteCount: provSites.length, open, resolved30, rate };
   }).filter(r => r.siteCount > 0);
 
-  // 6-month trend
+  // 12-month trend
   const months = [];
-  for (let i = 5; i >= 0; i--) { const d = new Date(); d.setMonth(d.getMonth() - i); months.push({ label: d.toLocaleString("en-US", { month: "short" }), year: d.getFullYear(), month: d.getMonth() }); }
+  for (let i = 11; i >= 0; i--) { const d = new Date(); d.setMonth(d.getMonth() - i); months.push({ label: d.toLocaleString("en-US", { month: "short" }), year: d.getFullYear(), month: d.getMonth() }); }
   const trend = months.map(m => {
     const opened = scoped.filter(c => c.created_at && new Date(c.created_at).getMonth() === m.month && new Date(c.created_at).getFullYear() === m.year).length;
     const resolved = scoped.filter(c => c.resolved_at && new Date(c.resolved_at).getMonth() === m.month && new Date(c.resolved_at).getFullYear() === m.year).length;
@@ -1455,7 +1457,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
   });
   const trendMax = Math.max(1, ...trend.map(t => Math.max(t.opened, t.resolved)));
 
-  const sevColor = (sev) => sev === "Critical" ? T.teal900 : sev === "High" ? T.teal500 : T.mute;
+  const sevColor = (sev) => sev === "Critical" ? "#c0392b" : sev === "High" ? "#d9822b" : "#94a3a0";
 
   const cardBase = { background: T.card, borderRadius: 16, border: `1px solid ${T.line}`, boxShadow: "0 1px 2px rgba(15,76,71,0.04)", overflow: "hidden", position: "relative" };
   const accentBar = { position: "absolute", top: 0, left: 22, right: 22, height: 3, borderRadius: "0 0 3px 3px", background: `linear-gradient(90deg, ${T.teal700}, ${T.teal300})` };
@@ -1470,7 +1472,12 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
         <div style={{ ...cardBase, padding: 22 }}>
           <div style={accentBar} />
           <div style={{ fontSize: 11, fontWeight: 600, color: T.mute, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14, textAlign: "center" }}>Sites Functional</div>
-          <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, textAlign: "center", color: T.ink }}>{funcCount}<span style={{ fontSize: 16, fontWeight: 500, color: T.mute, marginLeft: 3 }}>/ {hospitals.length}</span></div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+            <div style={{ width: 42, height: 42, borderRadius: 12, background: T.teal50, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={T.teal600 || T.teal700} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>
+            </div>
+            <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: T.ink }}>{funcCount}<span style={{ fontSize: 16, fontWeight: 500, color: T.mute, marginLeft: 3 }}>/ {hospitals.length}</span></div>
+          </div>
         </div>
         {/* Ticket Overview (wide) */}
         <div style={{ ...cardBase, padding: 22, display: "flex", flexDirection: "column" }}>
@@ -1504,8 +1511,8 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
         <div style={{ ...cardBase, padding: 22 }}>
           <div style={accentBar} />
           <div style={{ fontSize: 11, fontWeight: 600, color: T.mute, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 14, textAlign: "center" }}>Resolution Rate</div>
-          <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, textAlign: "center", color: T.ink }}>{resolutionRate}<span style={{ fontSize: 16, fontWeight: 500, color: T.mute, marginLeft: 3 }}>%</span></div>
-          <div style={{ textAlign: "center", fontSize: 11.5, color: T.slate, fontWeight: 600, marginTop: 12 }}><b style={{ color: T.teal700 }}>{resolvedThisMonth.length}</b> resolved of <b style={{ color: T.teal700 }}>{raisedThisMonth.length}</b> raised</div>
+          <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, textAlign: "center", color: T.ink }}>{resolutionRate === null ? "—" : <>{resolutionRate}<span style={{ fontSize: 16, fontWeight: 500, color: T.mute, marginLeft: 3 }}>%</span></>}</div>
+          <div style={{ textAlign: "center", fontSize: 11.5, color: T.slate, fontWeight: 600, marginTop: 12 }}><b style={{ color: T.teal700 }}>{closedAll}</b> closed of <b style={{ color: T.teal700 }}>{scoped.length}</b> total</div>
         </div>
       </div>
 
@@ -1583,10 +1590,14 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
                   <td style={{ padding: "15px 16px", borderBottom: `1px solid #f3f7f6`, textAlign: "center" }}><span style={{ fontWeight: 700, fontSize: 15, color: T.ink }}>{r.open}</span></td>
                   <td style={{ padding: "15px 16px", borderBottom: `1px solid #f3f7f6`, textAlign: "center" }}><span style={{ fontWeight: 700, fontSize: 15, color: T.ink }}>{r.resolved30}</span></td>
                   <td style={{ padding: "15px 16px", borderBottom: `1px solid #f3f7f6`, textAlign: "center" }}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
-                      <span style={{ fontWeight: 700, fontSize: 15, color: T.ink }}>{r.rate}%</span>
-                      <div style={{ height: 4, borderRadius: 2, background: T.teal100, width: 64, overflow: "hidden" }}><div style={{ height: "100%", borderRadius: 2, background: T.teal500, width: `${r.rate}%` }} /></div>
-                    </div>
+                    {r.rate === null ? (
+                      <span style={{ fontWeight: 700, fontSize: 15, color: T.mute }}>—</span>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+                        <span style={{ fontWeight: 700, fontSize: 15, color: T.ink }}>{r.rate}%</span>
+                        <div style={{ height: 4, borderRadius: 2, background: T.teal100, width: 64, overflow: "hidden" }}><div style={{ height: "100%", borderRadius: 2, background: T.teal500, width: `${r.rate}%` }} /></div>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -1596,7 +1607,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
 
         <div style={cardBase}>
           <div style={accentBar} />
-          <div style={cardHeader}><h3 style={cardTitle}>Critical Issues</h3></div>
+          <div style={cardHeader}><h3 style={cardTitle}>Priority Issues</h3></div>
           <div>
             {criticalIssues.length > 0 ? criticalIssues.map(c => (
               <div key={c.id} onClick={() => onViewSite(c.hospital)} style={{ padding: "13px 20px", display: "flex", alignItems: "center", gap: 11, borderBottom: `1px solid #f3f7f6`, cursor: "pointer" }} onMouseEnter={e => e.currentTarget.style.background = T.teal50} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
@@ -1612,20 +1623,37 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
         </div>
       </div>
 
-      {/* ── 6-month trend ── */}
+      {/* ── 12-month trend ── */}
       <div className="ox-in ox-in-d3" style={cardBase}>
         <div style={accentBar} />
-        <div style={cardHeader}><h3 style={cardTitle}>Tickets Opened vs Resolved — Last 6 Months</h3></div>
-        <div style={{ padding: "20px 22px 12px", display: "flex", alignItems: "flex-end", height: 200 }}>
-          {trend.map((m, mi) => (
-            <div key={m.label + m.year} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, height: "100%", justifyContent: "flex-end" }}>
-              <div style={{ display: "flex", gap: 4, alignItems: "flex-end", flex: 1, width: "100%", justifyContent: "center" }}>
-                <div title={`${m.opened} opened`} className="ox-bar" style={{ width: 15, borderRadius: "4px 4px 0 0", minHeight: 2, height: `${m.opened / trendMax * 100}%`, background: "#cfe0dd", animationDelay: `${mi * 0.08}s` }} />
-                <div title={`${m.resolved} resolved`} className="ox-bar" style={{ width: 15, borderRadius: "4px 4px 0 0", minHeight: 2, height: `${m.resolved / trendMax * 100}%`, background: T.teal500, boxShadow: "0 0 8px rgba(94,234,212,0.35)", animationDelay: `${mi * 0.08 + 0.04}s` }} />
+        <div style={{ padding: "18px 20px 14px", borderBottom: `1px solid ${T.line}`, textAlign: "center" }}>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, letterSpacing: -0.3, color: T.ink }}>Tickets Opened vs Resolved</h3>
+          <div style={{ fontSize: 10.5, fontWeight: 600, color: T.mute, textTransform: "uppercase", letterSpacing: "0.12em", marginTop: 5 }}>Last 12 Months</div>
+        </div>
+        <div style={{ padding: "28px 22px 12px", display: "flex", alignItems: "flex-end", height: 210, position: "relative" }}>
+          {trend.map((m, mi) => {
+            const isHover = hoverMonth === mi;
+            return (
+              <div key={m.label + m.year} onMouseEnter={() => setHoverMonth(mi)} onMouseLeave={() => setHoverMonth(null)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, height: "100%", justifyContent: "flex-end", position: "relative", cursor: "default" }}>
+                {/* Hover popup */}
+                {isHover && (
+                  <div style={{ position: "absolute", bottom: "calc(100% - 18px)", left: "50%", transform: "translateX(-50%)", background: T.ink, borderRadius: 8, padding: "7px 10px", boxShadow: "0 4px 14px rgba(0,0,0,0.18)", zIndex: 5, whiteSpace: "nowrap", pointerEvents: "none" }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#fff", marginBottom: 4, textAlign: "center" }}>{m.label} {m.year}</div>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "#cfe0dd" }} /><span style={{ fontSize: 10.5, color: "#e7edec", fontWeight: 600 }}>{m.opened} opened</span></div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: 2, background: T.teal300 }} /><span style={{ fontSize: 10.5, color: "#e7edec", fontWeight: 600 }}>{m.resolved} resolved</span></div>
+                    </div>
+                    <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: `5px solid ${T.ink}` }} />
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 3, alignItems: "flex-end", flex: 1, width: "100%", justifyContent: "center" }}>
+                  <div className="ox-bar" style={{ width: 11, borderRadius: "3px 3px 0 0", minHeight: 2, height: `${m.opened / trendMax * 100}%`, background: isHover ? "#b8d4d0" : "#cfe0dd", transition: "background 0.15s", animationDelay: `${mi * 0.04}s` }} />
+                  <div className="ox-bar" style={{ width: 11, borderRadius: "3px 3px 0 0", minHeight: 2, height: `${m.resolved / trendMax * 100}%`, background: T.teal500, boxShadow: isHover ? "0 0 10px rgba(94,234,212,0.5)" : "0 0 8px rgba(94,234,212,0.3)", transition: "box-shadow 0.15s", animationDelay: `${mi * 0.04 + 0.03}s` }} />
+                </div>
+                <span style={{ fontSize: 9.5, color: isHover ? T.teal700 : T.mute, fontWeight: isHover ? 700 : 600, transition: "color 0.15s" }}>{m.label}</span>
               </div>
-              <span style={{ fontSize: 10, color: T.mute, fontWeight: 600 }}>{m.label}</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
         <div style={{ display: "flex", gap: 22, justifyContent: "center", padding: "0 22px 18px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: T.slate, fontWeight: 600 }}><div style={{ width: 10, height: 10, borderRadius: 3, background: "#cfe0dd" }} />Opened</div>
@@ -1687,10 +1715,12 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user })
 
   // Resolution rate: resolved (last 30d) vs raised (last 30d)
   const raisedThisMonth = scoped.filter(c => c.created_at && new Date(c.created_at) >= oneMonthAgo);
-  const resolutionRate = raisedThisMonth.length > 0 ? Math.round(resolvedThisMonth.length / raisedThisMonth.length * 100) : (resolvedThisMonth.length > 0 ? 100 : 0);
+  // Resolution rate = closed (resolved + verified) / total tickets ever raised, all-time.
+  const closedAll = scoped.filter(c => isClosedStatus(c.status)).length;
+  const resolutionRate = scoped.length > 0 ? Math.round(closedAll / scoped.length * 100) : null;
 
   if (isUndpCmu) {
-    return <UndpCmuDashboard hospitals={hospitals} groups={groups} complaints={complaints} siteNotes={siteNotes} onViewSite={onViewSite} pkBoundary={pkBoundary} pinColor={pinColor} scoped={scoped} funcCount={funcCount} openTickets={openTickets} sevCounts={sevCounts} resolvedThisMonth={resolvedThisMonth} resolutionRate={resolutionRate} raisedThisMonth={raisedThisMonth} stageCounts={stageCounts} />;
+    return <UndpCmuDashboard hospitals={hospitals} groups={groups} complaints={complaints} siteNotes={siteNotes} onViewSite={onViewSite} pkBoundary={pkBoundary} pinColor={pinColor} scoped={scoped} funcCount={funcCount} openTickets={openTickets} sevCounts={sevCounts} resolvedThisMonth={resolvedThisMonth} resolutionRate={resolutionRate} raisedThisMonth={raisedThisMonth} stageCounts={stageCounts} closedAll={closedAll} />;
   }
 
   return (
