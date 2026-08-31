@@ -787,11 +787,11 @@ function PartnerFooter() {
         /* make the leaflet attribution as small and unobtrusive as possible */
         .leaflet-control-attribution { font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important; background: rgba(255,255,255,0.55) !important; opacity: 0.65; }
         .leaflet-control-attribution a { color: #64748b !important; }
-        /* partner logos on the teal band — rendered as clean white marks so every stroke,
-           including small text (Amex, Noxerior, CMU), is fully visible. Standard practice
-           for logos on a dark brand surface. */
-        .pf-img { flex: 0 1 auto; min-width: 0; opacity: 1; transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), opacity 0.35s ease; filter: brightness(0) invert(1); opacity: 0.94; }
-        .pf-img:hover { transform: translateY(-3px); opacity: 1; }
+        /* partner logos on the teal band — full brand colour kept. A tight multi-stop white
+           contour glow lifts every stroke (incl. small text) off the teal as far as a glow can,
+           tuned to stay crisp rather than bloom. */
+        .pf-img { flex: 0 1 auto; min-width: 0; opacity: 1; transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), filter 0.35s ease; filter: drop-shadow(0 0 0.6px rgba(255,255,255,1)) drop-shadow(0 0 1.2px rgba(255,255,255,1)) drop-shadow(0 0 2.5px rgba(255,255,255,0.85)) contrast(1.08) saturate(1.1); }
+        .pf-img:hover { transform: translateY(-3px); filter: drop-shadow(0 0 0.6px rgba(255,255,255,1)) drop-shadow(0 0 1.5px rgba(255,255,255,1)) drop-shadow(0 0 4px rgba(255,255,255,0.9)) contrast(1.1) saturate(1.15); }
         @media (prefers-reduced-motion: reduce) { .pf-img:hover { transform: none; } }
         .refresh-icon { display: none; }
         .refresh-icon-desktop { display: inline; }
@@ -3763,4 +3763,3 @@ const styles = {
   ovCellOpen: { flex: 1, minWidth: 170 },
   ovCellNote: { flex: 1, minWidth: 170, borderRight: "none" },
 };
-
