@@ -765,30 +765,15 @@ function AppHeader({ user, children, minimal }) {
 
 /* Partner logo footer — one line, in order: Global Fund, UNDP, Amex, Noxerior, CMU */
 function PartnerFooter() {
-  // Pre-generate drifting oxygen bubbles (stable per mount)
-  const bubbles = React.useMemo(() => Array.from({ length: 9 }, () => ({
-    size: 4 + Math.random() * 11,
-    left: Math.random() * 100,
-    dur: 5 + Math.random() * 6,
-    delay: -Math.random() * 8,
-  })), []);
   return (
     <footer style={{ background: "#0f766e", position: "relative", overflow: "hidden" }}>
-      {/* drifting oxygen bubbles */}
-      <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }} aria-hidden="true">
-        {bubbles.map((b, i) => (
-          <span key={i} className="pf-bubble" style={{ width: b.size, height: b.size, left: `${b.left}%`, animationDuration: `${b.dur}s`, animationDelay: `${b.delay}s` }} />
-        ))}
-      </div>
-      {/* soft teal glow hairline at top */}
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1, background: "linear-gradient(90deg, transparent, rgba(94,234,212,0.4), transparent)" }} />
-      <div style={{ padding: "36px 24px 32px", position: "relative" }}>
-        <div className="pf-row" style={{ maxWidth: 980, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 40, flexWrap: "wrap" }}>
-          <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 104, objectFit: "contain" }} />
-          <img className="pf-img pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 62, objectFit: "contain" }} />
-          <img className="pf-img pf-amex" src={LOGO_AMEX} alt="Amex" style={{ height: 46, objectFit: "contain" }} />
-          <img className="pf-img pf-nox" src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 42, objectFit: "contain" }} />
-          <img className="pf-img pf-cmu" src={LOGO_CMU} alt="CMU" style={{ height: 80, objectFit: "contain" }} />
+      <div style={{ padding: "20px 24px", position: "relative" }}>
+        <div className="pf-row" style={{ maxWidth: 820, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 22, flexWrap: "wrap" }}>
+          <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 74, objectFit: "contain" }} />
+          <img className="pf-img pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 46, objectFit: "contain" }} />
+          <img className="pf-img pf-amex" src={LOGO_AMEX} alt="Amex" style={{ height: 34, objectFit: "contain" }} />
+          <img className="pf-img pf-nox" src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 31, objectFit: "contain" }} />
+          <img className="pf-img pf-cmu" src={LOGO_CMU} alt="CMU" style={{ height: 58, objectFit: "contain" }} />
         </div>
       </div>
       <style>{`
@@ -802,14 +787,11 @@ function PartnerFooter() {
         /* make the leaflet attribution as small and unobtrusive as possible */
         .leaflet-control-attribution { font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important; background: rgba(255,255,255,0.55) !important; opacity: 0.65; }
         .leaflet-control-attribution a { color: #64748b !important; }
-        /* partner logos on the teal band — a single crisp white edge glow separates each
-           logo from the background precisely, without an overdone halo. */
-        .pf-img { flex: 0 1 auto; min-width: 0; opacity: 1; transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), filter 0.35s ease; filter: drop-shadow(0 0 2.5px rgba(255,255,255,0.85)); }
-        .pf-img:hover { transform: translateY(-4px); filter: drop-shadow(0 0 3px rgba(255,255,255,0.95)) drop-shadow(0 0 8px rgba(94,234,212,0.4)); }
-        /* drifting oxygen bubbles */
-        .pf-bubble { position: absolute; bottom: -14px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, rgba(138,255,234,0.65), rgba(13,148,136,0)); animation-name: pf-drift; animation-timing-function: linear; animation-iteration-count: infinite; }
-        @keyframes pf-drift { 0% { transform: translateY(24px); opacity: 0; } 20% { opacity: 0.75; } 80% { opacity: 0.75; } 100% { transform: translateY(-160px); opacity: 0; } }
-        @media (prefers-reduced-motion: reduce) { .pf-bubble { display: none; } .pf-img:hover { transform: none; } }
+        /* partner logos on the teal band — a thin, even white edge glow that precisely
+           separates every logo (dark or light) from the background without looking overdone. */
+        .pf-img { flex: 0 1 auto; min-width: 0; opacity: 1; transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), filter 0.35s ease; filter: drop-shadow(0 0 1.5px rgba(255,255,255,0.9)) drop-shadow(0 0 3px rgba(255,255,255,0.5)); }
+        .pf-img:hover { transform: translateY(-3px); filter: drop-shadow(0 0 1.5px rgba(255,255,255,1)) drop-shadow(0 0 6px rgba(255,255,255,0.6)); }
+        @media (prefers-reduced-motion: reduce) { .pf-img:hover { transform: none; } }
         .refresh-icon { display: none; }
         .refresh-icon-desktop { display: inline; }
         .refresh-label { display: inline; line-height: 1.4; }
@@ -822,12 +804,12 @@ function PartnerFooter() {
           .refresh-label { display: none !important; }
           .refresh-btn { padding: 8px 10px !important; gap: 0 !important; }
           .tab-download-btn { position: static !important; transform: none !important; width: 100%; margin-top: 10px; text-align: center; }
-          .pf-row { gap: 8px !important; }
-          .pf-gf { height: 66px !important; }
-          .pf-undp { height: 44px !important; }
-          .pf-amex { height: 32px !important; }
-          .pf-nox { height: 30px !important; }
-          .pf-cmu { height: 54px !important; }
+          .pf-row { gap: 6px !important; }
+          .pf-gf { height: 52px !important; }
+          .pf-undp { height: 34px !important; }
+          .pf-amex { height: 26px !important; }
+          .pf-nox { height: 24px !important; }
+          .pf-cmu { height: 42px !important; }
         }
         @media (max-width: 400px) {
           .pf-row { gap: 5px !important; }
