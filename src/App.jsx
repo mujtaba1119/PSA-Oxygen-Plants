@@ -790,6 +790,11 @@ function PartnerFooter() {
         .site-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 14px; overflow: hidden; box-shadow: none; background: transparent; border: none; }
         .site-popup .leaflet-popup-content { margin: 0; width: auto !important; }
         .site-popup .leaflet-popup-tip { background: #fff; box-shadow: 0 2px 8px rgba(15,118,110,0.08); }
+        /* fix hairline tile seams by nudging tile size up a touch */
+        .leaflet-container .leaflet-tile { width: 256.5px !important; height: 256.5px !important; }
+        /* make the leaflet attribution as small and unobtrusive as possible */
+        .leaflet-control-attribution { font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important; background: rgba(255,255,255,0.55) !important; opacity: 0.65; }
+        .leaflet-control-attribution a { color: #64748b !important; }
         .pf-img { flex-shrink: 1; min-width: 0; filter: grayscale(0.35) opacity(0.88); transition: filter 0.4s ease, transform 0.4s cubic-bezier(0.16,1,0.3,1); }
         .pf-img:hover { filter: grayscale(0) opacity(1); transform: translateY(-3px) scale(1.04); }
         @media (prefers-reduced-motion: reduce) { .pf-img { filter: none; } .pf-img:hover { transform: none; } }
@@ -1590,7 +1595,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
 
       {/* ── Map + Pipeline pie ── */}
       <div className="ox-in ox-in-d1" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 14, marginBottom: 20 }}>
-        <div style={{ borderRadius: 26, overflow: "hidden", border: "1px solid rgba(94,234,212,0.2)", boxShadow: "0 14px 38px rgba(11,59,56,0.34)", height: 380, background: "linear-gradient(180deg, #0b3b38 0%, #0f5650 55%, #0f766e 100%)", position: "relative", padding: "14px 12px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ borderRadius: 26, overflow: "hidden", border: "1px solid rgba(94,234,212,0.2)", boxShadow: "0 14px 38px rgba(11,59,56,0.34)", height: 380, background: "#0f5650", position: "relative", padding: "14px 12px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           {/* camera dot */}
           <div style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(94,234,212,0.5)", marginBottom: 8, flexShrink: 0 }} />
           {/* screen */}
