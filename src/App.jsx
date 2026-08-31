@@ -1495,12 +1495,12 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
   const [slide, setSlide] = useState(0); // 0 = Map, 1 = Program Overview
   const touchX = useRef(null);
 
-  // Critical issues: open tickets sorted by severity (Critical first) then age
+  // Priority issues: any High or Critical severity ticket still open after more than 10 days.
   const sevRank = { Critical: 0, High: 1, Low: 2 };
   const criticalIssues = openTickets
     .map(c => ({ ...c, sev: c.severity || getDefaultSeverity(c.title), days: c.created_at ? Math.max(0, Math.floor((Date.now() - new Date(c.created_at)) / (1000 * 60 * 60 * 24))) : 0 }))
-    .sort((a, b) => (sevRank[a.sev] - sevRank[b.sev]) || (b.days - a.days))
-    .slice(0, 6);
+    .filter(c => (c.sev === "Critical" || c.sev === "High") && c.days > 10)
+    .sort((a, b) => (sevRank[a.sev] - sevRank[b.sev]) || (b.days - a.days));
 
   // Provider performance — all-time
   const providerRows = ["Novair", "Intexim", "Z-Corps"].map(prov => {
@@ -1717,7 +1717,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
         <div style={cardBase}>
           <div style={accentBar} />
           <div style={cardHeader}><h3 style={cardTitle}>Priority Issues</h3></div>
-          <div>
+          <div style={{ maxHeight: 360, overflowY: "auto" }}>
             {criticalIssues.length > 0 ? criticalIssues.map(c => (
               <div key={c.id} onClick={() => onViewSite(c.hospital)} style={{ padding: "13px 20px", display: "flex", alignItems: "center", gap: 11, borderBottom: `1px solid #f3f7f6`, cursor: "pointer" }} onMouseEnter={e => e.currentTarget.style.background = T.teal50} onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
                 <div style={{ width: 3, alignSelf: "stretch", borderRadius: 2, flexShrink: 0, background: sevColor(c.sev) }} />
@@ -1725,9 +1725,9 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
                   <div style={{ fontSize: 12.5, fontWeight: 700, color: T.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName(c.hospital)}</div>
                   <div style={{ fontSize: 11, color: T.slate, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</div>
                 </div>
-                <span style={{ fontSize: 10, fontWeight: 700, color: T.slate, whiteSpace: "nowrap", flexShrink: 0 }}>{c.days}d open</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: sevColor(c.sev), whiteSpace: "nowrap", flexShrink: 0 }}>{c.days}d open</span>
               </div>
-            )) : <div style={{ padding: "32px 20px", textAlign: "center", color: T.mute, fontSize: 13 }}>No open issues</div>}
+            )) : <div style={{ padding: "32px 20px", textAlign: "center", color: T.mute, fontSize: 13 }}>No overdue high-priority issues</div>}
           </div>
         </div>
       </div>
