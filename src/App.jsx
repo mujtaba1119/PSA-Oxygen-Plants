@@ -2931,8 +2931,8 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
           <defs>
             <linearGradient id="tb-grad" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stopColor="#0b3b38" />
-              <stop offset="0.12" stopColor="#0d524c" />
-              <stop offset="0.5" stopColor="#0f766e" />
+              <stop offset="0.18" stopColor="#0b3b38" />
+              <stop offset="0.55" stopColor="#0f766e" />
               <stop offset="1" stopColor="#0b3b38" />
             </linearGradient>
           </defs>
@@ -3000,7 +3000,7 @@ function AnalyticsPage() {
 
 /* ─── Sidebar Styles ─── */
 const sidebarStyles = {
-  nav: { background: "linear-gradient(180deg, #0b3b38 0%, #0f5650 40%, #0f766e 65%, #0f766e 100%)", display: "flex", flexDirection: "column", padding: 0, alignItems: "stretch", width: 180, minHeight: "100vh", position: "fixed", top: 0, left: 0, zIndex: 100, fontFamily: "'DM Sans', system-ui, sans-serif" },
+  nav: { background: "linear-gradient(180deg, #0b3b38 0%, #0b3b38 18%, #0f5650 45%, #0f766e 70%, #0f766e 100%)", display: "flex", flexDirection: "column", padding: 0, alignItems: "stretch", width: 180, minHeight: "100vh", position: "fixed", top: 0, left: 0, zIndex: 100, fontFamily: "'DM Sans', system-ui, sans-serif" },
   items: { display: "flex", flexDirection: "column", gap: 2, padding: "4px 8px" },
   item: { display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, cursor: "pointer", transition: "all 0.2s", position: "relative" },
   itemActive: { background: "rgba(94,234,212,0.1)", border: "1px solid rgba(94,234,212,0.12)" },
