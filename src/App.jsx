@@ -934,8 +934,8 @@ function GlobalAnimations() {
       /* pulsating circular map pins */
       .ox-map-pin { position: relative; width: 16px; height: 16px; }
       .ox-map-pin-dot { position: absolute; top: 50%; left: 50%; width: 11px; height: 11px; border-radius: 50%; background: var(--pin); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.35); transform: translate(-50%, -50%); z-index: 2; }
-      .ox-map-pin-ring { position: absolute; top: 50%; left: 50%; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--pin); transform: translate(-50%, -50%); opacity: 0.6; animation: ox-pin-pulse 1.7s ease-out infinite; z-index: 1; }
-      @keyframes ox-pin-pulse { 0% { width: 8px; height: 8px; opacity: 0.6; } 100% { width: 30px; height: 30px; opacity: 0; } }
+      .ox-map-pin-ring { position: absolute; top: 50%; left: 50%; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--pin); transform: translate(-50%, -50%); opacity: 0.6; animation: ox-pin-pulse 2.8s ease-out infinite; z-index: 1; }
+      @keyframes ox-pin-pulse { 0% { width: 8px; height: 8px; opacity: 0.6; } 100% { width: 32px; height: 32px; opacity: 0; } }
       @media (prefers-reduced-motion: reduce) { .ox-map-pin-ring { animation: none; opacity: 0; } }
 
       /* tab / page content entrance */
@@ -1396,9 +1396,13 @@ function AssignedTag({ complaint, isAdmin, onRemove }) {
 
 /* ─── Overview Tab ─── */
 // Pulsating circular dot marker for the map, colored per site status.
+// Only running sites (green = fully functional, orange = functional with open ticket) pulse;
+// non-functional (grey) and shut-down (red) stay static since they aren't actively producing.
 function makePinIcon(color) {
+  const pulses = color === "#16a34a" || color === "#f08c00" || color === "#2f9e44" || color === "#e0912f" || color === "#d9822b";
+  const ring = pulses ? `<span class="ox-map-pin-ring"></span>` : "";
   const html = `<div class="ox-map-pin" style="--pin:${color}">
-    <span class="ox-map-pin-ring"></span>
+    ${ring}
     <span class="ox-map-pin-dot"></span>
   </div>`;
   return L.divIcon({
@@ -1586,7 +1590,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
 
       {/* ── Map + Pipeline pie ── */}
       <div className="ox-in ox-in-d1" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 14, marginBottom: 20 }}>
-        <div style={{ borderRadius: 26, overflow: "hidden", border: "1px solid rgba(94,234,212,0.2)", boxShadow: "0 14px 38px rgba(11,59,56,0.34)", height: 380, background: "linear-gradient(160deg, #123c38, #0b2b28)", position: "relative", padding: "14px 12px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ borderRadius: 26, overflow: "hidden", border: "1px solid rgba(94,234,212,0.2)", boxShadow: "0 14px 38px rgba(11,59,56,0.34)", height: 380, background: "linear-gradient(180deg, #0b3b38 0%, #0f5650 55%, #0f766e 100%)", position: "relative", padding: "14px 12px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           {/* camera dot */}
           <div style={{ width: 6, height: 6, borderRadius: "50%", background: "rgba(94,234,212,0.5)", marginBottom: 8, flexShrink: 0 }} />
           {/* screen */}
