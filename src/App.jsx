@@ -1736,7 +1736,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
       <div className="ox-in ox-in-d3" style={darkCard}>
         <div style={darkAccent} />
         <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)", textAlign: "center" }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, letterSpacing: 0.3, color: "#ffffff" }}>Opened <span style={{ fontWeight: 500, color: "rgba(255,255,255,0.55)", fontStyle: "italic", margin: "0 4px" }}>vs</span> Resolved</h3>
+          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, letterSpacing: 0.2, color: "#ffffff" }}>Tickets Opened <span style={{ color: "rgba(255,255,255,0.5)", fontWeight: 500, margin: "0 3px" }}>vs</span> Resolved</h3>
           <div style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(94,234,212,0.75)", textTransform: "uppercase", letterSpacing: "0.14em", marginTop: 6 }}>Last 12 Months</div>
         </div>
         <div style={{ padding: "28px 22px 12px", display: "flex", alignItems: "flex-end", height: 210, position: "relative" }}>
