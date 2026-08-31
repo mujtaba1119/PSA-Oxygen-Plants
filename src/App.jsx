@@ -1552,7 +1552,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
         <div style={{ ...darkCard, padding: "12px 16px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div style={darkAccent} />
           <div style={{ ...gradHeading, height: 13, marginBottom: 12 }}>Sites Functional</div>
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(94,234,212,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#5eead4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>
             </div>
@@ -1603,7 +1603,9 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
 
       {/* ── Map + Pipeline pie ── */}
       <div className="ox-in ox-in-d1" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 14, marginBottom: 20 }}>
-        <div style={{ borderRadius: 16, overflow: "hidden", border: `1px solid ${T.line}`, boxShadow: "0 1px 2px rgba(15,76,71,0.04)", height: 360, background: "#fff" }}>
+        <div style={{ borderRadius: 18, overflow: "hidden", border: "2px solid rgba(13,148,136,0.25)", boxShadow: "0 6px 22px rgba(15,118,110,0.10)", height: 360, background: "#fff", position: "relative", padding: 5 }}>
+          <div style={{ position: "absolute", top: 0, left: 24, right: 24, height: 3, borderRadius: "0 0 3px 3px", background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)", zIndex: 500 }} />
+          <div style={{ width: "100%", height: "100%", borderRadius: 13, overflow: "hidden" }}>
           <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
             <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
             {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: T.teal500, weight: 1.5, fillColor: T.teal100, fillOpacity: 0.15 }} />}
@@ -1621,6 +1623,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
               </div>
             </div></Popup><Tooltip direction="top" offset={[0, -10]}>{displayName(h)}</Tooltip></Marker>); })}
           </MapContainer>
+          </div>
         </div>
         {/* Pipeline pie */}
         <div style={{ ...cardBase, display: "flex", flexDirection: "column" }}>
