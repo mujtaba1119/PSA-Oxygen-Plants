@@ -1957,26 +1957,20 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
         </div>
       </div>
 
-      {/* ── Needs Your Action — Novair Sites ── */}
+      {/* ── Novair own sites ── */}
       <div className="ox-in" style={{ marginBottom: 30 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
           <span style={{ width: 12, height: 12, borderRadius: 4, background: provColor.Novair, flexShrink: 0 }} />
-          <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.3px", color: T.ink }}>Needs Your Action</span>
-          <span style={{ fontSize: 12, color: T.mute, fontWeight: 600 }}>Novair Sites · {novair.siteCount} sites</span>
-          <span style={{ marginLeft: "auto", fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", padding: "4px 10px", borderRadius: 20, background: provTint.Novair, color: provColor.Novair }}>Your territory</span>
+          <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.3px", color: T.ink }}>Novair</span>
+          <span style={{ fontSize: 13, color: T.mute, fontWeight: 600 }}>— {novair.siteCount} sites</span>
         </div>
-        <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
-          {[{ v: novair.openCount, l: "Open", c: "#c0392b" }, { v: novair.inProgress, l: "In Progress", c: "#d9822b" }, { v: novair.resolvedMo, l: "Resolved (mo)", c: T.teal700 }].map((t, i) => (
-            <div key={i} style={{ flex: 1, ...cardBase, padding: "14px 16px", textAlign: "center" }}>
-              <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, color: t.c }}>{t.v}</div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 6 }}>{t.l}</div>
-            </div>
-          ))}
+        <div style={{ fontSize: 13, color: T.slate, fontWeight: 600, marginBottom: 16 }}>
+          <b style={{ color: novair.openCount > 0 ? "#c0392b" : T.teal700, fontSize: 15 }}>{novair.openCount}</b> open ticket{novair.openCount === 1 ? "" : "s"}
         </div>
         {novair.openCards.length > 0 ? novair.openCards.map(renderCard) : (
           <div style={{ ...cardBase, padding: "16px 20px", display: "flex", alignItems: "center", gap: 10, color: T.teal700, fontSize: 13, fontWeight: 600 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.teal500} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            All clear — no open complaints in Novair sites
+            All clear — no open tickets in Novair sites
           </div>
         )}
       </div>
