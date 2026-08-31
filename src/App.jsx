@@ -787,10 +787,10 @@ function PartnerFooter() {
         <span style={{ fontSize: 12, color: C.textLight, fontWeight: 500, letterSpacing: 0.3 }}>PSA Oxygen Plants · Management System</span>
       </div>
       <style>{`
-        /* Chrome tile seam fix: scale the whole tile layer container by a hair so the
-           sub-pixel gaps between adjacent tiles close. Scaling the container (not each
-           positioned tile) does not disturb Leaflet's per-tile placement. */
-        .leaflet-tile-container { transform: scale(1.002); transform-origin: 0 0; }
+        /* Chrome tile seam fix — scale the tile layer container from its top-left origin
+           (which is where Leaflet anchors it) so tiles overlap slightly and the white
+           sub-pixel seams disappear without shifting marker alignment. */
+        .leaflet-tile-container { transform: scale(1.003); transform-origin: 0 0; }
         .site-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 14px; overflow: hidden; box-shadow: none; background: transparent; border: none; }
         .site-popup .leaflet-popup-content { margin: 0; width: 316px !important; }
         .site-popup .leaflet-popup-tip { background: #fff; box-shadow: 0 2px 8px rgba(15,118,110,0.08); }
