@@ -1403,40 +1403,59 @@ function makePinIcon(color) {
   });
 }
 
-/* ─── Speedometer gauge — needle sweeps to the resolution-rate value ─── */
+/* ─── Radial gauge (Control Room style) — needle + tick marks + sweeping arc.
+   Used for the Resolution Rate tile. ─── */
 function Speedometer({ value, teal }) {
   const [sweep, setSweep] = useState(0);
   const target = value === null || value === undefined ? 0 : value;
-  useEffect(() => { const id = setTimeout(() => setSweep(target), 250); return () => clearTimeout(id); }, [target]);
-  const W = 150, H = 92, cx = W / 2, cy = 82, R = 62;
-  // semicircle from 180deg (left) to 0deg (right)
-  const rad = (a) => (a * Math.PI) / 180;
-  const pt = (a, r) => [cx + r * Math.cos(rad(a)), cy - r * Math.sin(rad(a))];
+  useEffect(() => { const id = setTimeout(() => setSweep(target), 300); return () => clearTimeout(id); }, [target]);
+
+  const CX = 110, CY = 110, R = 88;
+  const startA = 140, endA = 400; // 260° sweep
   const pct = Math.max(0, Math.min(100, sweep)) / 100;
-  const needleA = 180 - pct * 180;
-  const [nx, ny] = pt(needleA, R - 12);
-  // colored arc segments (three zones): 0-50 red-ish, 50-80 amber, 80-100 teal
-  const arc = (a0, a1, color, r = R) => {
-    const [x0, y0] = pt(a0, r); const [x1, y1] = pt(a1, r);
-    const large = Math.abs(a1 - a0) > 180 ? 1 : 0;
-    return <path d={`M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round" />;
-  };
+  const ang = startA + (endA - startA) * pct;
+  const rad = (a) => (a * Math.PI) / 180;
+  const pt = (a, r) => [CX + r * Math.cos(rad(a)), CY + r * Math.sin(rad(a))];
+  const [sx, sy] = pt(startA, R);
+  const [ex, ey] = pt(ang, R);
+  const large = ang - startA > 180 ? 1 : 0;
+  const [ex2, ey2] = pt(endA, R);
+
+  const ticks = Array.from({ length: 27 }, (_, i) => {
+    const a = startA + (i / 26) * (endA - startA);
+    const inner = pt(a, R - 13);
+    const outer = pt(a, R - (i % 5 === 0 ? 21 : 17));
+    return { inner, outer, major: i % 5 === 0 };
+  });
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", maxWidth: 168, display: "block", margin: "0 auto 4px" }}>
+    <svg viewBox="0 0 220 220" style={{ width: "100%", maxWidth: 170, display: "block", margin: "2px auto 2px", filter: "drop-shadow(0 0 18px rgba(94,234,212,0.12))" }}>
+      <defs>
+        <linearGradient id="rr-arc" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#0d9488" />
+          <stop offset="55%" stopColor="#2dd4bf" />
+          <stop offset="100%" stopColor="#5eead4" />
+        </linearGradient>
+        <radialGradient id="rr-core" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="rgba(94,234,212,0.16)" />
+          <stop offset="100%" stopColor="rgba(94,234,212,0)" />
+        </radialGradient>
+      </defs>
+      <circle cx={CX} cy={CY} r={66} fill="url(#rr-core)" />
       {/* track */}
-      {arc(180, 0, "#eef4f2")}
-      {/* zones */}
-      {arc(180, 126, "#e7b3b0")}
-      {arc(126, 54, "#f0d3a8")}
-      {arc(54, 0, teal.teal300)}
-      {/* value arc overlay in strong teal up to needle */}
-      {sweep > 0 && arc(180, needleA, teal.teal500)}
-      {/* needle */}
-      <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={teal.ink} strokeWidth="2.5" strokeLinecap="round" style={{ transition: "all 1.1s cubic-bezier(0.16,1,0.3,1)" }} />
-      <circle cx={cx} cy={cy} r="5" fill={teal.ink} />
-      <circle cx={cx} cy={cy} r="2" fill="#fff" />
-      {/* value text */}
-      <text x={cx} y={cy - 16} textAnchor="middle" style={{ fontSize: 22, fontWeight: 800, fill: teal.ink }}>{value === null || value === undefined ? "—" : `${value}%`}</text>
+      <path d={`M ${sx} ${sy} A ${R} ${R} 0 1 1 ${ex2} ${ey2}`} fill="none" stroke="#eef4f2" strokeWidth="6" strokeLinecap="round" />
+      {/* ticks */}
+      {ticks.map((t, i) => (
+        <line key={i} x1={t.inner[0]} y1={t.inner[1]} x2={t.outer[0]} y2={t.outer[1]} stroke={t.major ? "rgba(13,148,136,0.45)" : "rgba(15,76,71,0.14)"} strokeWidth={t.major ? 1.6 : 1} />
+      ))}
+      {/* value arc */}
+      {sweep > 0 && <path d={`M ${sx} ${sy} A ${R} ${R} 0 ${large} 1 ${ex} ${ey}`} fill="none" stroke="url(#rr-arc)" strokeWidth="6" strokeLinecap="round" style={{ transition: "all 1.4s cubic-bezier(0.16,1,0.3,1)" }} />}
+      {/* needle dot */}
+      <circle cx={ex} cy={ey} r="5" fill="#5eead4" style={{ transition: "all 1.4s cubic-bezier(0.16,1,0.3,1)", filter: "drop-shadow(0 0 6px #5eead4)" }} />
+      {/* center readout */}
+      <text x={CX} y={CY - 2} textAnchor="middle" fill={teal.ink} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 40, fontWeight: 800, letterSpacing: -1 }}>{value === null || value === undefined ? "—" : value}</text>
+      {value !== null && value !== undefined && <text x={CX + 42} y={CY - 18} textAnchor="middle" fill={teal.mute} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 16, fontWeight: 600 }}>%</text>}
+      <text x={CX} y={CY + 22} textAnchor="middle" fill={teal.mute} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: 2 }}>RESOLVED</text>
     </svg>
   );
 }
