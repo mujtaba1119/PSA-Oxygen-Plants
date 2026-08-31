@@ -1886,49 +1886,82 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
     );
   };
 
+  // Resolve the affected equipment (icon + label + serial) for a ticket from its serial tag.
+  const EQUIP_LABEL = { oxyswing_a: "Oxygen Generator", oxyswing_b: "Oxygen Generator", comp1: "Compressor", comp2: "Compressor", comp3: "Compressor", comp4: "Compressor", dryer1: "Air Dryer", dryer2: "Air Dryer", dryer3: "Air Dryer", dryer4: "Air Dryer", hpox: "HP Oxygen Panel", oxycheck: "Oxygen Analyzer", css: "CSS Panel", medgas: "Medical Gas Panel", generator: "Power Generator" };
+  const equipForTicket = (c) => {
+    const equip = EQUIPMENT_DATA[c.hospital] || {};
+    for (const serial of c.serials) {
+      const key = Object.keys(equip).find(k => equip[k] === serial);
+      if (key) return { key, icon: EQUIP_ICONS[key] || "equipment", label: EQUIP_LABEL[key] || "Equipment", serial };
+    }
+    return null;
+  };
+
   // Novair ticket tile: site+title top-left, equipment icon+serial top-right, dates+actions in body
   const renderNovairTicket = (c) => {
     const names = assigneeNames(c);
     const visits = visitDates(c);
     const lastVisit = visits.length ? fmtDate(visits.sort((a, b) => new Date(b) - new Date(a))[0]) : null;
-    const metaItem = (label, value, dim) => (
-      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        <span style={{ fontSize: 9, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>{label}</span>
-        <span style={{ fontSize: 12.5, fontWeight: 600, color: dim ? T.mute : T.ink }}>{value}</span>
-      </div>
-    );
+    const eq = equipForTicket(c);
+    // timeline steps that have happened
+    const steps = [
+      { label: "Reported", date: fmtDate(c.created_at), done: true },
+      { label: "Assigned", date: c.assigned_at ? fmtDate(c.assigned_at) : null, done: !!c.assigned_at },
+      { label: "Last Visit", date: lastVisit, done: !!lastVisit },
+    ];
     return (
       <div key={c.id} style={{ ...cardBase, marginBottom: 12 }}>
         <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: SEV[c.sev] }} />
-        {/* header: site+title | equipment icon + serial */}
+        {/* ── header: site + title | equipment icon + serial ── */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "16px 20px 14px 24px", borderBottom: `1px solid #f3f7f6` }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: T.ink, letterSpacing: "-0.2px", lineHeight: 1.2 }}>{displayName(c.hospital)}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 15, fontWeight: 800, color: T.ink, letterSpacing: "-0.2px" }}>{displayName(c.hospital)}</span>
+              <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 8px", borderRadius: 6, color: "#fff", textTransform: "uppercase", letterSpacing: "0.04em", background: SEV[c.sev] }}>{c.sev}</span>
+            </div>
             <div style={{ fontSize: 12.5, color: T.slate, marginTop: 4, fontWeight: 500 }}>{c.title}</div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flexShrink: 0 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 11, background: T.teal50, border: `1px solid ${T.teal100}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.teal700} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flexShrink: 0, width: 72 }}>
+            <div style={{ width: 46, height: 46, borderRadius: 12, background: T.teal50, border: `1px solid ${T.teal100}`, display: "flex", alignItems: "center", justifyContent: "center", padding: 6 }}>
+              <img src={`/equipment/${eq ? eq.icon : "equipment"}.svg`} alt={eq ? eq.label : "Equipment"} style={{ width: "100%", height: "100%", objectFit: "contain" }} onError={e => { e.target.style.display = "none"; }} />
             </div>
-            <span style={{ fontSize: 10, fontWeight: 700, color: c.serials.length ? T.teal700 : T.mute, fontFamily: "'DM Mono', monospace" }}>{c.serials.length ? c.serials.join(", ") : "—"}</span>
+            {eq && <span style={{ fontSize: 8.5, fontWeight: 700, color: T.slate, textAlign: "center", lineHeight: 1.2 }}>{eq.label}</span>}
+            <span style={{ fontSize: 9, fontWeight: 700, color: c.serials.length ? T.teal700 : T.mute, fontFamily: "'DM Mono', monospace" }}>{c.serials.length ? c.serials.join(", ") : "—"}</span>
           </div>
         </div>
-        {/* body: status + dates + assignees */}
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 22, padding: "13px 20px 13px 24px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <span style={{ fontSize: 9, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>Status</span>
-            <span style={{ fontSize: 11, fontWeight: 800, color: statusColor(c.eff) }}>{c.eff}</span>
+        {/* ── body: status | timeline | assignees ── */}
+        <div style={{ display: "flex", alignItems: "stretch", flexWrap: "wrap", gap: 0, padding: "0" }}>
+          {/* status block */}
+          <div style={{ padding: "14px 20px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 6, borderRight: `1px solid #f3f7f6`, minWidth: 130 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>Status</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor(c.eff) }} />
+              <span style={{ fontSize: 13, fontWeight: 800, color: statusColor(c.eff) }}>{c.eff}</span>
+            </div>
+            <div style={{ fontSize: 11, color: c.days > 30 ? "#c0392b" : T.slate, fontWeight: 600 }}>{c.days} day{c.days === 1 ? "" : "s"} open</div>
           </div>
-          {metaItem("Opened", fmtDate(c.created_at) || "—")}
-          {c.assigned_at && metaItem("Assigned", fmtDate(c.assigned_at))}
-          {metaItem("Days Open", `${c.days} day${c.days === 1 ? "" : "s"}`)}
-          {lastVisit && metaItem("Last Visit", lastVisit)}
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <span style={{ fontSize: 9, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>Assigned To</span>
-            {names.length ? <span style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>{names.map(n => <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: T.teal50, border: `1px solid ${T.teal100}`, borderRadius: 20, padding: "2px 9px 2px 3px", fontSize: 11, fontWeight: 600, color: T.teal700 }}><span style={{ width: 16, height: 16, borderRadius: "50%", background: T.teal500, color: "#fff", fontSize: 7.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{initialsFor(n)}</span>{n}</span>)}</span> : <span style={{ fontSize: 12, fontWeight: 500, color: T.mute }}>— not assigned</span>}
+          {/* timeline */}
+          <div style={{ flex: 1, padding: "14px 20px", display: "flex", alignItems: "center", gap: 0, minWidth: 260 }}>
+            {steps.map((s, i) => (
+              <div key={s.label} style={{ display: "flex", alignItems: "center", flex: i < steps.length - 1 ? 1 : "0 0 auto" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ width: 9, height: 9, borderRadius: "50%", background: s.done ? T.teal500 : "#e2e8e6", border: s.done ? "none" : `1.5px solid #cbd5d1`, flexShrink: 0 }} />
+                    <span style={{ fontSize: 9, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>{s.label}</span>
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: s.date ? T.ink : T.mute, marginLeft: 15 }}>{s.date || "—"}</span>
+                </div>
+                {i < steps.length - 1 && <div style={{ flex: 1, height: 2, background: steps[i + 1].done ? T.teal300 : "#eef2f0", margin: "0 10px", borderRadius: 2, alignSelf: "flex-start", marginTop: 4 }} />}
+              </div>
+            ))}
+          </div>
+          {/* assignees */}
+          <div style={{ padding: "14px 20px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 6, borderLeft: `1px solid #f3f7f6`, minWidth: 150 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>Assigned To</div>
+            {names.length ? <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>{names.map(n => <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: T.teal50, border: `1px solid ${T.teal100}`, borderRadius: 20, padding: "2px 9px 2px 3px", fontSize: 11, fontWeight: 600, color: T.teal700 }}><span style={{ width: 16, height: 16, borderRadius: "50%", background: T.teal500, color: "#fff", fontSize: 7.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{initialsFor(n)}</span>{n}</span>)}</div> : <span style={{ fontSize: 12, fontWeight: 600, color: "#c0392b" }}>Not assigned</span>}
           </div>
         </div>
-        {/* actions */}
+        {/* ── actions ── */}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: "12px 20px 14px 24px", background: "#fafcfb", borderTop: `1px solid #f3f7f6` }}>
           <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 14px", cursor: "pointer", border: "none", background: "linear-gradient(135deg, #0d9488, #0f766e)", color: "#fff", boxShadow: "0 2px 6px rgba(13,148,136,0.22)" }}>{names.length ? "Manage Ticket →" : "Assign Staff →"}</button>
           <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 14px", cursor: "pointer", background: "#fff", border: `1.5px solid ${T.teal300}`, color: T.teal700 }}>View Details</button>
