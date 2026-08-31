@@ -1579,8 +1579,16 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
 
       {/* ── Map + Pipeline pie ── */}
       <div className="ox-in ox-in-d1" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 14, marginBottom: 20 }}>
-        <div style={{ borderRadius: 18, overflow: "hidden", border: "2px solid #0f1c1a", boxShadow: "0 6px 22px rgba(0,0,0,0.22)", height: 360, background: "#0f1c1a", position: "relative", padding: 5 }}>
-          <div style={{ width: "100%", height: "100%", borderRadius: 13, overflow: "hidden" }}>
+        <div style={{ borderRadius: 18, overflow: "hidden", border: "1px solid rgba(94,234,212,0.25)", boxShadow: "0 10px 30px rgba(11,59,56,0.30)", height: 360, background: "linear-gradient(180deg, #0d3330, #0b2b28)", position: "relative", padding: "10px 8px 8px", display: "flex", flexDirection: "column" }}>
+          {/* screen chrome bar */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 6px 8px" }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#5eead4", boxShadow: "0 0 6px rgba(94,234,212,0.6)" }} />
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(94,234,212,0.35)" }} />
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "rgba(94,234,212,0.2)" }} />
+            <span style={{ marginLeft: "auto", fontSize: 9, fontWeight: 700, letterSpacing: "0.12em", color: "rgba(94,234,212,0.7)", textTransform: "uppercase", fontFamily: "'DM Sans', system-ui, sans-serif" }}>Live Network Map</span>
+          </div>
+          {/* screen */}
+          <div style={{ flex: 1, borderRadius: 10, overflow: "hidden", background: "#dfeae8", boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.15), inset 0 2px 8px rgba(0,0,0,0.2)", position: "relative" }}>
           <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
             <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
             {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: T.teal500, weight: 1.5, fillColor: T.teal100, fillOpacity: 0.15 }} />}
