@@ -1602,7 +1602,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
 
       {/* ── Full-width tablet screen: swipe between Map and Program Overview ── */}
       <div className="ox-in ox-in-d1" style={{ marginBottom: 20 }}>
-        <div style={{ borderRadius: 30, overflow: "hidden", boxShadow: "0 18px 44px rgba(11,59,56,0.38)", height: 460, background: "#0b3b38", position: "relative", padding: "16px 22px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div style={{ borderRadius: 30, overflow: "hidden", boxShadow: "0 18px 44px rgba(11,59,56,0.30)", height: 460, background: "#128074", position: "relative", padding: "16px 22px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           {/* curved edge-screen highlights on left & right */}
           <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: 22, background: "linear-gradient(90deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02) 55%, rgba(0,0,0,0.28))", pointerEvents: "none", zIndex: 6 }} />
           <div style={{ position: "absolute", top: 0, bottom: 0, right: 0, width: 22, background: "linear-gradient(270deg, rgba(255,255,255,0.16), rgba(255,255,255,0.02) 55%, rgba(0,0,0,0.28))", pointerEvents: "none", zIndex: 6 }} />
@@ -1620,7 +1620,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
               {/* ── Panel 1: Map ── */}
               <div style={{ width: "50%", height: "100%", position: "relative", transition: "opacity 0.6s ease, filter 0.6s ease", opacity: slide === 0 ? 1 : 0.4, filter: slide === 0 ? "none" : "blur(1px)" }}>
                 <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
-                  <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+                  <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
                   {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: T.teal500, weight: 1.5, fillColor: T.teal100, fillOpacity: 0.15 }} />}
                   {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; const sc = s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#d97706" : "#16a34a"; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={340} maxWidth={340} className="site-popup"><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "row", alignItems: "stretch", border: "1.5px solid #e2e8f0", borderRadius: 16, background: "#fff", boxShadow: "0 6px 20px rgba(15,118,110,0.14)", padding: 12, gap: 12 }}>
                     {/* image column — fixed square, does not stretch */}
@@ -1706,10 +1706,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
               {providerRows.map((r, i) => (
                 <tr key={r.prov} style={{ borderBottom: i < providerRows.length - 1 ? `1px solid #f5f8f7` : "none" }}>
                   <td style={{ padding: "16px 18px", textAlign: "left" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: provColors[r.prov] || T.teal700, flexShrink: 0 }} />
-                      <span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{r.prov}</span>
-                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{r.prov}</span>
                   </td>
                   <td style={{ padding: "16px 18px", textAlign: "center", fontSize: 13, fontWeight: 600, color: T.slate }}>{r.siteCount}</td>
                   <td style={{ padding: "16px 18px", textAlign: "center", fontSize: 13, fontWeight: 700, color: r.open > 0 ? "#d9822b" : T.mute }}>{r.open}</td>
@@ -1752,16 +1749,26 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
             return (
               <div key={`${m.year}-${m.month}`} onMouseEnter={() => setHoverMonth(mi)} onMouseLeave={() => setHoverMonth(null)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, height: "100%", justifyContent: "flex-end", position: "relative", cursor: "default" }}>
                 {/* Hover popup */}
-                {isHover && (
-                  <div style={{ position: "absolute", bottom: "calc(100% - 18px)", left: "50%", transform: "translateX(-50%)", background: "#06201d", border: "1px solid rgba(94,234,212,0.2)", borderRadius: 8, padding: "7px 10px", boxShadow: "0 4px 14px rgba(0,0,0,0.35)", zIndex: 5, whiteSpace: "nowrap", pointerEvents: "none" }}>
+                {isHover && (() => {
+                  const edgeLeft = mi <= 1;
+                  const edgeRight = mi >= trend.length - 2;
+                  const popLeft = edgeLeft ? "0" : edgeRight ? "auto" : "50%";
+                  const popRight = edgeRight ? "0" : "auto";
+                  const popTransform = edgeLeft || edgeRight ? "none" : "translateX(-50%)";
+                  const arrowLeft = edgeLeft ? "18px" : edgeRight ? "auto" : "50%";
+                  const arrowRight = edgeRight ? "18px" : "auto";
+                  const arrowTransform = edgeLeft || edgeRight ? "none" : "translateX(-50%)";
+                  return (
+                  <div style={{ position: "absolute", bottom: "calc(100% - 18px)", left: popLeft, right: popRight, transform: popTransform, background: "#06201d", border: "1px solid rgba(94,234,212,0.2)", borderRadius: 8, padding: "7px 10px", boxShadow: "0 4px 14px rgba(0,0,0,0.35)", zIndex: 20, whiteSpace: "nowrap", pointerEvents: "none" }}>
                     <div style={{ fontSize: 10, fontWeight: 700, color: "#fff", marginBottom: 4, textAlign: "center" }}>{m.label} {m.year}</div>
                     <div style={{ display: "flex", gap: 10 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "rgba(255,255,255,0.4)" }} /><span style={{ fontSize: 10.5, color: "#e7edec", fontWeight: 600 }}>{m.opened} opened</span></div>
                       <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 7, height: 7, borderRadius: 2, background: "#5eead4" }} /><span style={{ fontSize: 10.5, color: "#e7edec", fontWeight: 600 }}>{m.resolved} resolved</span></div>
                     </div>
-                    <div style={{ position: "absolute", top: "100%", left: "50%", transform: "translateX(-50%)", width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid #06201d" }} />
+                    <div style={{ position: "absolute", top: "100%", left: arrowLeft, right: arrowRight, transform: arrowTransform, width: 0, height: 0, borderLeft: "5px solid transparent", borderRight: "5px solid transparent", borderTop: "5px solid #06201d" }} />
                   </div>
-                )}
+                  );
+                })()}
                 <div style={{ display: "flex", gap: 3, alignItems: "flex-end", flex: 1, width: "100%", justifyContent: "center" }}>
                   <div className="ox-bar" style={{ width: 11, borderRadius: "3px 3px 0 0", minHeight: 2, height: `${m.opened / trendMax * 100}%`, background: isHover ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.28)", transition: "background 0.15s", animationDelay: `${mi * 0.04}s` }} />
                   <div className="ox-bar" style={{ width: 11, borderRadius: "3px 3px 0 0", minHeight: 2, height: `${m.resolved / trendMax * 100}%`, background: "#5eead4", boxShadow: isHover ? "0 0 12px rgba(94,234,212,0.7)" : "0 0 8px rgba(94,234,212,0.4)", transition: "box-shadow 0.15s", animationDelay: `${mi * 0.04 + 0.03}s` }} />
@@ -1866,7 +1873,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user })
       <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 14, marginBottom: 24 }}>
         <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid #e8ecf0", boxShadow: "0 1px 3px rgba(15,23,42,0.05)", height: 400, position: "relative", background: "#fff" }}>
           <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
-            <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+            <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
             {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: C.teal, weight: 1.5, fillColor: C.tealLight, fillOpacity: 0.15 }} />}
             {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={330} maxWidth={370} className="site-popup"><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "row", border: "1.5px solid #e2e8f0", borderRadius: 14, overflow: "hidden", background: "#fff", boxShadow: "0 2px 12px rgba(15,118,110,0.08)" }}>
               {imgSrc && <div style={{ width: 115, flexShrink: 0, position: "relative" }}><img src={imgSrc} alt={h} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", minHeight: 130 }} onError={e => { e.target.parentElement.style.display = "none"; }} /><div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, transparent 60%, rgba(255,255,255,0.15) 100%)" }} /></div>}
