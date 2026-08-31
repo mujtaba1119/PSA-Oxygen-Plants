@@ -1405,10 +1405,9 @@ function makePinIcon(color) {
 
 /* ─── Radial gauge (Control Room style) — needle + tick marks + sweeping arc.
    Used for the Resolution Rate tile. ─── */
-function Speedometer({ value, teal }) {
-  const [sweep, setSweep] = useState(0);
+function Speedometer({ value, teal, dark }) {
   const target = value === null || value === undefined ? 0 : value;
-  useEffect(() => { const id = setTimeout(() => setSweep(target), 300); return () => clearTimeout(id); }, [target]);
+  const sweep = target;
 
   const CX = 110, CY = 110, R = 88;
   const startA = 140, endA = 400; // 260° sweep
@@ -1443,15 +1442,15 @@ function Speedometer({ value, teal }) {
       </defs>
       <circle cx={CX} cy={CY} r={66} fill="url(#rr-core)" />
       {/* track */}
-      <path d={`M ${sx} ${sy} A ${R} ${R} 0 1 1 ${ex2} ${ey2}`} fill="none" stroke="#eef4f2" strokeWidth="6" strokeLinecap="round" />
+      <path d={`M ${sx} ${sy} A ${R} ${R} 0 1 1 ${ex2} ${ey2}`} fill="none" stroke={dark ? "rgba(255,255,255,0.08)" : "#eef4f2"} strokeWidth="6" strokeLinecap="round" />
       {/* ticks */}
       {ticks.map((t, i) => (
-        <line key={i} x1={t.inner[0]} y1={t.inner[1]} x2={t.outer[0]} y2={t.outer[1]} stroke={t.major ? "rgba(13,148,136,0.45)" : "rgba(15,76,71,0.14)"} strokeWidth={t.major ? 1.6 : 1} />
+        <line key={i} x1={t.inner[0]} y1={t.inner[1]} x2={t.outer[0]} y2={t.outer[1]} stroke={t.major ? (dark ? "rgba(94,234,212,0.5)" : "rgba(13,148,136,0.45)") : (dark ? "rgba(255,255,255,0.12)" : "rgba(15,76,71,0.14)")} strokeWidth={t.major ? 1.6 : 1} />
       ))}
       {/* value arc */}
-      {sweep > 0 && <path d={`M ${sx} ${sy} A ${R} ${R} 0 ${large} 1 ${ex} ${ey}`} fill="none" stroke="url(#rr-arc)" strokeWidth="6" strokeLinecap="round" style={{ transition: "all 1.4s cubic-bezier(0.16,1,0.3,1)" }} />}
+      {sweep > 0 && <path d={`M ${sx} ${sy} A ${R} ${R} 0 ${large} 1 ${ex} ${ey}`} fill="none" stroke="url(#rr-arc)" strokeWidth="6" strokeLinecap="round" />}
       {/* needle dot */}
-      <circle cx={ex} cy={ey} r="5" fill="#5eead4" style={{ transition: "all 1.4s cubic-bezier(0.16,1,0.3,1)", filter: "drop-shadow(0 0 6px #5eead4)" }} />
+      <circle cx={ex} cy={ey} r="5" fill="#5eead4" style={{ filter: "drop-shadow(0 0 6px #5eead4)" }} />
       {/* center readout */}
       <text x={CX} y={CY - 2} textAnchor="middle" fill={teal.ink} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 40, fontWeight: 800, letterSpacing: -1 }}>{value === null || value === undefined ? "—" : value}</text>
       {value !== null && value !== undefined && <text x={CX + 42} y={CY - 18} textAnchor="middle" fill={teal.mute} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 16, fontWeight: 600 }}>%</text>}
@@ -1526,59 +1525,65 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
   const cardHeader = { padding: "16px 20px 12px", borderBottom: `1px solid ${T.line}` };
   const cardTitle = { fontSize: 13.5, fontWeight: 800, letterSpacing: -0.2, color: T.ink };
 
-  const gradHeading = { fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 14, textAlign: "center", background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "transparent" };
-  const SEV = { Critical: "#c0392b", High: "#d9822b", Low: "#94a3a0" };
+  const gradHeading = { fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 12, textAlign: "center", background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "transparent" };
+  const SEV = { Critical: "#e5645f", High: "#eaa54a", Low: "#9aa8a5" };
+  const darkCard = { background: "linear-gradient(160deg, #182826, #0f1c1a)", borderRadius: 16, border: "1px solid rgba(94,234,212,0.10)", boxShadow: "0 6px 22px rgba(0,0,0,0.22)", overflow: "hidden", position: "relative" };
+  const darkAccent = { position: "absolute", top: 0, left: 22, right: 22, height: 3, borderRadius: "0 0 3px 3px", background: "linear-gradient(90deg, #0d9488, #5eead4)" };
 
   return (
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       {/* ── Stat tiles ── */}
-      <div className="ox-stagger" style={{ display: "grid", gridTemplateColumns: "1fr 1.7fr 1fr", gap: 14, marginBottom: 20 }}>
-        {/* Sites Functional — icon centered, count below */}
-        <div style={{ ...cardBase, padding: 22, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start" }}>
-          <div style={accentBar} />
+      <div className="ox-stagger" style={{ display: "grid", gridTemplateColumns: "1fr 1.7fr 1fr", gap: 14, marginBottom: 20, alignItems: "stretch" }}>
+        {/* Sites Functional */}
+        <div style={{ ...darkCard, padding: "16px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <div style={darkAccent} />
           <div style={gradHeading}>Sites Functional</div>
-          <div style={{ width: 46, height: 46, borderRadius: 13, background: T.teal50, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.teal600 || T.teal700} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(94,234,212,0.10)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5eead4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>
+            </div>
+            <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: "#f4faf9" }}>{funcCount}<span style={{ fontSize: 15, fontWeight: 500, color: "rgba(244,250,249,0.4)", marginLeft: 3 }}>/ {hospitals.length}</span></div>
           </div>
-          <div style={{ fontSize: 34, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: T.ink }}>{funcCount}<span style={{ fontSize: 16, fontWeight: 500, color: T.mute, marginLeft: 3 }}>/ {hospitals.length}</span></div>
         </div>
 
-        {/* Tickets Overview (wide) — gradient flanks, severity colors */}
-        <div style={{ ...cardBase, padding: 22, display: "flex", flexDirection: "column" }}>
-          <div style={accentBar} />
+        {/* Tickets Overview (wide) */}
+        <div style={{ ...darkCard, padding: "16px 20px", display: "flex", flexDirection: "column" }}>
+          <div style={darkAccent} />
           <div style={gradHeading}>Tickets Overview</div>
-          <div style={{ display: "flex", alignItems: "stretch", justifyContent: "space-between", gap: 10 }}>
-            {/* Open Now — left flank with soft teal gradient */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "14px 8px", borderRadius: 12, background: "linear-gradient(160deg, #f0fdfa, #e6faf6)" }}>
-              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: T.teal700 }}>{openTickets.length}</div>
-              <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 6, color: T.slate, textAlign: "center" }}>Open Now</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flex: 1 }}>
+            {/* Open Now */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: "#5eead4" }}>{openTickets.length}</div>
+              <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 6, color: "rgba(244,250,249,0.4)", textAlign: "center" }}>Open Now</div>
             </div>
-            {/* Severity — center */}
-            <div style={{ flex: 1.5, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
-              <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: T.mute, marginBottom: 12 }}>By Severity</div>
-              <div style={{ display: "flex", gap: 14 }}>
+            <div style={{ width: 1, alignSelf: "stretch", background: "rgba(255,255,255,0.08)", margin: "6px 0" }} />
+            {/* Severity — plain colored text, no highlight */}
+            <div style={{ flex: 1.5, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "rgba(244,250,249,0.4)", marginBottom: 10 }}>By Severity</div>
+              <div style={{ display: "flex", gap: 16 }}>
                 {[{ n: sevCounts.Critical, l: "Critical", c: SEV.Critical }, { n: sevCounts.High, l: "High", c: SEV.High }, { n: sevCounts.Low, l: "Low", c: SEV.Low }].map(x => (
-                  <div key={x.l} style={{ textAlign: "center", minWidth: 42 }}>
-                    <div style={{ fontSize: 22, fontWeight: 800, lineHeight: 1, color: x.c }}>{x.n}</div>
-                    <div style={{ display: "inline-block", marginTop: 6, fontSize: 8.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: "#fff", background: x.c, padding: "2px 7px", borderRadius: 20 }}>{x.l}</div>
+                  <div key={x.l} style={{ textAlign: "center", minWidth: 40 }}>
+                    <div style={{ fontSize: 20, fontWeight: 800, lineHeight: 1, color: x.c }}>{x.n}</div>
+                    <div style={{ marginTop: 5, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", color: x.c }}>{x.l}</div>
                   </div>
                 ))}
               </div>
             </div>
-            {/* Resolved this month — right flank with soft teal gradient */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "14px 8px", borderRadius: 12, background: "linear-gradient(160deg, #f0fdfa, #e6faf6)" }}>
-              <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: T.teal700 }}>{resolvedThisMonth.length}</div>
-              <div style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 6, color: T.slate, textAlign: "center", lineHeight: 1.3 }}>Resolved<br />This Month</div>
+            <div style={{ width: 1, alignSelf: "stretch", background: "rgba(255,255,255,0.08)", margin: "6px 0" }} />
+            {/* Resolved this month */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: "#5eead4" }}>{resolvedThisMonth.length}</div>
+              <div style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 6, color: "rgba(244,250,249,0.4)", textAlign: "center", lineHeight: 1.3 }}>Resolved<br />This Month</div>
             </div>
           </div>
         </div>
 
-        {/* Resolution Rate — speedometer */}
-        <div style={{ ...cardBase, padding: 22, display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <div style={accentBar} />
+        {/* Resolution Rate */}
+        <div style={{ ...darkCard, padding: "16px 20px 12px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={darkAccent} />
           <div style={gradHeading}>Resolution Rate</div>
-          <Speedometer value={resolutionRate} teal={T} />
-          <div style={{ textAlign: "center", fontSize: 11, color: T.slate, fontWeight: 600, marginTop: 6 }}><b style={{ color: T.teal700 }}>{closedAll}</b> closed of <b style={{ color: T.teal700 }}>{scoped.length}</b> total</div>
+          <Speedometer value={resolutionRate} teal={{ ink: "#f4faf9", mute: "rgba(244,250,249,0.4)" }} dark />
+          <div style={{ textAlign: "center", fontSize: 10.5, color: "rgba(244,250,249,0.45)", fontWeight: 600, marginTop: 2 }}><b style={{ color: "#5eead4" }}>{closedAll}</b> closed of <b style={{ color: "#5eead4" }}>{scoped.length}</b> total</div>
         </div>
       </div>
 
