@@ -47,8 +47,8 @@ function AnimatedNumber({ value, color }) {
 const LOGO_FLAG = "/logos/flag.png";
 const LOGO_GLOBALFUND = "/logos/GF.svg";
 const LOGO_GOVT = "/logos/govt.png";
-const LOGO_UNDP = "/logos/undp.svg";
-const LOGO_AMEX = "/logos/amex.svg";
+const LOGO_UNDP = "/logos/UNDP.png";
+const LOGO_AMEX = "/logos/Amex.png";
 const LOGO_NOXERIOR = "/logos/Noxerior.png";
 const LOGO_CMU = "/logos/CMU.png";
 
@@ -771,7 +771,7 @@ function PartnerFooter() {
       <div style={{ height: 4, background: "linear-gradient(90deg, #0b3b38 0%, #0f766e 50%, #14b8a6 100%)" }} />
       <div style={{ padding: "28px 16px 20px" }}>
         <div className="pf-row" style={{ maxWidth: 1040, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center", gap: 24 }}>
-          <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 100, objectFit: "contain" }} />
+          <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 62, objectFit: "contain" }} />
           <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
           <img className="pf-img pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 72, objectFit: "contain" }} />
           <div className="pf-div" style={{ width: 1, height: 56, background: "#dfe3e6", flexShrink: 0 }} />
