@@ -47,8 +47,8 @@ function AnimatedNumber({ value, color }) {
 const LOGO_FLAG = "/logos/flag.png";
 const LOGO_GLOBALFUND = "/logos/GF.svg";
 const LOGO_GOVT = "/logos/govt.png";
-const LOGO_UNDP = "/logos/UNDP.png";
-const LOGO_AMEX = "/logos/Amex.png";
+const LOGO_UNDP = "/logos/undp.svg";
+const LOGO_AMEX = "/logos/amex.svg";
 const LOGO_NOXERIOR = "/logos/Noxerior.png";
 const LOGO_CMU = "/logos/CMU.png";
 
@@ -769,9 +769,9 @@ function PartnerFooter() {
     <footer className="pf-footer" style={{ background: "#0f766e", position: "relative", overflow: "hidden" }}>
       <div style={{ padding: "18px 24px", position: "relative" }}>
         <div className="pf-row" style={{ maxWidth: 940, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 30, flexWrap: "wrap" }}>
-          <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 48, objectFit: "contain" }} />
-          <img className="pf-img pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 58, objectFit: "contain" }} />
-          <img className="pf-img pf-amex" src={LOGO_AMEX} alt="Amex" style={{ height: 42, objectFit: "contain" }} />
+          <img className="pf-img pf-3d pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 48, objectFit: "contain" }} />
+          <img className="pf-img pf-3d pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 58, objectFit: "contain" }} />
+          <img className="pf-img pf-3d pf-amex" src={LOGO_AMEX} alt="Amex" style={{ height: 42, objectFit: "contain" }} />
           <img className="pf-img pf-nox" src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 38, objectFit: "contain" }} />
           <img className="pf-img pf-cmu" src={LOGO_CMU} alt="CMU" style={{ height: 66, objectFit: "contain" }} />
         </div>
@@ -797,7 +797,23 @@ function PartnerFooter() {
             drop-shadow(0.4px 0.4px 0 #fff) drop-shadow(-0.4px 0.4px 0 #fff)
             drop-shadow(0.4px -0.4px 0 #fff) drop-shadow(-0.4px -0.4px 0 #fff); }
         .pf-img:hover { transform: translateY(-3px); }
-        @media (prefers-reduced-motion: reduce) { .pf-img:hover { transform: none; } }
+        /* 3D treatment for the crisp SVG logos — a thin white base rim for legibility, then a
+           stack of progressively deeper shadows to give real extruded depth, plus a soft cast
+           shadow beneath. Vector edges keep it sharp at any size. */
+        .pf-3d { transform-style: preserve-3d; will-change: transform, filter;
+          filter:
+            drop-shadow(0.5px 0 0 rgba(255,255,255,0.95)) drop-shadow(-0.5px 0 0 rgba(255,255,255,0.95))
+            drop-shadow(0 0.5px 0 rgba(255,255,255,0.95)) drop-shadow(0 -0.5px 0 rgba(255,255,255,0.95))
+            drop-shadow(0 1px 0 rgba(0,0,0,0.28)) drop-shadow(0 2px 0 rgba(0,0,0,0.22))
+            drop-shadow(0 3px 1px rgba(0,0,0,0.16)) drop-shadow(0 6px 8px rgba(0,0,0,0.30));
+          transition: transform 0.4s cubic-bezier(0.16,1,0.3,1), filter 0.4s ease; }
+        .pf-3d:hover { transform: translateY(-5px) scale(1.05) perspective(500px) rotateX(8deg);
+          filter:
+            drop-shadow(0.5px 0 0 #fff) drop-shadow(-0.5px 0 0 #fff)
+            drop-shadow(0 0.5px 0 #fff) drop-shadow(0 -0.5px 0 #fff)
+            drop-shadow(0 1px 0 rgba(0,0,0,0.30)) drop-shadow(0 2px 0 rgba(0,0,0,0.26)) drop-shadow(0 3px 0 rgba(0,0,0,0.20))
+            drop-shadow(0 5px 1px rgba(0,0,0,0.16)) drop-shadow(0 12px 16px rgba(0,0,0,0.4)); }
+        @media (prefers-reduced-motion: reduce) { .pf-img:hover, .pf-3d:hover { transform: none; } }
         .refresh-icon { display: none; }
         .refresh-icon-desktop { display: inline; }
         .refresh-label { display: inline; line-height: 1.4; }
