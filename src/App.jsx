@@ -1514,12 +1514,19 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
   }).filter(r => r.siteCount > 0);
   const provColors = { Novair: "#0f766e", Intexim: "#7c5cbf", "Z-Corps": "#2f9e58" };
 
-  // 12-month trend
+  // 12-month trend. Build the month buckets from a fixed anchor (1st of current month)
+  // to avoid the setMonth day-overflow bug (e.g. Aug 31 minus 6 months skipping/duplicating
+  // months that have fewer days). Each bucket is keyed by absolute year+month index.
+  const now = new Date();
   const months = [];
-  for (let i = 11; i >= 0; i--) { const d = new Date(); d.setMonth(d.getMonth() - i); months.push({ label: d.toLocaleString("en-US", { month: "short" }), year: d.getFullYear(), month: d.getMonth() }); }
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ label: d.toLocaleString("en-US", { month: "short" }), year: d.getFullYear(), month: d.getMonth() });
+  }
   const trend = months.map(m => {
-    const opened = scoped.filter(c => c.created_at && new Date(c.created_at).getMonth() === m.month && new Date(c.created_at).getFullYear() === m.year).length;
-    const resolved = scoped.filter(c => c.resolved_at && new Date(c.resolved_at).getMonth() === m.month && new Date(c.resolved_at).getFullYear() === m.year).length;
+    const inMonth = (dateStr) => { if (!dateStr) return false; const d = new Date(dateStr); return d.getMonth() === m.month && d.getFullYear() === m.year; };
+    const opened = scoped.filter(c => inMonth(c.created_at)).length;
+    const resolved = scoped.filter(c => isClosedStatus(c.status) && inMonth(c.resolved_at)).length;
     return { ...m, opened, resolved };
   });
   const trendMax = Math.max(1, ...trend.map(t => Math.max(t.opened, t.resolved)));
@@ -1743,7 +1750,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
           {trend.map((m, mi) => {
             const isHover = hoverMonth === mi;
             return (
-              <div key={m.label + m.year} onMouseEnter={() => setHoverMonth(mi)} onMouseLeave={() => setHoverMonth(null)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, height: "100%", justifyContent: "flex-end", position: "relative", cursor: "default" }}>
+              <div key={`${m.year}-${m.month}`} onMouseEnter={() => setHoverMonth(mi)} onMouseLeave={() => setHoverMonth(null)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, height: "100%", justifyContent: "flex-end", position: "relative", cursor: "default" }}>
                 {/* Hover popup */}
                 {isHover && (
                   <div style={{ position: "absolute", bottom: "calc(100% - 18px)", left: "50%", transform: "translateX(-50%)", background: "#06201d", border: "1px solid rgba(94,234,212,0.2)", borderRadius: 8, padding: "7px 10px", boxShadow: "0 4px 14px rgba(0,0,0,0.35)", zIndex: 5, whiteSpace: "nowrap", pointerEvents: "none" }}>
@@ -1759,7 +1766,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
                   <div className="ox-bar" style={{ width: 11, borderRadius: "3px 3px 0 0", minHeight: 2, height: `${m.opened / trendMax * 100}%`, background: isHover ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.28)", transition: "background 0.15s", animationDelay: `${mi * 0.04}s` }} />
                   <div className="ox-bar" style={{ width: 11, borderRadius: "3px 3px 0 0", minHeight: 2, height: `${m.resolved / trendMax * 100}%`, background: "#5eead4", boxShadow: isHover ? "0 0 12px rgba(94,234,212,0.7)" : "0 0 8px rgba(94,234,212,0.4)", transition: "box-shadow 0.15s", animationDelay: `${mi * 0.04 + 0.03}s` }} />
                 </div>
-                <span style={{ fontSize: 9.5, color: isHover ? "#5eead4" : "rgba(255,255,255,0.5)", fontWeight: isHover ? 700 : 600, transition: "color 0.15s" }}>{m.label}</span>
+                <span style={{ fontSize: 9.5, color: isHover ? "#5eead4" : "rgba(255,255,255,0.5)", fontWeight: isHover ? 700 : 600, transition: "color 0.15s" }}>{m.month === 0 ? `${m.label} '${String(m.year).slice(2)}` : m.label}</span>
               </div>
             );
           })}
