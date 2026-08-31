@@ -1816,6 +1816,27 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
   const provTint = { Novair: "#f0fdfa", Intexim: "#f1edfa", "Z-Corps": "#eaf6ee" };
 
   const [collapsed, setCollapsed] = useState({});
+  const [commentActivity, setCommentActivity] = useState({}); // complaint_id -> {count, lastAuthor, lastDate}
+
+  // Fetch comment activity across all tickets once (for the per-ticket activity log).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.from("comments").select("complaint_id, author, author_role, created_at").order("created_at", { ascending: true });
+        if (cancelled || !data) return;
+        const map = {};
+        data.forEach(cm => {
+          const id = cm.complaint_id;
+          if (!map[id]) map[id] = { count: 0, last: null };
+          map[id].count++;
+          map[id].last = cm;
+        });
+        setCommentActivity(map);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [complaints]);
 
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }) : null;
   const daysOpen = (c) => c.created_at ? Math.max(0, Math.floor((Date.now() - new Date(c.created_at)) / (1000 * 60 * 60 * 24))) : 0;
@@ -1900,18 +1921,25 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
   // Novair ticket tile: site+title top-left, equipment icon+serial top-right, dates+actions in body
   const renderNovairTicket = (c) => {
     const names = assigneeNames(c);
-    const visits = visitDates(c).slice().sort((a, b) => new Date(a) - new Date(b)); // oldest first
+    const visits = visitDates(c).slice().sort((a, b) => new Date(a) - new Date(b));
     const eq = equipForTicket(c);
-    // full timeline: Reported → Assigned → each Visit
+    const isResolved = c.status === "Resolved" || c.status === "Verified";
+    const isVerified = c.status === "Verified";
+    // full lifecycle timeline — greyed steps haven't happened yet
     const steps = [
       { label: "Reported", date: fmtDate(c.created_at), done: true },
       { label: "Assigned", date: c.assigned_at ? fmtDate(c.assigned_at) : null, done: !!c.assigned_at },
       ...visits.map((v, i) => ({ label: visits.length > 1 ? `Visit ${i + 1}` : "Visit", date: fmtDate(v), done: true })),
+      { label: "Resolved", date: c.resolved_at ? fmtDate(c.resolved_at) : null, done: isResolved },
+      { label: "Verified", date: c.verified_at ? fmtDate(c.verified_at) : null, done: isVerified },
     ];
+    const act = commentActivity[c.id];
+    const commentCount = act ? act.count : 0;
+    const reportCount = Array.isArray(c.attachments) ? c.attachments.length : 0;
     return (
       <div key={c.id} style={{ ...cardBase, marginBottom: 12 }}>
         <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: SEV[c.sev] }} />
-        {/* ── header: site + days-open + severity | equipment icon + serial ── */}
+        {/* ── header ── */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "16px 20px 14px 24px", borderBottom: `1px solid #f3f7f6` }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -1929,30 +1957,42 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
             <span style={{ fontSize: 9, fontWeight: 700, color: c.serials.length ? T.teal700 : T.mute, fontFamily: "'DM Mono', monospace" }}>{c.serials.length ? c.serials.join(", ") : "—"}</span>
           </div>
         </div>
-        {/* ── full-width timeline ── */}
+        {/* ── full-width lifecycle timeline ── */}
         <div style={{ display: "flex", alignItems: "flex-start", padding: "18px 24px 16px", overflowX: "auto" }}>
           {steps.map((s, i) => (
             <div key={i} style={{ display: "flex", alignItems: "flex-start", flex: i < steps.length - 1 ? 1 : "0 0 auto", minWidth: 0 }}>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, flexShrink: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: s.done ? T.teal500 : "#e2e8e6", border: s.done ? "none" : "1.5px solid #cbd5d1", flexShrink: 0, boxShadow: s.done ? "0 0 0 3px rgba(94,234,212,0.18)" : "none" }} />
-                  <span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{s.label}</span>
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: s.done ? T.teal500 : "#dbe3e0", border: s.done ? "none" : "1.5px solid #cbd5d1", flexShrink: 0, boxShadow: s.done ? "0 0 0 3px rgba(94,234,212,0.18)" : "none" }} />
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: s.done ? T.mute : "#b3bfbb", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{s.label}</span>
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 600, color: s.date ? T.ink : T.mute, marginLeft: 16, whiteSpace: "nowrap" }}>{s.date || "—"}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: s.done ? T.ink : "#c2ccc9", marginLeft: 16, whiteSpace: "nowrap" }}>{s.date || "Pending"}</span>
               </div>
               {i < steps.length - 1 && <div style={{ flex: 1, height: 2, background: steps[i + 1].done ? T.teal300 : "#eef2f0", margin: "5px 12px 0", borderRadius: 2, minWidth: 24 }} />}
             </div>
           ))}
         </div>
-        {/* ── assigned to (below) ── */}
+        {/* ── assigned to ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 24px", borderTop: `1px solid #f3f7f6` }}>
           <span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Assigned To</span>
           {names.length ? <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{names.map(n => <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: T.teal50, border: `1px solid ${T.teal100}`, borderRadius: 20, padding: "3px 10px 3px 3px", fontSize: 11.5, fontWeight: 600, color: T.teal700 }}><span style={{ width: 18, height: 18, borderRadius: "50%", background: T.teal500, color: "#fff", fontSize: 8, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{initialsFor(n)}</span>{n}</span>)}</div> : <span style={{ fontSize: 12, fontWeight: 600, color: "#c0392b" }}>Not assigned</span>}
         </div>
-        {/* ── actions ── */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: "12px 20px 14px 24px", background: "#fafcfb", borderTop: `1px solid #f3f7f6` }}>
-          <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 14px", cursor: "pointer", border: "none", background: "linear-gradient(135deg, #0d9488, #0f766e)", color: "#fff", boxShadow: "0 2px 6px rgba(13,148,136,0.22)" }}>{names.length ? "Manage Ticket →" : "Assign Staff →"}</button>
-          <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 14px", cursor: "pointer", background: "#fff", border: `1.5px solid ${T.teal300}`, color: T.teal700 }}>View Details</button>
+        {/* ── activity log ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "11px 24px", borderTop: `1px solid #f3f7f6`, background: "#fbfdfc" }}>
+          <span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Activity</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: commentCount > 0 ? T.teal700 : T.mute }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            {commentCount} comment{commentCount === 1 ? "" : "s"}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: reportCount > 0 ? T.teal700 : T.mute }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+            {reportCount} report{reportCount === 1 ? "" : "s"}
+          </div>
+          {act && act.last && <span style={{ marginLeft: "auto", fontSize: 11, color: T.mute, fontWeight: 500 }}>Last: {act.last.author_role === "admin" ? "Admin" : act.last.author} · {fmtDate(act.last.created_at)}</span>}
+        </div>
+        {/* ── action ── */}
+        <div style={{ display: "flex", gap: 8, padding: "12px 20px 14px 24px", background: "#fafcfb", borderTop: `1px solid #f3f7f6` }}>
+          <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 16px", cursor: "pointer", border: "none", background: "linear-gradient(135deg, #0d9488, #0f766e)", color: "#fff", boxShadow: "0 2px 6px rgba(13,148,136,0.22)" }}>Manage Ticket →</button>
         </div>
       </div>
     );
