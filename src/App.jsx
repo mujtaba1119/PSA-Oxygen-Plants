@@ -1479,30 +1479,6 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
   const T = { ink: "#12211f", slate: "#5a6b68", mute: "#94a3a0", line: "#e7edec", card: "#fff", teal900: "#0f4c47", teal700: "#0f766e", teal500: "#0d9488", teal300: "#5eead4", teal100: "#ccfbf1", teal50: "#f0fdfa" };
   const [hoverMonth, setHoverMonth] = useState(null);
 
-  // Live ticket pipeline — where every non-closed-out ticket currently sits in the workflow.
-  // "Resolved" here means resolved but awaiting Amex verification (still in the pipeline).
-  // Verified tickets have exited the pipeline and are excluded. Distinct hues per stage.
-  const pipeStages = [
-    { key: "Open", label: "Open", color: "#c0392b" },
-    { key: "Assigned", label: "Assigned", color: "#e08a1e" },
-    { key: "In Progress", label: "In Progress", color: "#0d9488" },
-    { key: "Resolved", label: "Awaiting Verify", color: "#5eead4" },
-  ];
-  // Recompute from scratch off live complaints so the pie always matches current statuses.
-  const pipeCounts = { "Open": 0, "Assigned": 0, "In Progress": 0, "Resolved": 0 };
-  scoped.forEach(c => { if (c.status === "Verified") return; const s = getEffectiveStatus(c); if (pipeCounts[s] !== undefined) pipeCounts[s]++; });
-  const pipeTotal = pipeStages.reduce((sum, s) => sum + (pipeCounts[s.key] || 0), 0);
-
-  // Donut geometry (circumference 100)
-  let pieOffset = 0;
-  const pieSegments = pipeStages.map(s => {
-    const val = pipeCounts[s.key] || 0;
-    const pct = pipeTotal > 0 ? (val / pipeTotal * 100) : 0;
-    const seg = { ...s, val, pct, offset: -pieOffset };
-    pieOffset += pct;
-    return seg;
-  });
-
   // Critical issues: open tickets sorted by severity (Critical first) then age
   const sevRank = { Critical: 0, High: 1, Low: 2 };
   const criticalIssues = openTickets
@@ -1625,32 +1601,34 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
           </MapContainer>
           </div>
         </div>
-        {/* Pipeline pie */}
+        {/* Program Overview */}
         <div style={{ ...cardBase, display: "flex", flexDirection: "column" }}>
           <div style={accentBar} />
-          <div style={cardHeader}><h3 style={cardTitle}>Ticket Pipeline</h3></div>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "18px 16px" }}>
-            {pipeTotal > 0 ? (
-              <svg viewBox="0 0 42 42" style={{ width: 150, height: 150 }}>
-                <circle cx="21" cy="21" r="15.915" fill="transparent" stroke="#f0f3f2" strokeWidth="7" />
-                {pieSegments.filter(s => s.pct > 0).map(s => (
-                  <circle key={s.key} cx="21" cy="21" r="15.915" fill="transparent" stroke={s.color} strokeWidth="7" strokeDasharray={`${s.pct} ${100 - s.pct}`} strokeDashoffset={s.offset} transform="rotate(-90 21 21)" />
-                ))}
-                <text x="21" y="20" textAnchor="middle" style={{ fontSize: 8, fontWeight: 800, fill: T.ink }}>{pipeTotal}</text>
-                <text x="21" y="25.5" textAnchor="middle" style={{ fontSize: 2.8, fontWeight: 700, fill: T.mute, letterSpacing: "0.08em" }}>TOTAL</text>
-              </svg>
-            ) : <div style={{ fontSize: 13, color: T.mute, padding: "40px 0" }}>No tickets yet</div>}
-            {pipeTotal > 0 && (
-              <div style={{ width: "100%", marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
-                {pieSegments.map(s => (
-                  <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: 3, flexShrink: 0, background: s.color }} />
-                    <span style={{ color: T.slate, fontWeight: 600, flex: 1 }}>{s.label}</span>
-                    <span style={{ color: T.ink, fontWeight: 800 }}>{s.val}</span>
-                  </div>
-                ))}
+          <div style={cardHeader}><h3 style={cardTitle}>Program Overview</h3></div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 18px", gap: 14 }}>
+            {/* headline facts */}
+            {[
+              { icon: (<><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01"/></>), label: "PSA Oxygen Plants", value: "36" },
+              { icon: (<><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>), label: "Total Investment", value: "$52M" },
+              { icon: (<><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>), label: "Provinces + ICT", value: "4 + 1" },
+            ].map((f, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 38, height: 38, borderRadius: 11, background: T.teal50, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={T.teal700} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{f.icon}</svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 19, fontWeight: 800, color: T.ink, lineHeight: 1, letterSpacing: "-0.02em" }}>{f.value}</div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 3 }}>{f.label}</div>
+                </div>
               </div>
-            )}
+            ))}
+            {/* divider */}
+            <div style={{ height: 1, background: T.line, margin: "2px 0" }} />
+            {/* partners + tech */}
+            <div style={{ fontSize: 11, color: T.slate, lineHeight: 1.5 }}>
+              Funded by the <b style={{ color: T.teal700 }}>Global Fund</b>, delivered by <b style={{ color: T.teal700 }}>UNDP</b> with the Ministry of Health's <b style={{ color: T.teal700 }}>CMU</b>. Pressure Swing Adsorption (PSA) technology supplying medical-grade oxygen to public hospitals nationwide.
+            </div>
+            <div style={{ fontSize: 10, color: T.mute, fontWeight: 600, letterSpacing: "0.03em" }}>Mar 2022 — Dec 2025</div>
           </div>
         </div>
       </div>
