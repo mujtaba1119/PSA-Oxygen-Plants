@@ -45,7 +45,7 @@ function AnimatedNumber({ value, color }) {
 
 /* ─── Logo URLs ─── */
 const LOGO_FLAG = "/logos/flag.png";
-const LOGO_GLOBALFUND = "/logos/GF.png";
+const LOGO_GLOBALFUND = "/logos/GF.svg";
 const LOGO_GOVT = "/logos/govt.png";
 const LOGO_UNDP = "/logos/UNDP.png";
 const LOGO_AMEX = "/logos/Amex.png";
@@ -3763,3 +3763,4 @@ const styles = {
   ovCellOpen: { flex: 1, minWidth: 170 },
   ovCellNote: { flex: 1, minWidth: 170, borderRight: "none" },
 };
+
