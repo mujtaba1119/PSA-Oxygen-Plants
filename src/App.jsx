@@ -773,7 +773,7 @@ function PartnerFooter() {
     delay: -Math.random() * 8,
   })), []);
   return (
-    <footer style={{ background: "linear-gradient(90deg, #0f766e 0%, #0e6b63 45%, #0d5f57 100%)", position: "relative", overflow: "hidden" }}>
+    <footer style={{ background: "#0f766e", position: "relative", overflow: "hidden" }}>
       {/* drifting oxygen bubbles */}
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }} aria-hidden="true">
         {bubbles.map((b, i) => (
@@ -802,10 +802,10 @@ function PartnerFooter() {
         /* make the leaflet attribution as small and unobtrusive as possible */
         .leaflet-control-attribution { font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important; background: rgba(255,255,255,0.55) !important; opacity: 0.65; }
         .leaflet-control-attribution a { color: #64748b !important; }
-        /* partner logos on the dark teal band — a stronger white halo lifts dark/low-contrast
-           logos so they pop, without adding a background plate. */
-        .pf-img { flex: 0 1 auto; min-width: 0; opacity: 1; transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16,1,0.3,1); filter: drop-shadow(0 0 1.5px rgba(255,255,255,1)) drop-shadow(0 0 4px rgba(255,255,255,0.8)) drop-shadow(0 0 10px rgba(255,255,255,0.45)) brightness(1.06); }
-        .pf-img:hover { transform: translateY(-4px); filter: drop-shadow(0 0 1.5px rgba(255,255,255,1)) drop-shadow(0 0 6px rgba(255,255,255,0.9)) drop-shadow(0 0 14px rgba(94,234,212,0.5)) brightness(1.08); }
+        /* partner logos on the teal band — a single crisp white edge glow separates each
+           logo from the background precisely, without an overdone halo. */
+        .pf-img { flex: 0 1 auto; min-width: 0; opacity: 1; transition: transform 0.35s cubic-bezier(0.16,1,0.3,1), filter 0.35s ease; filter: drop-shadow(0 0 2.5px rgba(255,255,255,0.85)); }
+        .pf-img:hover { transform: translateY(-4px); filter: drop-shadow(0 0 3px rgba(255,255,255,0.95)) drop-shadow(0 0 8px rgba(94,234,212,0.4)); }
         /* drifting oxygen bubbles */
         .pf-bubble { position: absolute; bottom: -14px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, rgba(138,255,234,0.65), rgba(13,148,136,0)); animation-name: pf-drift; animation-timing-function: linear; animation-iteration-count: infinite; }
         @keyframes pf-drift { 0% { transform: translateY(24px); opacity: 0; } 20% { opacity: 0.75; } 80% { opacity: 0.75; } 100% { transform: translateY(-160px); opacity: 0; } }
