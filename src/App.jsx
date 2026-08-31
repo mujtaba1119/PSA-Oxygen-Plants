@@ -1900,26 +1900,26 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
   // Novair ticket tile: site+title top-left, equipment icon+serial top-right, dates+actions in body
   const renderNovairTicket = (c) => {
     const names = assigneeNames(c);
-    const visits = visitDates(c);
-    const lastVisit = visits.length ? fmtDate(visits.sort((a, b) => new Date(b) - new Date(a))[0]) : null;
+    const visits = visitDates(c).slice().sort((a, b) => new Date(a) - new Date(b)); // oldest first
     const eq = equipForTicket(c);
-    // timeline steps that have happened
+    // full timeline: Reported → Assigned → each Visit
     const steps = [
       { label: "Reported", date: fmtDate(c.created_at), done: true },
       { label: "Assigned", date: c.assigned_at ? fmtDate(c.assigned_at) : null, done: !!c.assigned_at },
-      { label: "Last Visit", date: lastVisit, done: !!lastVisit },
+      ...visits.map((v, i) => ({ label: visits.length > 1 ? `Visit ${i + 1}` : "Visit", date: fmtDate(v), done: true })),
     ];
     return (
       <div key={c.id} style={{ ...cardBase, marginBottom: 12 }}>
         <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: SEV[c.sev] }} />
-        {/* ── header: site + title | equipment icon + serial ── */}
+        {/* ── header: site + days-open + severity | equipment icon + serial ── */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "16px 20px 14px 24px", borderBottom: `1px solid #f3f7f6` }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <span style={{ fontSize: 15, fontWeight: 800, color: T.ink, letterSpacing: "-0.2px" }}>{displayName(c.hospital)}</span>
               <span style={{ fontSize: 9, fontWeight: 800, padding: "2px 8px", borderRadius: 6, color: "#fff", textTransform: "uppercase", letterSpacing: "0.04em", background: SEV[c.sev] }}>{c.sev}</span>
+              <span style={{ fontSize: 9.5, fontWeight: 800, padding: "2px 9px", borderRadius: 20, textTransform: "uppercase", letterSpacing: "0.04em", background: c.days > 30 ? "#fdecec" : "#eef4f2", color: c.days > 30 ? "#c0392b" : T.slate }}>{c.days} day{c.days === 1 ? "" : "s"} open</span>
             </div>
-            <div style={{ fontSize: 12.5, color: T.slate, marginTop: 4, fontWeight: 500 }}>{c.title}</div>
+            <div style={{ fontSize: 12.5, color: T.slate, marginTop: 5, fontWeight: 500 }}>{c.title}</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, flexShrink: 0, width: 72 }}>
             <div style={{ width: 46, height: 46, borderRadius: 12, background: T.teal50, border: `1px solid ${T.teal100}`, display: "flex", alignItems: "center", justifyContent: "center", padding: 6 }}>
@@ -1929,37 +1929,25 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
             <span style={{ fontSize: 9, fontWeight: 700, color: c.serials.length ? T.teal700 : T.mute, fontFamily: "'DM Mono', monospace" }}>{c.serials.length ? c.serials.join(", ") : "—"}</span>
           </div>
         </div>
-        {/* ── body: status | timeline | assignees ── */}
-        <div style={{ display: "flex", alignItems: "stretch", flexWrap: "wrap", gap: 0, padding: "0" }}>
-          {/* status block */}
-          <div style={{ padding: "14px 20px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 6, borderRight: `1px solid #f3f7f6`, minWidth: 130 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>Status</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColor(c.eff) }} />
-              <span style={{ fontSize: 13, fontWeight: 800, color: statusColor(c.eff) }}>{c.eff}</span>
-            </div>
-            <div style={{ fontSize: 11, color: c.days > 30 ? "#c0392b" : T.slate, fontWeight: 600 }}>{c.days} day{c.days === 1 ? "" : "s"} open</div>
-          </div>
-          {/* timeline */}
-          <div style={{ flex: 1, padding: "14px 20px", display: "flex", alignItems: "center", gap: 0, minWidth: 260 }}>
-            {steps.map((s, i) => (
-              <div key={s.label} style={{ display: "flex", alignItems: "center", flex: i < steps.length - 1 ? 1 : "0 0 auto" }}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ width: 9, height: 9, borderRadius: "50%", background: s.done ? T.teal500 : "#e2e8e6", border: s.done ? "none" : `1.5px solid #cbd5d1`, flexShrink: 0 }} />
-                    <span style={{ fontSize: 9, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>{s.label}</span>
-                  </div>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: s.date ? T.ink : T.mute, marginLeft: 15 }}>{s.date || "—"}</span>
+        {/* ── full-width timeline ── */}
+        <div style={{ display: "flex", alignItems: "flex-start", padding: "18px 24px 16px", overflowX: "auto" }}>
+          {steps.map((s, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", flex: i < steps.length - 1 ? 1 : "0 0 auto", minWidth: 0 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: s.done ? T.teal500 : "#e2e8e6", border: s.done ? "none" : "1.5px solid #cbd5d1", flexShrink: 0, boxShadow: s.done ? "0 0 0 3px rgba(94,234,212,0.18)" : "none" }} />
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{s.label}</span>
                 </div>
-                {i < steps.length - 1 && <div style={{ flex: 1, height: 2, background: steps[i + 1].done ? T.teal300 : "#eef2f0", margin: "0 10px", borderRadius: 2, alignSelf: "flex-start", marginTop: 4 }} />}
+                <span style={{ fontSize: 12, fontWeight: 600, color: s.date ? T.ink : T.mute, marginLeft: 16, whiteSpace: "nowrap" }}>{s.date || "—"}</span>
               </div>
-            ))}
-          </div>
-          {/* assignees */}
-          <div style={{ padding: "14px 20px", display: "flex", flexDirection: "column", justifyContent: "center", gap: 6, borderLeft: `1px solid #f3f7f6`, minWidth: 150 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>Assigned To</div>
-            {names.length ? <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>{names.map(n => <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: T.teal50, border: `1px solid ${T.teal100}`, borderRadius: 20, padding: "2px 9px 2px 3px", fontSize: 11, fontWeight: 600, color: T.teal700 }}><span style={{ width: 16, height: 16, borderRadius: "50%", background: T.teal500, color: "#fff", fontSize: 7.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{initialsFor(n)}</span>{n}</span>)}</div> : <span style={{ fontSize: 12, fontWeight: 600, color: "#c0392b" }}>Not assigned</span>}
-          </div>
+              {i < steps.length - 1 && <div style={{ flex: 1, height: 2, background: steps[i + 1].done ? T.teal300 : "#eef2f0", margin: "5px 12px 0", borderRadius: 2, minWidth: 24 }} />}
+            </div>
+          ))}
+        </div>
+        {/* ── assigned to (below) ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 24px", borderTop: `1px solid #f3f7f6` }}>
+          <span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Assigned To</span>
+          {names.length ? <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{names.map(n => <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: T.teal50, border: `1px solid ${T.teal100}`, borderRadius: 20, padding: "3px 10px 3px 3px", fontSize: 11.5, fontWeight: 600, color: T.teal700 }}><span style={{ width: 18, height: 18, borderRadius: "50%", background: T.teal500, color: "#fff", fontSize: 8, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{initialsFor(n)}</span>{n}</span>)}</div> : <span style={{ fontSize: 12, fontWeight: 600, color: "#c0392b" }}>Not assigned</span>}
         </div>
         {/* ── actions ── */}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: "12px 20px 14px 24px", background: "#fafcfb", borderTop: `1px solid #f3f7f6` }}>
