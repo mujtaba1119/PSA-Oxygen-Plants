@@ -1816,22 +1816,17 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
   const provTint = { Novair: "#f0fdfa", Intexim: "#f1edfa", "Z-Corps": "#eaf6ee" };
 
   const [collapsed, setCollapsed] = useState({});
-  const [commentActivity, setCommentActivity] = useState({}); // complaint_id -> {count, lastAuthor, lastDate}
+  const [commentActivity, setCommentActivity] = useState({}); // complaint_id -> array of comments
 
   // Fetch comment activity across all tickets once (for the per-ticket activity log).
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const { data } = await supabase.from("comments").select("complaint_id, author, author_role, created_at").order("created_at", { ascending: true });
+        const { data } = await supabase.from("comments").select("complaint_id, author, author_role, content, created_at").order("created_at", { ascending: true });
         if (cancelled || !data) return;
         const map = {};
-        data.forEach(cm => {
-          const id = cm.complaint_id;
-          if (!map[id]) map[id] = { count: 0, last: null };
-          map[id].count++;
-          map[id].last = cm;
-        });
+        data.forEach(cm => { if (!map[cm.complaint_id]) map[cm.complaint_id] = []; map[cm.complaint_id].push(cm); });
         setCommentActivity(map);
       } catch {}
     })();
@@ -1933,9 +1928,13 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
       { label: "Resolved", date: c.resolved_at ? fmtDate(c.resolved_at) : null, done: isResolved },
       { label: "Verified", date: c.verified_at ? fmtDate(c.verified_at) : null, done: isVerified },
     ];
-    const act = commentActivity[c.id];
-    const commentCount = act ? act.count : 0;
-    const reportCount = Array.isArray(c.attachments) ? c.attachments.length : 0;
+    const act = commentActivity[c.id] || [];
+    const reports = Array.isArray(c.attachments) ? c.attachments : [];
+    // Build a unified activity log: comments + report uploads, newest first.
+    const activityLog = [
+      ...act.map(cm => ({ who: cm.author_role === "admin" ? "Admin" : cm.author, action: "commented", detail: cm.content, date: cm.created_at, type: "comment" })),
+      ...reports.map((r, i) => ({ who: "—", action: "uploaded a report", detail: (typeof r === "string" ? r : r?.name) || `Report ${i + 1}`, date: c.resolved_at || c.created_at, type: "report" })),
+    ].sort((a, b) => new Date(b.date) - new Date(a.date));
     return (
       <div key={c.id} style={{ ...cardBase, marginBottom: 12 }}>
         <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: SEV[c.sev] }} />
@@ -1957,38 +1956,58 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
             <span style={{ fontSize: 9, fontWeight: 700, color: c.serials.length ? T.teal700 : T.mute, fontFamily: "'DM Mono', monospace" }}>{c.serials.length ? c.serials.join(", ") : "—"}</span>
           </div>
         </div>
-        {/* ── full-width lifecycle timeline ── */}
-        <div style={{ display: "flex", alignItems: "flex-start", padding: "18px 24px 16px", overflowX: "auto" }}>
-          {steps.map((s, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", flex: i < steps.length - 1 ? 1 : "0 0 auto", minWidth: 0 }}>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, flexShrink: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 10, height: 10, borderRadius: "50%", background: s.done ? T.teal500 : "#dbe3e0", border: s.done ? "none" : "1.5px solid #cbd5d1", flexShrink: 0, boxShadow: s.done ? "0 0 0 3px rgba(94,234,212,0.18)" : "none" }} />
-                  <span style={{ fontSize: 9.5, fontWeight: 700, color: s.done ? T.mute : "#b3bfbb", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{s.label}</span>
+        {/* ── responsive lifecycle timeline (wraps if many visits) ── */}
+        <div style={{ padding: "18px 24px 8px" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "16px 0", alignItems: "flex-start" }}>
+            {steps.map((s, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", flex: "1 1 130px", minWidth: 110 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, flexShrink: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: s.done ? T.teal500 : "#dbe3e0", border: s.done ? "none" : "1.5px solid #cbd5d1", flexShrink: 0, boxShadow: s.done ? "0 0 0 3px rgba(94,234,212,0.18)" : "none" }} />
+                    <span style={{ fontSize: 9.5, fontWeight: 700, color: s.done ? T.mute : "#b3bfbb", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>{s.label}</span>
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: s.done ? T.ink : "#c2ccc9", marginLeft: 16, whiteSpace: "nowrap" }}>{s.date || "Pending"}</span>
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 600, color: s.done ? T.ink : "#c2ccc9", marginLeft: 16, whiteSpace: "nowrap" }}>{s.date || "Pending"}</span>
+                {i < steps.length - 1 && <div style={{ flex: 1, height: 2, background: steps[i + 1].done ? T.teal300 : "#eef2f0", margin: "5px 10px 0", borderRadius: 2, minWidth: 16 }} />}
               </div>
-              {i < steps.length - 1 && <div style={{ flex: 1, height: 2, background: steps[i + 1].done ? T.teal300 : "#eef2f0", margin: "5px 12px 0", borderRadius: 2, minWidth: 24 }} />}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
         {/* ── assigned to ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 24px", borderTop: `1px solid #f3f7f6` }}>
-          <span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Assigned To</span>
-          {names.length ? <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{names.map(n => <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: T.teal50, border: `1px solid ${T.teal100}`, borderRadius: 20, padding: "3px 10px 3px 3px", fontSize: 11.5, fontWeight: 600, color: T.teal700 }}><span style={{ width: 18, height: 18, borderRadius: "50%", background: T.teal500, color: "#fff", fontSize: 8, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{initialsFor(n)}</span>{n}</span>)}</div> : <span style={{ fontSize: 12, fontWeight: 600, color: "#c0392b" }}>Not assigned</span>}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.mute} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>Assigned</span>
+          </div>
+          {names.length ? <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{names.map(n => <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", border: `1.5px solid ${T.teal100}`, borderRadius: 20, padding: "3px 12px 3px 3px", fontSize: 11.5, fontWeight: 600, color: T.teal700, boxShadow: "0 1px 3px rgba(15,118,110,0.06)" }}><span style={{ width: 20, height: 20, borderRadius: "50%", background: "linear-gradient(135deg, #0d9488, #0f766e)", color: "#fff", fontSize: 8.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{initialsFor(n)}</span>{n}</span>)}</div> : <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#c0392b", background: "#fdecec", padding: "4px 12px", borderRadius: 20 }}>Not assigned yet</span>}
         </div>
         {/* ── activity log ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "11px 24px", borderTop: `1px solid #f3f7f6`, background: "#fbfdfc" }}>
-          <span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>Activity</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: commentCount > 0 ? T.teal700 : T.mute }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            {commentCount} comment{commentCount === 1 ? "" : "s"}
+        <div style={{ padding: "12px 24px 14px", borderTop: `1px solid #f3f7f6`, background: "#fbfdfc" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: activityLog.length ? 10 : 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.mute} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4l3 3M3.05 11a9 9 0 1 1 .5 4"/><polyline points="3 4 3 8 7 8" transform="translate(0,0)"/></svg>
+            <span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>Activity Log</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: reportCount > 0 ? T.teal700 : T.mute }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-            {reportCount} report{reportCount === 1 ? "" : "s"}
-          </div>
-          {act && act.last && <span style={{ marginLeft: "auto", fontSize: 11, color: T.mute, fontWeight: 500 }}>Last: {act.last.author_role === "admin" ? "Admin" : act.last.author} · {fmtDate(act.last.created_at)}</span>}
+          {activityLog.length ? (
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {activityLog.slice(0, 5).map((a, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "7px 0", borderBottom: i < Math.min(activityLog.length, 5) - 1 ? "1px solid #eef4f2" : "none" }}>
+                  <span style={{ width: 24, height: 24, borderRadius: 8, background: a.type === "report" ? "#eef6ff" : T.teal50, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                    {a.type === "report"
+                      ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.teal700} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: T.ink, lineHeight: 1.35 }}>
+                      <b style={{ fontWeight: 700 }}>{a.who !== "—" ? a.who : "Someone"}</b> <span style={{ color: T.slate }}>{a.action}</span>
+                      {a.type === "comment" && a.detail && <span style={{ color: T.slate }}>: “{a.detail.length > 70 ? a.detail.slice(0, 70) + "…" : a.detail}”</span>}
+                    </div>
+                    <div style={{ fontSize: 10.5, color: T.mute, fontWeight: 500, marginTop: 1 }}>{fmtDate(a.date)}</div>
+                  </div>
+                </div>
+              ))}
+              {activityLog.length > 5 && <div style={{ fontSize: 11, color: T.teal700, fontWeight: 600, marginTop: 6, cursor: "pointer" }} onClick={() => onViewSite(c.hospital)}>+ {activityLog.length - 5} more in ticket</div>}
+            </div>
+          ) : <span style={{ fontSize: 12, color: T.mute, fontWeight: 500 }}>No activity yet</span>}
         </div>
         {/* ── action ── */}
         <div style={{ display: "flex", gap: 8, padding: "12px 20px 14px 24px", background: "#fafcfb", borderTop: `1px solid #f3f7f6` }}>
