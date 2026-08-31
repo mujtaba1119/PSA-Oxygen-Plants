@@ -1530,7 +1530,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
           <div style={{ ...gradHeading, height: 13, marginBottom: 12 }}>Sites Functional</div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <div style={{ width: 34, height: 34, borderRadius: 10, background: "rgba(94,234,212,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#5eead4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01"/></svg>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#5eead4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M6 21V8l6-4 6 4v13"/><path d="M10 21v-5h4v5"/><circle cx="12" cy="10" r="1.5"/></svg>
             </div>
             <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: "#ffffff" }}>{funcCount}<span style={{ fontSize: 14, fontWeight: 500, color: "rgba(255,255,255,0.55)", marginLeft: 3 }}>/ {hospitals.length}</span></div>
           </div>
@@ -1579,8 +1579,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
 
       {/* ── Map + Pipeline pie ── */}
       <div className="ox-in ox-in-d1" style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 14, marginBottom: 20 }}>
-        <div style={{ borderRadius: 18, overflow: "hidden", border: "2px solid rgba(13,148,136,0.25)", boxShadow: "0 6px 22px rgba(15,118,110,0.10)", height: 360, background: "#fff", position: "relative", padding: 5 }}>
-          <div style={{ position: "absolute", top: 0, left: 24, right: 24, height: 3, borderRadius: "0 0 3px 3px", background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)", zIndex: 500 }} />
+        <div style={{ borderRadius: 18, overflow: "hidden", border: "2px solid #0f1c1a", boxShadow: "0 6px 22px rgba(0,0,0,0.22)", height: 360, background: "#0f1c1a", position: "relative", padding: 5 }}>
           <div style={{ width: "100%", height: "100%", borderRadius: 13, overflow: "hidden" }}>
           <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
             <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
@@ -1609,7 +1608,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
             {/* headline: 36 plants */}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 40, height: 40, borderRadius: 11, background: T.teal50, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.teal700} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l8-4v18M19 21V11l-6-4"/><path d="M9 9v.01M9 12v.01M9 15v.01"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={T.teal700} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 20h20M4 20V10l4-2v12M8 20V6l6-3v17M14 20v-9l6 2v7"/></svg>
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 20, fontWeight: 800, color: T.ink, lineHeight: 1, letterSpacing: "-0.02em" }}>36 PSA Oxygen Plants</div>
@@ -1617,12 +1616,12 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
               </div>
             </div>
             <div style={{ height: 1, background: T.line }} />
-            {/* unique project points */}
+            {/* verified project points */}
             {[
               { icon: (<><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 20 10.2C20 17.5 12 22 12 22z"/><circle cx="12" cy="10" r="2.5"/></>), text: <>Installed at <b style={{ color: T.ink }}>District & Tehsil hospitals</b> to ease pressure on major-city tertiary care</> },
-              { icon: (<><path d="M12 2v6M12 8l3.5 3.5M12 8L8.5 11.5"/><circle cx="12" cy="16" r="6"/></>), text: <>On-site <b style={{ color: T.ink }}>medical-grade oxygen</b> via Pressure Swing Adsorption</> },
-              { icon: (<><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></>), text: <>Solar-powered climate systems for <b style={{ color: T.ink }}>energy resilience</b></> },
-              { icon: (<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></>), text: <>Local staff <b style={{ color: T.ink }}>trained & handed ownership</b> for long-term upkeep</> },
+              { icon: (<><path d="M12 2v6M12 8l3.5 3.5M12 8L8.5 11.5"/><circle cx="12" cy="16" r="6"/></>), text: <>On-site medical-grade oxygen via PSA, <b style={{ color: T.ink }}>37.5 Nm³/h</b> per plant</> },
+              { icon: (<><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M8 4v6M13 4v6M18 4v6"/></>), text: <><b style={{ color: T.ink }}>50 bed-head panels</b> per hospital — 10 × 1500 mm and 40 × 1200 mm</> },
+              { icon: (<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></>), text: <>Local staff trained; plants <b style={{ color: T.ink }}>handed to hospital management</b> for long-term upkeep</> },
             ].map((p, i) => (
               <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.teal500} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>{p.icon}</svg>
