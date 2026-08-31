@@ -790,12 +790,6 @@ function PartnerFooter() {
         .site-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 14px; overflow: hidden; box-shadow: none; background: transparent; border: none; }
         .site-popup .leaflet-popup-content { margin: 0; width: auto !important; }
         .site-popup .leaflet-popup-tip { background: #fff; box-shadow: 0 2px 8px rgba(15,118,110,0.08); }
-        /* fix hairline tile seams (white grid lines). The lines are the container
-           background showing through sub-pixel gaps between tiles. Painting the map
-           container the same colour as the map's land makes any residual gap invisible,
-           and the 256px lock keeps retina tiles aligned. */
-        .leaflet-container { background: #eaf1ef !important; }
-        .leaflet-container .leaflet-tile { width: 256px !important; height: 256px !important; }
         /* make the leaflet attribution as small and unobtrusive as possible */
         .leaflet-control-attribution { font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important; background: rgba(255,255,255,0.55) !important; opacity: 0.65; }
         .leaflet-control-attribution a { color: #64748b !important; }
@@ -1619,7 +1613,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
               {/* ── Panel 1: Map ── */}
               <div style={{ width: "50%", height: "100%", position: "relative", transition: "opacity 0.6s ease, filter 0.6s ease", opacity: slide === 0 ? 1 : 0.4, filter: slide === 0 ? "none" : "blur(1px)" }}>
                 <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
-                  <TileLayer className="ox-tiles" url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+                  <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
                   {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: T.teal500, weight: 1.5, fillColor: T.teal100, fillOpacity: 0.15 }} />}
                   {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={330} maxWidth={370} className="site-popup"><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "row", border: "1.5px solid #e2e8f0", borderRadius: 14, overflow: "hidden", background: "#fff", boxShadow: "0 2px 12px rgba(15,118,110,0.08)" }}>
                     {imgSrc && <div style={{ width: 115, flexShrink: 0, position: "relative" }}><img src={imgSrc} alt={h} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", minHeight: 130 }} onError={e => { e.target.parentElement.style.display = "none"; }} /><div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, transparent 60%, rgba(255,255,255,0.15) 100%)" }} /></div>}
@@ -1865,7 +1859,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user })
       <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 14, marginBottom: 24 }}>
         <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid #e8ecf0", boxShadow: "0 1px 3px rgba(15,23,42,0.05)", height: 400, position: "relative", background: "#fff" }}>
           <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
-            <TileLayer className="ox-tiles" url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
+            <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
             {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: C.teal, weight: 1.5, fillColor: C.tealLight, fillOpacity: 0.15 }} />}
             {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={330} maxWidth={370} className="site-popup"><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "row", border: "1.5px solid #e2e8f0", borderRadius: 14, overflow: "hidden", background: "#fff", boxShadow: "0 2px 12px rgba(15,118,110,0.08)" }}>
               {imgSrc && <div style={{ width: 115, flexShrink: 0, position: "relative" }}><img src={imgSrc} alt={h} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", minHeight: 130 }} onError={e => { e.target.parentElement.style.display = "none"; }} /><div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, transparent 60%, rgba(255,255,255,0.15) 100%)" }} /></div>}
