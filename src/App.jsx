@@ -769,7 +769,7 @@ function PartnerFooter() {
     <footer className="pf-footer" style={{ background: "#0f766e", position: "relative", overflow: "hidden" }}>
       <div style={{ padding: "18px 24px", position: "relative" }}>
         <div className="pf-row" style={{ maxWidth: 940, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 30, flexWrap: "wrap" }}>
-          <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 60, objectFit: "contain" }} />
+          <img className="pf-img pf-gf" src={LOGO_GLOBALFUND} alt="Global Fund" style={{ height: 48, objectFit: "contain" }} />
           <img className="pf-img pf-undp" src={LOGO_UNDP} alt="UNDP" style={{ height: 58, objectFit: "contain" }} />
           <img className="pf-img pf-amex" src={LOGO_AMEX} alt="Amex" style={{ height: 42, objectFit: "contain" }} />
           <img className="pf-img pf-nox" src={LOGO_NOXERIOR} alt="Noxerior" style={{ height: 38, objectFit: "contain" }} />
@@ -792,11 +792,10 @@ function PartnerFooter() {
            edge around every stroke — thick enough that even fine dark text stays readable. */
         .pf-img { flex: 0 1 auto; min-width: 0; display: block; transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
           filter:
-            drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff)
-            drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff)
-            drop-shadow(0.7px 0.7px 0 #fff) drop-shadow(-0.7px 0.7px 0 #fff)
-            drop-shadow(0.7px -0.7px 0 #fff) drop-shadow(-0.7px -0.7px 0 #fff)
-            drop-shadow(0 0 2px rgba(255,255,255,0.9)); }
+            drop-shadow(0.5px 0 0 #fff) drop-shadow(-0.5px 0 0 #fff)
+            drop-shadow(0 0.5px 0 #fff) drop-shadow(0 -0.5px 0 #fff)
+            drop-shadow(0.4px 0.4px 0 #fff) drop-shadow(-0.4px 0.4px 0 #fff)
+            drop-shadow(0.4px -0.4px 0 #fff) drop-shadow(-0.4px -0.4px 0 #fff); }
         .pf-img:hover { transform: translateY(-3px); }
         @media (prefers-reduced-motion: reduce) { .pf-img:hover { transform: none; } }
         .refresh-icon { display: none; }
