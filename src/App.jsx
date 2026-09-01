@@ -2176,7 +2176,12 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.teal500} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
               All clear — no open complaints in {sec.prov} sites
             </div>
-          ) : sec.openCards.map(renderCard)}
+          ) : (
+            <div style={{ position: "relative", paddingLeft: 22 }}>
+              <div style={{ position: "absolute", left: 5, top: 8, bottom: 8, width: 3, borderRadius: 2, background: provColor[sec.prov], opacity: 0.35 }} />
+              {sec.openCards.map(renderNovairTicket)}
+            </div>
+          )}
         </>)}
       </div>
     );
@@ -2251,7 +2256,12 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
             <div style={{ fontSize: 9.5, fontWeight: 700, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 4 }}>Open Tickets</div>
           </div>
         </div>
-        {novair.openCards.length > 0 ? novair.openCards.map(renderNovairTicket) : (
+        {novair.openCards.length > 0 ? (
+          <div style={{ position: "relative", paddingLeft: 22 }}>
+            <div style={{ position: "absolute", left: 5, top: 8, bottom: 8, width: 3, borderRadius: 2, background: provColor.Novair, opacity: 0.35 }} />
+            {novair.openCards.map(renderNovairTicket)}
+          </div>
+        ) : (
           <div style={{ ...cardBase, padding: "16px 20px", display: "flex", alignItems: "center", gap: 10, color: T.teal700, fontSize: 13, fontWeight: 600 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.teal500} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             All clear — no open tickets in Novair sites
