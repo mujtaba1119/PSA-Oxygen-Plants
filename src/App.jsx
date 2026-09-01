@@ -544,6 +544,50 @@ async function updateSiteStatus(hospital, status) {
   const data = await dbWrite({ action: "update_site_note", hospital, site_status: status });
   return !data.error;
 }
+
+/* ─── Shutdown log ───
+   Each row is one shutdown period for a site: when it went down, when it came back (null while
+   still down), a reason category and a note. Only "Equipment fault" shutdowns count toward
+   downtime / uptime; the other reasons are recorded and displayed but excluded from the metric. */
+const SHUTDOWN_REASONS = [
+  { key: "Equipment fault", counts: true, color: "#c0392b", desc: "Plant down due to an equipment failure" },
+  { key: "External cause", counts: false, color: "#d9822b", desc: "Construction, dust, flooding, access blocked, etc." },
+  { key: "Planned maintenance", counts: false, color: "#2563eb", desc: "Scheduled service or overhaul" },
+  { key: "Hospital request", counts: false, color: "#7c5cbf", desc: "Renovation, relocation or hospital decision" },
+];
+function shutdownReasonMeta(key) { return SHUTDOWN_REASONS.find(r => r.key === key) || SHUTDOWN_REASONS[0]; }
+async function fetchShutdowns() {
+  const { data, error } = await supabase.from("shutdowns").select("*").order("start_date", { ascending: false });
+  if (error) { console.error(error); return []; }
+  return data || [];
+}
+// Open a new shutdown period for a site (closes any still-open one first so periods never overlap).
+async function openShutdown(hospital, startDate, reason, note, loggedBy) {
+  await closeShutdown(hospital, startDate);
+  const { error } = await supabase.from("shutdowns").insert({ hospital, start_date: startDate, end_date: null, reason, note: note || null, logged_by: loggedBy || null });
+  if (error) console.error(error);
+  return !error;
+}
+// Close the currently-open shutdown period for a site (if any).
+async function closeShutdown(hospital, endDate) {
+  const { error } = await supabase.from("shutdowns").update({ end_date: endDate || new Date().toISOString().slice(0, 10) }).eq("hospital", hospital).is("end_date", null);
+  if (error) console.error(error);
+  return !error;
+}
+// Days a shutdown period spans (end defaults to today if still open).
+function shutdownDays(s) {
+  const start = new Date(s.start_date); start.setHours(0, 0, 0, 0);
+  const end = s.end_date ? new Date(s.end_date) : new Date(); end.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((end - start) / (1000 * 60 * 60 * 24)));
+}
+// Downtime (days) for a site — Equipment-fault shutdowns only.
+function siteDowntimeDays(hospital, shutdowns) {
+  return (shutdowns || []).filter(s => hospitalMatches(s.hospital, hospital) && shutdownReasonMeta(s.reason).counts).reduce((sum, s) => sum + shutdownDays(s), 0);
+}
+// The currently-open shutdown record for a site, if it is down right now.
+function activeShutdown(hospital, shutdowns) {
+  return (shutdowns || []).find(s => hospitalMatches(s.hospital, hospital) && !s.end_date) || null;
+}
 async function sendShutdownEmail(hospital) {
   const { error } = await supabase.rpc("send_shutdown_email", { hospital_name: hospital });
   return !error;
@@ -1074,12 +1118,13 @@ function AppInner() {
   const [complaints, setComplaints] = useState([]);
   const [notifEmails, setNotifEmails] = useState([]);
   const [siteNotes, setSiteNotes] = useState([]);
+  const [shutdowns, setShutdowns] = useState([]);
   const [ready, setReady] = useState(false);
   const [dataReady, setDataReady] = useState(false);
 
   const reload = useCallback(async () => {
-    const [c, u, e, s] = await Promise.all([fetchComplaints(), fetchUsers(), fetchEmails(), fetchSiteNotes()]);
-    setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s);
+    const [c, u, e, s, sd] = await Promise.all([fetchComplaints(), fetchUsers(), fetchEmails(), fetchSiteNotes(), fetchShutdowns()]);
+    setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s); setShutdowns(sd);
     return u;
   }, []);
 
@@ -1136,8 +1181,8 @@ function AppInner() {
   if (!user) return <LoginScreen onLogin={handleLogin} />;
   if (!dataReady) return <LoadingScreen />;
   if (user.role === "hospital") return <HospitalDashboard user={user} complaints={complaints} onRefresh={reload} onLogout={handleLogout} />;
-  if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} siteNotes={siteNotes} onRefresh={reload} onLogout={handleLogout} />;
-  return <CompanyDashboard user={user} users={users} complaints={complaints} siteNotes={siteNotes} onRefresh={reload} onLogout={handleLogout} />;
+  if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} siteNotes={siteNotes} shutdowns={shutdowns} onRefresh={reload} onLogout={handleLogout} />;
+  return <CompanyDashboard user={user} users={users} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} onRefresh={reload} onLogout={handleLogout} />;
 }
 
 /* ─── Security: Password Hashing ─── */
@@ -1554,7 +1599,7 @@ function Speedometer({ value, teal, dark }) {
 
 /* ─── UNDP / CMU oversight dashboard — donor/coordinator view focused on after-sales service.
    Teal-monochrome palette, provider performance, critical issues, 6-month trend. ─── */
-function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite, pkBoundary, pinColor, scoped, funcCount, openTickets, sevCounts, resolvedThisMonth, resolutionRate, raisedThisMonth, stageCounts, closedAll }) {
+function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite, pkBoundary, pinColor, scoped, funcCount, openTickets, sevCounts, resolvedThisMonth, resolutionRate, raisedThisMonth, stageCounts, closedAll, totalDowntimeDays, uptimePct, excludedDownSites }) {
   const T = { ink: "#12211f", slate: "#5a6b68", mute: "#94a3a0", line: "#e7edec", card: "#fff", teal900: "#0f4c47", teal700: "#0f766e", teal500: "#0d9488", teal300: "#5eead4", teal100: "#ccfbf1", teal50: "#f0fdfa" };
   const [hoverMonth, setHoverMonth] = useState(null);
   const [slide, setSlide] = useState(0); // 0 = Map, 1 = Program Overview
@@ -1665,6 +1710,29 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
         </div>
       </div>
 
+      {/* ── Uptime & Downtime row ── */}
+      <div className="ox-stagger" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
+        {/* Network Uptime */}
+        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e7edec", boxShadow: "0 1px 2px rgba(15,76,71,0.04)", padding: "18px 22px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 3, borderRadius: "0 0 3px 3px", background: "linear-gradient(90deg, #0f766e, #2dd4a8)" }} />
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: "#94a3a0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Network Uptime</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+            <div style={{ fontSize: 32, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>{uptimePct == null ? "—" : uptimePct}<span style={{ fontSize: 16, fontWeight: 500, color: "#94a3a0" }}>%</span></div>
+            <span style={{ fontSize: 11, color: "#5a6b68", fontWeight: 600 }}>rolling 12-month, fault shutdowns only</span>
+          </div>
+          {uptimePct != null && <div style={{ height: 7, borderRadius: 4, background: "#eef4f2", overflow: "hidden", marginTop: 12 }}><div style={{ height: "100%", borderRadius: 4, width: `${uptimePct}%`, background: "linear-gradient(90deg, #0d9488, #5eead4)" }} /></div>}
+        </div>
+        {/* Total Downtime */}
+        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e7edec", boxShadow: "0 1px 2px rgba(15,76,71,0.04)", padding: "18px 22px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 3, borderRadius: "0 0 3px 3px", background: "linear-gradient(90deg, #b45309, #f0b968)" }} />
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: "#94a3a0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Total Plant Downtime</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+            <div style={{ fontSize: 32, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>{totalDowntimeDays}</div>
+            <span style={{ fontSize: 15, fontWeight: 500, color: "#94a3a0" }}>plant-days</span>
+          </div>
+          <div style={{ fontSize: 11, color: "#5a6b68", fontWeight: 600, marginTop: 10 }}>Equipment-fault shutdowns, all-time{excludedDownSites > 0 ? ` · excludes ${excludedDownSites} site${excludedDownSites === 1 ? "" : "s"} down for external/planned reasons` : ""}</div>
+        </div>
+      </div>
       {/* ── Full-width tablet: map + program overview, swipeable ── */}
       <div className="ox-in ox-in-d1" style={{ marginBottom: 20 }}>
         {/* device body — dark, big radius, even bezel all round like an iPad */}
@@ -2186,7 +2254,7 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
 
 /* ─── Homepage: map + program pulse, shown to every non-hospital account.
    Overview (the older site-list view) remains available as its own separate tab. ─── */
-function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user }) {
+function HomeTab({ hospitals, groups, complaints, siteNotes, shutdowns = [], onViewSite, user }) {
   const [pkBoundary, setPkBoundary] = useState(null);
   useEffect(() => {
     fetch("/pakistan-boundary.geojson")
@@ -2243,8 +2311,15 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user })
   const closedAll = scoped.filter(c => isClosedStatus(c.status)).length;
   const resolutionRate = scoped.length > 0 ? Math.round(closedAll / scoped.length * 100) : null;
 
+  // Downtime / uptime — equipment-fault shutdowns only. Uptime measured across the fleet
+  // over the last 365 plant-days per site (a rolling year window).
+  const totalDowntimeDays = hospitals.reduce((sum, h) => sum + siteDowntimeDays(h, shutdowns), 0);
+  const excludedDownSites = hospitals.filter(h => { const sd = activeShutdown(h, shutdowns); return sd && !shutdownReasonMeta(sd.reason).counts; }).length;
+  const windowDays = 365;
+  const uptimePct = hospitals.length > 0 ? Math.max(0, Math.min(100, Math.round((1 - totalDowntimeDays / (hospitals.length * windowDays)) * 1000) / 10)) : null;
+
   if (isUndpCmu) {
-    return <UndpCmuDashboard hospitals={hospitals} groups={groups} complaints={complaints} siteNotes={siteNotes} onViewSite={onViewSite} pkBoundary={pkBoundary} pinColor={pinColor} scoped={scoped} funcCount={funcCount} openTickets={openTickets} sevCounts={sevCounts} resolvedThisMonth={resolvedThisMonth} resolutionRate={resolutionRate} raisedThisMonth={raisedThisMonth} stageCounts={stageCounts} closedAll={closedAll} />;
+    return <UndpCmuDashboard hospitals={hospitals} groups={groups} complaints={complaints} siteNotes={siteNotes} onViewSite={onViewSite} pkBoundary={pkBoundary} pinColor={pinColor} scoped={scoped} funcCount={funcCount} openTickets={openTickets} sevCounts={sevCounts} resolvedThisMonth={resolvedThisMonth} resolutionRate={resolutionRate} raisedThisMonth={raisedThisMonth} stageCounts={stageCounts} closedAll={closedAll} totalDowntimeDays={totalDowntimeDays} uptimePct={uptimePct} excludedDownSites={excludedDownSites} />;
   }
 
   return (
@@ -2324,11 +2399,15 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user })
   );
 }
 
-function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, onRefresh, onViewSite }) {
+function OverviewTab({ hospitals, complaints, siteNotes, shutdowns = [], notifEmails, isAdmin, onRefresh, onViewSite }) {
   const [editingNote, setEditingNote] = useState(null);
   const [noteText, setNoteText] = useState(""); const [saving, setSaving] = useState(false);
   const [statusEditing, setStatusEditing] = useState(null);
   const [sendingShutdown, setSendingShutdown] = useState(null);
+  const [shutdownModal, setShutdownModal] = useState(null); // { hospital } when logging a shutdown reason
+  const [sdReason, setSdReason] = useState("Equipment fault");
+  const [sdNote, setSdNote] = useState("");
+  const [sdBusy, setSdBusy] = useState(false);
 
   const getNotesMap = h => { try { const raw = siteNotes.find(s => hospitalMatches(s.hospital, h))?.equipment_note || ""; const parsed = JSON.parse(raw); return typeof parsed === "object" && parsed !== null ? parsed : { _legacy: raw }; } catch { const raw = siteNotes.find(s => hospitalMatches(s.hospital, h))?.equipment_note || ""; return raw ? { _legacy: raw } : {}; } };
   const getNoteForComplaint = (h, cid) => { const m = getNotesMap(h); return m[cid] || m._legacy || ""; };
@@ -2352,7 +2431,29 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
   const sortedHospitals = [...hospitals].sort((a, b) => siteRank(a) - siteRank(b));
 
   const saveNote = async (h, cid) => { setSaving(true); const m = getNotesMap(h); if (cid) { m[cid] = noteText; delete m._legacy; } else { m._site = noteText; } await updateSiteNote(h, JSON.stringify(m)); setEditingNote(null); setNoteText(""); setSaving(false); await onRefresh(); };
-  const handleStatusChange = async (h, s) => { await updateSiteStatus(h, s); setStatusEditing(null); await onRefresh(); };
+  const handleStatusChange = async (h, s) => {
+    const wasDown = getSiteBaseStatus(h, siteNotes) === "Shut Down";
+    if (s === "Shut Down" && !wasDown) {
+      // Ask for a reason before recording the shutdown
+      setStatusEditing(null);
+      setSdReason("Equipment fault"); setSdNote("");
+      setShutdownModal({ hospital: h });
+      return;
+    }
+    await updateSiteStatus(h, s);
+    if (wasDown && s !== "Shut Down") await closeShutdown(h); // came back up → close the period
+    setStatusEditing(null);
+    await onRefresh();
+  };
+  const confirmShutdown = async () => {
+    if (!shutdownModal) return;
+    setSdBusy(true);
+    const today = new Date().toISOString().slice(0, 10);
+    await updateSiteStatus(shutdownModal.hospital, "Shut Down");
+    await openShutdown(shutdownModal.hospital, today, sdReason, sdNote, "admin");
+    setSdBusy(false); setShutdownModal(null);
+    await onRefresh();
+  };
   const handleSendShutdownEmail = async (h) => {
     setSendingShutdown(h);
     await sendShutdownEmail(h);
@@ -2408,11 +2509,18 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
                       "Shut Down": { label: "Shut Down", color: "#7f1d1d", dot: "#7f1d1d" },
                     };
                     const m = statusMeta[siteStatus] || statusMeta["Non Functional"];
+                    const sd = siteStatus === "Shut Down" ? activeShutdown(h, shutdowns) : null;
+                    const dtDays = siteDowntimeDays(h, shutdowns);
                     const badge = (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 600, color: m.color, whiteSpace: "nowrap" }}>
-                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: m.dot, flexShrink: 0 }} />
-                        {m.label}
-                      </span>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 12.5, fontWeight: 600, color: m.color, whiteSpace: "nowrap" }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: m.dot, flexShrink: 0 }} />
+                          {m.label}
+                        </span>
+                        {sd && <span style={{ fontSize: 10, fontWeight: 700, color: shutdownReasonMeta(sd.reason).color, background: `${shutdownReasonMeta(sd.reason).color}14`, padding: "2px 7px", borderRadius: 6, whiteSpace: "nowrap" }}>{sd.reason}{shutdownReasonMeta(sd.reason).counts ? "" : " · not counted"}</span>}
+                        {sd && sd.note && <span style={{ fontSize: 10, color: "#94a3b8", maxWidth: 150, textAlign: "center", lineHeight: 1.25 }}>{sd.note}</span>}
+                        {dtDays > 0 && <span style={{ fontSize: 9.5, color: "#94a3b8" }}>Downtime: {dtDays}d</span>}
+                      </div>
                     );
                     if (isAdmin && statusEditing === h) {
                       return (<select style={{ fontSize: 12, padding: "4px 8px", borderRadius: 6, border: "1px solid #e5e5e0", background: "#fff", color: "#1a1d21" }} value={getSiteBaseStatus(h, siteNotes)} onChange={e => handleStatusChange(h, e.target.value)}>
@@ -2495,10 +2603,33 @@ function OverviewTab({ hospitals, complaints, siteNotes, notifEmails, isAdmin, o
           );
         })}
       </div>
+      {/* Shutdown reason modal */}
+      {shutdownModal && createPortal(
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, padding: 20 }} onClick={() => !sdBusy && setShutdownModal(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 440, boxShadow: "0 20px 50px rgba(0,0,0,0.3)", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#0f172a", marginBottom: 4 }}>Mark {displayName(shutdownModal.hospital)} as Shut Down</div>
+            <div style={{ fontSize: 12.5, color: "#64748b", marginBottom: 18 }}>Record why the plant is down. Only equipment faults count toward downtime.</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+              {SHUTDOWN_REASONS.map(r => (
+                <label key={r.key} onClick={() => setSdReason(r.key)} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "11px 13px", borderRadius: 10, cursor: "pointer", border: sdReason === r.key ? `1.5px solid ${r.color}` : "1.5px solid #e5e7eb", background: sdReason === r.key ? `${r.color}0d` : "#fff" }}>
+                  <span style={{ width: 16, height: 16, borderRadius: "50%", border: sdReason === r.key ? `5px solid ${r.color}` : "2px solid #cbd5e1", flexShrink: 0, marginTop: 1 }} />
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", display: "flex", alignItems: "center", gap: 8 }}>{r.key}{r.counts ? <span style={{ fontSize: 9, fontWeight: 700, color: "#c0392b", background: "#fdecec", padding: "1px 6px", borderRadius: 4, textTransform: "uppercase" }}>Counts as downtime</span> : <span style={{ fontSize: 9, fontWeight: 700, color: "#64748b", background: "#f1f5f9", padding: "1px 6px", borderRadius: 4, textTransform: "uppercase" }}>Excluded</span>}</div>
+                    <div style={{ fontSize: 11.5, color: "#94a3b8", marginTop: 2 }}>{r.desc}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <textarea value={sdNote} onChange={e => setSdNote(e.target.value)} placeholder="Note (e.g. digging around plant, dust causing oil thickening)…" rows={3} style={{ width: "100%", fontSize: 13, padding: "10px 12px", border: "1px solid #e5e7eb", borderRadius: 8, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box", marginBottom: 16 }} />
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => setShutdownModal(null)} disabled={sdBusy} style={{ fontSize: 13, fontWeight: 700, padding: "9px 16px", borderRadius: 9, border: "1px solid #e5e7eb", background: "#fff", color: "#64748b", cursor: "pointer" }}>Cancel</button>
+              <button onClick={confirmShutdown} disabled={sdBusy} style={{ fontSize: 13, fontWeight: 700, padding: "9px 18px", borderRadius: 9, border: "none", background: "linear-gradient(135deg, #c0392b, #e05a4d)", color: "#fff", cursor: "pointer", boxShadow: "0 2px 8px rgba(192,57,43,0.3)" }}>{sdBusy ? "…" : "Confirm Shutdown"}</button>
+            </div>
+          </div>
+        </div>, document.body)}
     </div>
   );
 }
-/* ─── Comment Section ─── */
 function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmin, highlightCommentText }) {
   const [comments, setComments] = useState([]); const [text, setText] = useState(""); const [posting, setPosting] = useState(false);
   const [loaded, setLoaded] = useState(false); const [expanded, setExpanded] = useState(false);
@@ -3692,7 +3823,7 @@ function EquipmentTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) 
   );
 }
 
-function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRefresh, onLogout }) {
+function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, shutdowns, onRefresh, onLogout }) {
   const [tab, setTab] = useState("dashboard"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const [editingUser, setEditingUser] = useState(null); const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
@@ -3839,8 +3970,8 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
         </TopBar>
         <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px", width: "100%", flex: 1 }}>
           <div key={tab} className="scale-in">
-          {tab === "dashboard" && <HomeTab hospitals={ALL_HOSPITALS} groups={GROUPS} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} user={user} />}
-          {tab === "sites" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
+          {tab === "dashboard" && <HomeTab hospitals={ALL_HOSPITALS} groups={GROUPS} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} user={user} />}
+          {tab === "sites" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "equipment" && <EquipmentTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} isAdmin={true} onRefresh={onRefresh} />}
           {tab === "tickets" && !selected && (<>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
@@ -4051,7 +4182,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, onRef
 }
 
 /* ─── Company Dashboard (Sidebar Layout) ─── */
-function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLogout }) {
+function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRefresh, onLogout }) {
   const [tab, setTab] = useState("dashboard"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const [pendingFocus, setPendingFocus] = useState(null);
   const handleNotifFocus = (info) => {
@@ -4116,8 +4247,8 @@ function CompanyDashboard({ user, users, complaints, siteNotes, onRefresh, onLog
           <div key={tab} className="scale-in">
           {tab === "dashboard" && (companyName === "Novair" && isManagerUser(user)
             ? <NovairDashboard complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />
-            : <HomeTab hospitals={myHospitals} groups={myGroups} complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} user={user} />)}
-          {tab === "sites" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
+            : <HomeTab hospitals={myHospitals} groups={myGroups} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} user={user} />)}
+          {tab === "sites" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "equipment" && <EquipmentTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} isAdmin={false} onRefresh={onRefresh} />}
           {tab === "tickets" && !selected && (<>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
