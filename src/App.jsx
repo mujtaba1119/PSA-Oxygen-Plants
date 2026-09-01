@@ -544,6 +544,29 @@ async function deleteEmailRecord(id) {
   const data = await dbWrite({ action: "delete_email", id });
   return !data.error;
 }
+// ── Escalation emails — a separate list from the provider notification emails above. ──
+async function fetchEscalationEmails() {
+  const { data, error } = await supabase.from("escalation_emails").select("*").order("created_at", { ascending: true });
+  if (error) { console.error(error); return []; }
+  return data || [];
+}
+async function addEscalationEmail(email) {
+  const { data, error } = await supabase.from("escalation_emails").insert({ email }).select().single();
+  if (error) { console.error(error); return null; }
+  return data;
+}
+async function deleteEscalationEmail(id) {
+  const { error } = await supabase.from("escalation_emails").delete().eq("id", id);
+  if (error) console.error(error);
+  return !error;
+}
+// Fire the escalation. Records who/when on the complaint and calls the send RPC.
+async function escalateComplaint(id, byWho) {
+  await updateComplaintFields(id, { escalated_by: byWho || null, escalated_at: new Date().toISOString() });
+  const { error } = await supabase.rpc("send_escalation_email", { complaint_id: id });
+  if (error) console.error("escalation email:", error);
+  return !error;
+}
 async function fetchSiteNotes() {
   const { data, error } = await supabase.from("site_notes").select("*");
   if (error) { console.error(error); return []; }
@@ -1132,12 +1155,13 @@ function AppInner() {
   const [notifEmails, setNotifEmails] = useState([]);
   const [siteNotes, setSiteNotes] = useState([]);
   const [shutdowns, setShutdowns] = useState([]);
+  const [escalationEmails, setEscalationEmails] = useState([]);
   const [ready, setReady] = useState(false);
   const [dataReady, setDataReady] = useState(false);
 
   const reload = useCallback(async () => {
-    const [c, u, e, s, sd] = await Promise.all([fetchComplaints(), fetchUsers(), fetchEmails(), fetchSiteNotes(), fetchShutdowns()]);
-    setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s); setShutdowns(sd);
+    const [c, u, e, s, sd, ee] = await Promise.all([fetchComplaints(), fetchUsers(), fetchEmails(), fetchSiteNotes(), fetchShutdowns(), fetchEscalationEmails()]);
+    setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s); setShutdowns(sd); setEscalationEmails(ee);
     return u;
   }, []);
 
@@ -1194,7 +1218,7 @@ function AppInner() {
   if (!user) return <LoginScreen onLogin={handleLogin} />;
   if (!dataReady) return <LoadingScreen />;
   if (user.role === "hospital") return <HospitalDashboard user={user} complaints={complaints} onRefresh={reload} onLogout={handleLogout} />;
-  if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} siteNotes={siteNotes} shutdowns={shutdowns} onRefresh={reload} onLogout={handleLogout} />;
+  if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} escalationEmails={escalationEmails} siteNotes={siteNotes} shutdowns={shutdowns} onRefresh={reload} onLogout={handleLogout} />;
   return <CompanyDashboard user={user} users={users} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} onRefresh={reload} onLogout={handleLogout} />;
 }
 
@@ -2960,6 +2984,19 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   };
 
   const providerName = getProvider(c.hospital);
+  // Escalation: hospital users can escalate an open ticket that's been open 8+ days.
+  const openDays = Math.floor((Date.now() - new Date(c.created_at)) / (1000 * 60 * 60 * 24));
+  const canEscalate = currentUser.role === "hospital" && !isClosedStatus(c.status) && openDays >= 8;
+  const [escBusy, setEscBusy] = useState(false);
+  const handleEscalate = async () => {
+    if (escBusy) return;
+    if (!window.confirm("Escalate this complaint? An email will be sent to the escalation contacts.")) return;
+    setEscBusy(true);
+    await escalateComplaint(c.id, currentUser.name);
+    await insertComment(c.id, currentUser.name, currentUser.role, "Escalated this complaint.");
+    setEscBusy(false);
+    await onRefresh();
+  };
 
   // Auto-expand when this card is focused from a notification
   useEffect(() => { if (cardHighlight || (highlightCommentText && highlightCommentText.trim())) setExpanded(true); }, [cardHighlight, highlightCommentText]);
@@ -3049,6 +3086,14 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               <span style={{ fontSize: 12, color: "#c0392b", fontWeight: 600 }}>· Not under warranty</span>
               {c.warranty_note && <span style={{ fontSize: 12, color: "#a15252" }}>— {c.warranty_note}</span>}
               {c.warranty_by && <span style={{ marginLeft: "auto", fontSize: 10.5, color: "#c08a8a", fontWeight: 600 }}>by {c.warranty_by}</span>}
+            </div>
+          )}
+          {c.escalated_at && !isClosedStatus(c.status) && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 16px", background: "#fff7ed", borderBottom: "1px solid #fed7aa" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#c2410c" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+              <span style={{ fontSize: 12.5, fontWeight: 800, color: "#9a3412", textTransform: "uppercase", letterSpacing: 0.3 }}>Escalated</span>
+              {c.escalated_by && <span style={{ fontSize: 12, color: "#b45309", fontWeight: 600 }}>· by {c.escalated_by}</span>}
+              {c.escalated_at && <span style={{ marginLeft: "auto", fontSize: 10.5, color: "#c2915f", fontWeight: 600 }}>{new Date(c.escalated_at).toLocaleDateString("en-PK", { day: "numeric", month: "short" })}</span>}
             </div>
           )}
           {expanded && (
@@ -3151,6 +3196,16 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                   <button style={{ ...styles.btnTealSmall, opacity: (ackMode === "visit" && !ackVisitDate) ? 0.5 : 1 }} onClick={handleAcknowledge} disabled={ackBusy || (ackMode === "visit" && !ackVisitDate)}>{ackBusy ? "…" : "✓ Acknowledge"}</button>
                   <button style={{ ...styles.btnTealSmall, background: "#fff", color: C.textMid, border: `1px solid ${C.borderLight}`, boxShadow: "none" }} onClick={() => { setAckOpen(false); setAckMode(null); }} disabled={ackBusy}>Cancel</button>
                 </div>
+              </div>
+            )}
+            {/* Escalation (hospital, day 8+) */}
+            {canEscalate && (
+              <div style={{ marginTop: 14 }}>
+                <button onClick={handleEscalate} disabled={escBusy} style={{ fontSize: 12.5, fontWeight: 700, padding: "9px 16px", borderRadius: 9, cursor: "pointer", border: "none", color: "#fff", background: "linear-gradient(135deg, #c2410c, #ea580c)", boxShadow: "0 2px 8px rgba(194,65,12,0.28)", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+                  {c.escalated_at ? "Escalate Again" : "Escalate"}
+                </button>
+                <span style={{ fontSize: 11, color: C.textLight, marginLeft: 10 }}>Open {openDays} days · notifies escalation contacts</span>
               </div>
             )}
             {/* Warranty decision (after a visit) */}
@@ -3968,10 +4023,11 @@ function EquipmentTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) 
   );
 }
 
-function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, shutdowns, onRefresh, onLogout }) {
+function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails = [], siteNotes, shutdowns, onRefresh, onLogout }) {
   const [tab, setTab] = useState("dashboard"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const [editingUser, setEditingUser] = useState(null); const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
+  const [newEscEmail, setNewEscEmail] = useState(""); const [escSaving, setEscSaving] = useState(false);
   const [adminHospital, setAdminHospital] = useState(ALL_HOSPITALS[0]); const [adminTitle, setAdminTitle] = useState(""); const [adminDesc, setAdminDesc] = useState(""); const [adminDate, setAdminDate] = useState("");
   const [adminSubmitting, setAdminSubmitting] = useState(false); const [adminSuccess, setAdminSuccess] = useState(false);
   const [newUserId, setNewUserId] = useState(""); const [newUserName, setNewUserName] = useState(""); const [newUserRole, setNewUserRole] = useState("company"); const [newUserPw, setNewUserPw] = useState(""); const [newUserCompany, setNewUserCompany] = useState("Amex"); const [newUserCompanyRole, setNewUserCompanyRole] = useState("engineer"); const [newUserEmail, setNewUserEmail] = useState(""); const [addingUser, setAddingUser] = useState(false);
@@ -4005,6 +4061,8 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, shutd
     else alert("Password update failed");
   };
   const handleAddEmail = async () => { if (!newEmail.trim() || emailSaving) return; setEmailSaving(true); await addEmail(emailGroup, newEmail.trim()); setNewEmail(""); setEmailSaving(false); await onRefresh(); };
+  const handleAddEscEmail = async () => { if (!newEscEmail.trim() || escSaving) return; setEscSaving(true); await addEscalationEmail(newEscEmail.trim()); setNewEscEmail(""); setEscSaving(false); await onRefresh(); };
+  const handleDeleteEscEmail = async (id) => { await deleteEscalationEmail(id); await onRefresh(); };
   const handleDeleteEmail = async (id) => { await deleteEmailRecord(id); await onRefresh(); };
   const adminCompressImage = (file) => new Promise((resolve) => {
     if (!file.type.startsWith("image/")) { resolve(file); return; }
@@ -4312,6 +4370,15 @@ function AdminDashboard({ user, users, complaints, notifEmails, siteNotes, shutd
           <div style={styles.formSection}><h3 style={{ fontSize: 15, fontWeight: 600, color: "#1a2332", margin: "0 0 12px" }}>Add Email</h3><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><select style={{ ...styles.pwInput, width: 150, padding: "8px 10px" }} value={emailGroup} onChange={e => setEmailGroup(e.target.value)}>{emailGroupOptions.map(g => <option key={g} value={g}>{g}</option>)}</select><input style={{ ...styles.pwInput, flex: 1, minWidth: 200, padding: "8px 10px" }} type="email" placeholder="email@example.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddEmail()} /><button style={styles.pwSaveBtn} onClick={handleAddEmail}>{emailSaving ? "…" : "Add"}</button></div></div>
           {emailGroupOptions.map(g => { const ge = notifEmails.filter(e => e.group_name === g); if (!ge.length) return null; return (<div key={g} style={{ marginTop: 20 }}><h3 style={{ fontSize: 15, fontWeight: 600, color: "#0e7c6b", margin: "0 0 10px" }}>{g}</h3>{ge.map(e => (<div key={e.id} style={{ ...styles.pwCard, display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 14, color: "#1a2332" }}>{e.email}</span><button style={{ ...styles.pwCancelBtn, color: "#e53e3e", fontSize: 14 }} onClick={() => handleDeleteEmail(e.id)}>Remove</button></div>))}</div>); })}
           {notifEmails.length === 0 && <p style={styles.empty}>No notification emails configured yet.</p>}
+          {/* ── Escalation emails (separate system) ── */}
+          <div style={{ marginTop: 34, paddingTop: 22, borderTop: `2px solid ${C.tealLight}` }}>
+            <h2 style={styles.sectionTitle}>Escalation Emails</h2>
+            <p style={{ fontSize: 14, color: "#4a5568", marginBottom: 20, lineHeight: 1.5 }}>Separate from the notification emails above. When a hospital escalates a complaint (open 8+ days), an email is sent to <b>these</b> recipients.</p>
+            <div style={styles.formSection}><h3 style={{ fontSize: 15, fontWeight: 600, color: "#1a2332", margin: "0 0 12px" }}>Add Escalation Email</h3><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><input style={{ ...styles.pwInput, flex: 1, minWidth: 200, padding: "8px 10px" }} type="email" placeholder="escalation@example.com" value={newEscEmail} onChange={e => setNewEscEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddEscEmail()} /><button style={styles.pwSaveBtn} onClick={handleAddEscEmail}>{escSaving ? "…" : "Add"}</button></div></div>
+            <div style={{ marginTop: 16 }}>
+              {escalationEmails.length > 0 ? escalationEmails.map(e => (<div key={e.id} style={{ ...styles.pwCard, display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 14, color: "#1a2332" }}>{e.email}</span><button style={{ ...styles.pwCancelBtn, color: "#e53e3e", fontSize: 14 }} onClick={() => handleDeleteEscEmail(e.id)}>Remove</button></div>)) : <p style={styles.empty}>No escalation emails configured yet.</p>}
+            </div>
+          </div>
           <div style={{ marginTop: 32, paddingTop: 20, borderTop: `1px solid ${C.border}` }}>
             <h3 style={{ fontSize: 15, fontWeight: 600, color: C.black, margin: "0 0 8px" }}>Reset Notifications</h3>
             <p style={{ fontSize: 13, color: C.textLight, marginBottom: 12 }}>Delete all notification records for all users. Use before launch to clear test data.</p>
