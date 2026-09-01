@@ -2940,7 +2940,19 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
               <SeverityBadge severity={c.severity} />
-              <StatusBadge status={effStatus} />
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+                <StatusBadge status={effStatus} />
+                {!isClosedStatus(c.status) && (() => {
+                  const dOpen = Math.max(0, Math.floor((Date.now() - new Date(c.created_at)) / (1000 * 60 * 60 * 24)));
+                  const dProg = c.acknowledged_at ? Math.max(0, Math.floor((Date.now() - new Date(c.acknowledged_at)) / (1000 * 60 * 60 * 24))) : null;
+                  return (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#b45309", background: "#fef6ec", padding: "2px 7px", borderRadius: 5, whiteSpace: "nowrap" }}>Open {dOpen}d</span>
+                      {effStatus === "In Progress" && dProg != null && <span style={{ fontSize: 10, fontWeight: 700, color: "#0f766e", background: "#e6f7f2", padding: "2px 7px", borderRadius: 5, whiteSpace: "nowrap" }}>In progress {dProg}d</span>}
+                    </div>
+                  );
+                })()}
+              </div>
               <span style={{ fontSize: 16, color: C.tealDark, transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>⌄</span>
             </div>
           </div>
@@ -2967,30 +2979,50 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               )}
             </div>
             {/* Lifecycle milestone strip */}
-            <div style={{ marginTop: 12, background: "#fafbfb", border: "1px solid #eef1f0", borderRadius: 12, padding: "14px 16px", display: "flex", flexWrap: "wrap", justifyContent: "space-around", gap: 16 }}>
+            <div style={{ marginTop: 12, background: "#fafbfb", border: "1px solid #eef1f0", borderRadius: 12, padding: "16px 18px" }}>
               {(() => {
-                const milestones = [];
-                milestones.push({ label: "Opened", value: new Date(c.created_at).toLocaleDateString("en-PK", dateFmt), color: "#0f766e" });
-                if (c.acknowledged_at) milestones.push({ label: "Acknowledged", value: new Date(c.acknowledged_at).toLocaleDateString("en-PK", dateFmt), color: "#5b3a9c" });
-                if (hasVisits(c)) milestones.push({ label: effStatus === "In Progress" ? (visitDates(c).length > 1 ? "Visits" : "Visit") : "Visit Scheduled", color: "#b45309", visitList: true });
-                if ((c.status === "Resolved" || c.status === "Verified") && c.resolved_at) milestones.push({ label: "Resolved", value: new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt), color: "#16a34a" });
-                if (c.status === "Verified" && c.verified_at) milestones.push({ label: "Verified", value: new Date(c.verified_at).toLocaleDateString("en-PK", dateFmt), color: "#16a34a" });
-                return milestones.map((m, i) => (
-                  <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 4, minWidth: 0 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "#8a9199" }}>{m.label}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: m.color, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4, flexWrap: "wrap" }}>
-                      {m.visitList
-                        ? visitDates(c).map((d, vi) => (
-                            <span key={d} style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
-                              {vi > 0 && <span style={{ color: "#c4c8cc", fontWeight: 400 }}>·</span>}
-                              {new Date(d).toLocaleDateString("en-PK", dateFmt)}
-                              {isAdmin && <button title="Undo this visit" onClick={() => handleRemoveVisit(d)} style={{ border: "none", background: "none", cursor: "pointer", color: "#c0392b", fontWeight: 700, fontSize: 11, padding: "0 1px" }}>✕</button>}
-                            </span>
-                          ))
-                        : m.value}
-                    </span>
+                const dur = (fromD, toD) => {
+                  const days = Math.max(0, Math.round((new Date(toD) - new Date(fromD)) / (1000 * 60 * 60 * 24)));
+                  return days === 0 ? "same day" : days === 1 ? "1 day" : `${days} days`;
+                };
+                // build ordered stages that have happened, each with a real date for spacing
+                const stages = [];
+                stages.push({ label: "Opened", date: c.created_at, color: "#0f766e" });
+                if (c.acknowledged_at) stages.push({ label: "Acknowledged", date: c.acknowledged_at, color: "#5b3a9c" });
+                visitDates(c).sort((a, b) => new Date(a) - new Date(b)).forEach((d, vi, arr) => stages.push({ label: arr.length > 1 ? `Visit ${vi + 1}` : "Visit", date: d, color: "#b45309", visitDate: d }));
+                if ((c.status === "Resolved" || c.status === "Verified") && c.resolved_at) stages.push({ label: "Resolved", date: c.resolved_at, color: "#16a34a" });
+                if (c.status === "Verified" && c.verified_at) stages.push({ label: "Verified", date: c.verified_at, color: "#16a34a" });
+                const ongoing = !isClosedStatus(c.status); // still open → trailing "so far" segment
+                return (
+                  <div style={{ display: "flex", alignItems: "flex-start", flexWrap: "wrap", rowGap: 14 }}>
+                    {stages.map((m, i) => (
+                      <React.Fragment key={i}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 4, flexShrink: 0 }}>
+                          <span style={{ width: 11, height: 11, borderRadius: "50%", background: m.color, boxShadow: `0 0 0 3px ${m.color}22` }} />
+                          <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase", color: "#8a9199", marginTop: 2 }}>{m.label}</span>
+                          <span style={{ fontSize: 12.5, fontWeight: 700, color: m.color, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            {new Date(m.date).toLocaleDateString("en-PK", dateFmt)}
+                            {m.visitDate && isAdmin && <button title="Undo this visit" onClick={() => handleRemoveVisit(m.visitDate)} style={{ border: "none", background: "none", cursor: "pointer", color: "#c0392b", fontWeight: 700, fontSize: 11, padding: "0 1px" }}>✕</button>}
+                          </span>
+                        </div>
+                        {/* connector + duration to next stage */}
+                        {i < stages.length - 1 && (
+                          <div style={{ flex: 1, minWidth: 54, display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 3 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: "#5f6b7a", marginBottom: 3, whiteSpace: "nowrap" }}>{dur(m.date, stages[i + 1].date)}</span>
+                            <div style={{ width: "100%", height: 2, background: "#d7ded9", borderRadius: 2 }} />
+                          </div>
+                        )}
+                        {/* trailing "so far" segment while still open */}
+                        {i === stages.length - 1 && ongoing && (
+                          <div style={{ flex: 1, minWidth: 54, display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 3 }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: "#b45309", marginBottom: 3, whiteSpace: "nowrap" }}>{dur(m.date, new Date())} so far</span>
+                            <div style={{ width: "100%", height: 2, borderRadius: 2, backgroundImage: "repeating-linear-gradient(90deg, #e0a86a 0 6px, transparent 6px 11px)" }} />
+                          </div>
+                        )}
+                      </React.Fragment>
+                    ))}
                   </div>
-                ));
+                );
               })()}
             </div>
             <AttachmentViewer attachments={c.attachments} />
