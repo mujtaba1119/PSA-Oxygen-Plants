@@ -358,6 +358,19 @@ async function updateComplaintFields(id, fields) {
 async function acknowledgeComplaint(id, acknowledgedBy) {
   return updateComplaintFields(id, { acknowledged_by: acknowledgedBy || null, acknowledged_at: new Date().toISOString() });
 }
+// Warranty decision (set after a visit). status: 'under_warranty' | 'not_under_warranty'.
+async function setWarrantyStatus(id, status, note, byWho) {
+  return updateComplaintFields(id, { warranty_status: status, warranty_note: note || null, warranty_by: byWho || null, warranty_at: new Date().toISOString() });
+}
+// Provider (of the site), manufacturer (Novair), or admin can set the warranty decision, once a
+// visit has been logged.
+function canSetWarranty(user, hospital, c) {
+  if (!hasVisits(c)) return false;
+  if (user.role === "admin") return true;
+  if (!isProviderUser(user)) return false;
+  const company = getCompanyName(user);
+  return company === "Novair" || getProvider(hospital) === company; // manufacturer or the site's provider
+}
 // Downscale large images before upload (shared)
 const compressImageFile = (file) => new Promise((resolve) => {
   if (!file.type.startsWith("image/")) { resolve(file); return; }
@@ -2916,6 +2929,11 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const [ackMode, setAckMode] = useState(null); // "remote" | "visit" — must be chosen explicitly
   const [ackVisitDate, setAckVisitDate] = useState("");
   const [ackBusy, setAckBusy] = useState(false);
+  // Warranty decision panel
+  const [warrOpen, setWarrOpen] = useState(false);
+  const [warrChoice, setWarrChoice] = useState(null); // 'under_warranty' | 'not_under_warranty'
+  const [warrNote, setWarrNote] = useState("");
+  const [warrBusy, setWarrBusy] = useState(false);
   const [equipOpen, setEquipOpen] = useState(false);
   const [equipPicks, setEquipPicks] = useState(() => extractSerials(complaint.description));
   const [equipSaving, setEquipSaving] = useState(false);
@@ -2932,6 +2950,15 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const canVerify = canVerifyTicket(currentUser) && c.status === "Resolved";
   const alreadyAssigned = assigneeNames(c);
   const availableStaff = staffOptions.filter(s => !alreadyAssigned.includes(s.name));
+  const canWarranty = canSetWarranty(currentUser, c.hospital, c);
+  const handleSetWarranty = async () => {
+    if (warrBusy || !warrChoice) return;
+    setWarrBusy(true);
+    await setWarrantyStatus(c.id, warrChoice, warrNote.trim(), currentUser.name);
+    setWarrOpen(false); setWarrChoice(null); setWarrNote(""); setWarrBusy(false);
+    await onRefresh();
+  };
+
   const providerName = getProvider(c.hospital);
 
   // Auto-expand when this card is focused from a notification
@@ -3006,6 +3033,24 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               <span style={{ fontSize: 16, color: C.tealDark, transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>⌄</span>
             </div>
           </div>
+          {/* Warranty / Dispute banner (visible collapsed or expanded) */}
+          {c.warranty_status === "under_warranty" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 16px", background: "#ecfdf5", borderBottom: "1px solid #bbf7d0" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: "#166534" }}>Under Warranty</span>
+              {c.warranty_note && <span style={{ fontSize: 12, color: "#3f7a52" }}>— {c.warranty_note}</span>}
+              {c.warranty_by && <span style={{ marginLeft: "auto", fontSize: 10.5, color: "#6b9a7d", fontWeight: 600 }}>by {c.warranty_by}</span>}
+            </div>
+          )}
+          {c.warranty_status === "not_under_warranty" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 16px", background: "#fef2f2", borderBottom: "1px solid #fecaca" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+              <span style={{ fontSize: 12.5, fontWeight: 800, color: "#b91c1c", textTransform: "uppercase", letterSpacing: 0.3 }}>Under Dispute</span>
+              <span style={{ fontSize: 12, color: "#c0392b", fontWeight: 600 }}>· Not under warranty</span>
+              {c.warranty_note && <span style={{ fontSize: 12, color: "#a15252" }}>— {c.warranty_note}</span>}
+              {c.warranty_by && <span style={{ marginLeft: "auto", fontSize: 10.5, color: "#c08a8a", fontWeight: 600 }}>by {c.warranty_by}</span>}
+            </div>
+          )}
           {expanded && (
           <div style={{ padding: 16 }}>
             <p style={styles.cardDesc}>{cleanDescription(c.description)}</p>
@@ -3105,6 +3150,24 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                 <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                   <button style={{ ...styles.btnTealSmall, opacity: (ackMode === "visit" && !ackVisitDate) ? 0.5 : 1 }} onClick={handleAcknowledge} disabled={ackBusy || (ackMode === "visit" && !ackVisitDate)}>{ackBusy ? "…" : "✓ Acknowledge"}</button>
                   <button style={{ ...styles.btnTealSmall, background: "#fff", color: C.textMid, border: `1px solid ${C.borderLight}`, boxShadow: "none" }} onClick={() => { setAckOpen(false); setAckMode(null); }} disabled={ackBusy}>Cancel</button>
+                </div>
+              </div>
+            )}
+            {/* Warranty decision (after a visit) */}
+            {canWarranty && !warrOpen && (
+              <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: C.textMid }}>{c.warranty_status ? "Warranty decision:" : "Warranty coverage?"}</span>
+                <button onClick={() => { setWarrChoice("under_warranty"); setWarrNote(c.warranty_status === "under_warranty" ? (c.warranty_note || "") : ""); setWarrOpen(true); }} style={{ fontSize: 12, fontWeight: 700, padding: "7px 13px", borderRadius: 8, cursor: "pointer", border: c.warranty_status === "under_warranty" ? "1.5px solid #16a34a" : "1.5px solid #bbf7d0", background: c.warranty_status === "under_warranty" ? "#ecfdf5" : "#fff", color: "#166534" }}>{c.warranty_status === "under_warranty" ? "✓ Under Warranty" : "Under Warranty"}</button>
+                <button onClick={() => { setWarrChoice("not_under_warranty"); setWarrNote(c.warranty_status === "not_under_warranty" ? (c.warranty_note || "") : ""); setWarrOpen(true); }} style={{ fontSize: 12, fontWeight: 700, padding: "7px 13px", borderRadius: 8, cursor: "pointer", border: c.warranty_status === "not_under_warranty" ? "1.5px solid #dc2626" : "1.5px solid #fecaca", background: c.warranty_status === "not_under_warranty" ? "#fef2f2" : "#fff", color: "#b91c1c" }}>{c.warranty_status === "not_under_warranty" ? "✓ Not Under Warranty" : "Not Under Warranty"}</button>
+              </div>
+            )}
+            {canWarranty && warrOpen && (
+              <div style={{ marginTop: 14, border: `1px solid ${warrChoice === "not_under_warranty" ? "#fecaca" : "#bbf7d0"}`, borderRadius: 12, padding: 14, background: warrChoice === "not_under_warranty" ? "#fef5f5" : "#f5fdf9" }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: warrChoice === "not_under_warranty" ? "#b91c1c" : "#166534", marginBottom: 8 }}>{warrChoice === "not_under_warranty" ? "Mark as Not Under Warranty (raises a dispute)" : "Mark as Under Warranty"}</div>
+                <textarea value={warrNote} onChange={e => setWarrNote(e.target.value)} placeholder={warrChoice === "not_under_warranty" ? "Reason it's not covered (optional but recommended)…" : "Note (optional)…"} rows={2} style={{ width: "100%", fontSize: 13, padding: "10px 12px", border: "1px solid #e5e7eb", borderRadius: 8, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
+                <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                  <button onClick={handleSetWarranty} disabled={warrBusy} style={{ fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer", border: "none", color: "#fff", background: warrChoice === "not_under_warranty" ? "linear-gradient(135deg, #dc2626, #ef5350)" : "linear-gradient(135deg, #0d9488, #0f766e)" }}>{warrBusy ? "…" : "Confirm"}</button>
+                  <button onClick={() => { setWarrOpen(false); setWarrChoice(null); }} disabled={warrBusy} style={{ fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer", background: "#fff", border: `1px solid ${C.borderLight}`, color: C.textMid }}>Cancel</button>
                 </div>
               </div>
             )}
