@@ -3551,6 +3551,7 @@ function SidebarIcon({ name, size = 20 }) {
     tickets: <svg viewBox="0 0 24 24" style={s}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 7l10 6 10-6"/></svg>,
     maintenance: <svg viewBox="0 0 24 24" style={s}><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>,
     analytics: <svg viewBox="0 0 24 24" style={s}><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>,
+    activity: <svg viewBox="0 0 24 24" style={s}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>,
     users: <svg viewBox="0 0 24 24" style={s}><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
     emails: <svg viewBox="0 0 24 24" style={s}><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 7l-8.97 5.7a1.94 1.94 0 01-2.06 0L2 7"/></svg>,
     submit: <svg viewBox="0 0 24 24" style={s}><path d="M12 5v14"/><path d="M5 12h14"/></svg>,
@@ -4023,6 +4024,249 @@ function EquipmentTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) 
   );
 }
 
+/* ─── Activity Feed — a shared, always-on chronological log of what everyone is doing on
+   tickets. Shown to Novair, Amex and service-provider users. Assembled from complaint
+   timestamps + comments (no new backend). Filterable by site and action type. ─── */
+function ActivityFeed({ hospitals, complaints, onViewSite }) {
+  const T = { ink: "#12211f", slate: "#5a6b68", mute: "#94a3a0", line: "#e7edec", teal700: "#0f766e", teal500: "#0d9488", teal50: "#f0fdfa" };
+  const [comments, setComments] = useState([]);
+  const [siteFilter, setSiteFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.from("comments").select("complaint_id, author, author_role, content, created_at").order("created_at", { ascending: false }).limit(500);
+        if (!cancelled && data) setComments(data);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [complaints]);
+
+  const inScope = (h) => hospitals.some(x => hospitalMatches(x, h));
+  const complaintById = React.useMemo(() => { const m = {}; complaints.forEach(c => { m[c.id] = c; }); return m; }, [complaints]);
+
+  // Build the event list from complaint milestones + comments
+  const events = [];
+  complaints.filter(c => inScope(c.hospital)).forEach(c => {
+    const site = c.hospital, title = c.title, tid = c.ticket_number || c.id;
+    if (c.created_at) events.push({ id: `o${c.id}`, cid: c.id, site, title, type: "opened", who: c.submitted_by || "Hospital", date: c.created_at });
+    if (c.acknowledged_at) events.push({ id: `a${c.id}`, cid: c.id, site, title, type: "acknowledged", who: c.acknowledged_by || getProvider(site), date: c.acknowledged_at });
+    visitDates(c).forEach((d, i) => events.push({ id: `v${c.id}-${i}`, cid: c.id, site, title, type: "visit", who: getProvider(site), date: d }));
+    if (c.warranty_at) events.push({ id: `w${c.id}`, cid: c.id, site, title, type: c.warranty_status === "not_under_warranty" ? "dispute" : "warranty", who: c.warranty_by || getProvider(site), date: c.warranty_at, note: c.warranty_note });
+    if (c.escalated_at) events.push({ id: `e${c.id}`, cid: c.id, site, title, type: "escalated", who: c.escalated_by || "Hospital", date: c.escalated_at });
+    if ((c.status === "Resolved" || c.status === "Verified") && c.resolved_at) events.push({ id: `r${c.id}`, cid: c.id, site, title, type: "resolved", who: getProvider(site), date: c.resolved_at });
+    if (c.status === "Verified" && c.verified_at) events.push({ id: `vf${c.id}`, cid: c.id, site, title, type: "verified", who: "Amex", date: c.verified_at });
+  });
+  comments.forEach((cm, i) => {
+    const c = complaintById[cm.complaint_id];
+    if (!c || !inScope(c.hospital)) return;
+    if (/^Acknowledged/i.test(cm.content || "") || /^Escalated this complaint/i.test(cm.content || "")) return; // avoid duplicating milestone events
+    events.push({ id: `c${cm.complaint_id}-${i}`, cid: cm.complaint_id, site: c.hospital, title: c.title, type: "comment", who: cm.author_role === "admin" ? "Admin" : cm.author, date: cm.created_at, note: cm.content });
+  });
+  events.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const TYPE_META = {
+    opened: { label: "opened a ticket", color: "#c2410c", bg: "#fff7ed", icon: <path d="M12 5v14M5 12h14" /> },
+    acknowledged: { label: "acknowledged", color: "#5b3a9c", bg: "#f3effc", icon: <polyline points="20 6 9 17 4 12" /> },
+    visit: { label: "logged a visit", color: "#b45309", bg: "#fef6ec", icon: <><path d="M12 21s-8-4.5-8-11.8A8 8 0 0 1 20 10.2C20 17.5 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></> },
+    comment: { label: "commented", color: "#0f766e", bg: "#f0fdfa", icon: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /> },
+    warranty: { label: "marked Under Warranty", color: "#16a34a", bg: "#ecfdf5", icon: <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /> },
+    dispute: { label: "raised a dispute (Not Under Warranty)", color: "#dc2626", bg: "#fef2f2", icon: <><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></> },
+    escalated: { label: "escalated", color: "#9a3412", bg: "#fff7ed", icon: <><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></> },
+    resolved: { label: "marked Resolved", color: "#2563eb", bg: "#eff6ff", icon: <polyline points="20 6 9 17 4 12" /> },
+    verified: { label: "verified", color: "#16a34a", bg: "#ecfdf5", icon: <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /> },
+  };
+  const TYPE_FILTERS = [{ k: "all", l: "All" }, { k: "opened", l: "Opened" }, { k: "acknowledged", l: "Acknowledged" }, { k: "visit", l: "Visits" }, { k: "comment", l: "Comments" }, { k: "warranty", l: "Warranty" }, { k: "dispute", l: "Disputes" }, { k: "escalated", l: "Escalations" }, { k: "resolved", l: "Resolved" }, { k: "verified", l: "Verified" }];
+
+  const filtered = events.filter(e => (siteFilter === "all" || hospitalMatches(e.site, siteFilter)) && (typeFilter === "all" || e.type === typeFilter)).slice(0, 200);
+  const timeAgo = (d) => {
+    const s = Math.floor((Date.now() - new Date(d)) / 1000);
+    if (s < 60) return "just now";
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    const days = Math.floor(s / 86400);
+    if (days < 30) return `${days}d ago`;
+    return new Date(d).toLocaleDateString("en-PK", { day: "numeric", month: "short" });
+  };
+  const selectStyle = { fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 9, border: `1.5px solid ${T.line}`, background: "#fff", color: T.slate, cursor: "pointer", outline: "none" };
+
+  return (
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ fontSize: 22, fontWeight: 800, color: T.ink, letterSpacing: "-0.01em", marginBottom: 6 }}>Activity</div>
+      <div style={{ fontSize: 13, color: T.slate, marginBottom: 18 }}>Everything happening across tickets, newest first.</div>
+      {/* filters */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap", alignItems: "center" }}>
+        <select style={selectStyle} value={siteFilter} onChange={e => setSiteFilter(e.target.value)}>
+          <option value="all">All sites</option>
+          {hospitals.map(h => <option key={h} value={h}>{displayName(h)}</option>)}
+        </select>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {TYPE_FILTERS.map(f => (
+            <button key={f.k} onClick={() => setTypeFilter(f.k)} style={{ fontSize: 11.5, fontWeight: 700, padding: "6px 12px", borderRadius: 20, cursor: "pointer", border: typeFilter === f.k ? "1.5px solid transparent" : `1.5px solid ${T.line}`, background: typeFilter === f.k ? "linear-gradient(135deg, #0d9488, #0f766e)" : "#fff", color: typeFilter === f.k ? "#fff" : T.slate }}>{f.l}</button>
+          ))}
+        </div>
+      </div>
+      {/* feed */}
+      <div style={{ background: "#fff", borderRadius: 16, border: `1px solid ${T.line}`, boxShadow: "0 1px 2px rgba(15,76,71,0.04)", overflow: "hidden" }}>
+        {filtered.length > 0 ? filtered.map((e, i) => {
+          const m = TYPE_META[e.type] || TYPE_META.comment;
+          return (
+            <div key={e.id} onClick={() => onViewSite(e.site)} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "13px 18px", borderBottom: i < filtered.length - 1 ? `1px solid #f3f7f6` : "none", cursor: "pointer" }} onMouseEnter={ev => ev.currentTarget.style.background = T.teal50} onMouseLeave={ev => ev.currentTarget.style.background = "transparent"}>
+              <span style={{ width: 30, height: 30, borderRadius: 9, background: m.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={m.color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">{m.icon}</svg>
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, color: T.ink, lineHeight: 1.4 }}>
+                  <b style={{ fontWeight: 700 }}>{e.who}</b> <span style={{ color: T.slate }}>{m.label}</span> <span style={{ color: T.slate }}>at</span> <b style={{ fontWeight: 700, color: T.teal700 }}>{displayName(e.site)}</b>
+                  {e.note && e.type === "comment" && <span style={{ color: T.slate }}>: “{e.note.length > 80 ? e.note.slice(0, 80) + "…" : e.note}”</span>}
+                  {e.note && (e.type === "dispute" || e.type === "warranty") && <span style={{ color: T.slate }}> — {e.note}</span>}
+                </div>
+                <div style={{ fontSize: 11, color: T.mute, marginTop: 2 }}>{e.title} · {timeAgo(e.date)}</div>
+              </div>
+            </div>
+          );
+        }) : <div style={{ padding: "40px 20px", textAlign: "center", color: T.mute, fontSize: 13 }}>No activity matches these filters</div>}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Activity Log — team coordination feed for Novair, Amex and service providers.
+   Assembled from complaint timestamps + comments. Novair/Amex see all sites (with a
+   site/provider filter); a service provider sees only its own sites. Past-month only. ─── */
+function ActivityLog({ complaints, scopeProvider, onViewSite, onReset }) {
+  const T = { ink: "#12211f", slate: "#5a6b68", mute: "#94a3a0", line: "#e7edec", teal700: "#0f766e", teal50: "#f0fdfa" };
+  const [comments, setComments] = useState([]);
+  const [siteFilter, setSiteFilter] = useState("all"); // "all" | provider name | hospital name
+  const [typeFilter, setTypeFilter] = useState("all"); // all | visit | resolved | escalation
+  const canScope = !scopeProvider; // Novair/Amex (no fixed provider) get the site/provider filter
+
+  const monthAgo = React.useMemo(() => { const d = new Date(); d.setMonth(d.getMonth() - 1); return d; }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.from("comments").select("complaint_id, author, author_role, content, created_at").gte("created_at", monthAgo.toISOString()).order("created_at", { ascending: false });
+        if (!cancelled && data) setComments(data);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [complaints, monthAgo]);
+
+  // Which complaints are in scope
+  const inScope = complaints.filter(c => {
+    if (scopeProvider) return getProvider(c.hospital) === scopeProvider;
+    if (siteFilter === "all") return true;
+    if (["Novair", "Intexim", "Z-Corps"].includes(siteFilter)) return getProvider(c.hospital) === siteFilter;
+    return hospitalMatches(c.hospital, siteFilter);
+  });
+  const scopeIds = new Set(inScope.map(c => c.id));
+  const cById = Object.fromEntries(complaints.map(c => [c.id, c]));
+
+  // Build events
+  const events = [];
+  const within = (d) => d && new Date(d) >= monthAgo;
+  inScope.forEach(c => {
+    if (within(c.created_at)) events.push({ id: `${c.id}-open`, cid: c.id, type: "opened", date: c.created_at, hospital: c.hospital, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> — new complaint: <b>{c.title}</b></>, sub: "Opened" });
+    if (within(c.acknowledged_at)) events.push({ id: `${c.id}-ack`, cid: c.id, type: "acknowledged", date: c.acknowledged_at, hospital: c.hospital, text: <><b>{c.acknowledged_by || getProvider(c.hospital)}</b> acknowledged <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b></>, sub: "Acknowledged" });
+    visitDates(c).forEach((v, i) => { if (within(v)) events.push({ id: `${c.id}-visit-${i}`, cid: c.id, type: "visit", date: v, hospital: c.hospital, text: <>Visit logged at <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b></>, sub: "Visit" }); });
+    if (within(c.warranty_at)) events.push({ id: `${c.id}-warr`, cid: c.id, type: "warranty", date: c.warranty_at, hospital: c.hospital, text: <><b>{c.warranty_by || "Someone"}</b> marked <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> as {c.warranty_status === "under_warranty" ? "Under Warranty" : "Not Under Warranty"}</>, sub: c.warranty_status === "under_warranty" ? "Warranty" : "Dispute" });
+    if (within(c.resolved_at)) events.push({ id: `${c.id}-res`, cid: c.id, type: "resolved", date: c.resolved_at, hospital: c.hospital, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> marked resolved</>, sub: "Resolved" });
+    if (within(c.verified_at)) events.push({ id: `${c.id}-ver`, cid: c.id, type: "resolved", date: c.verified_at, hospital: c.hospital, text: <>Amex verified resolution at <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b></>, sub: "Verified" });
+    if (within(c.escalated_at)) events.push({ id: `${c.id}-esc`, cid: c.id, type: "escalation", date: c.escalated_at, hospital: c.hospital, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> complaint escalated{c.escalated_by ? <> by <b>{c.escalated_by}</b></> : ""}</>, sub: "Escalation" });
+  });
+  comments.forEach(cm => {
+    if (!scopeIds.has(cm.complaint_id)) return;
+    const c = cById[cm.complaint_id]; if (!c) return;
+    const txt = (cm.content || "").replace(/^Acknowledged — /, "").replace(/^Acknowledged the ticket\.$/, "");
+    if (!txt || /^Acknowledged/.test(cm.content || "") || /^Escalated/.test(cm.content || "")) return; // dedupe with dedicated events
+    events.push({ id: `cm-${cm.complaint_id}-${cm.created_at}`, cid: cm.complaint_id, type: "comment", date: cm.created_at, hospital: c.hospital, text: <><b>{cm.author_role === "admin" ? "Admin" : cm.author}</b> commented on <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b>: “{txt.length > 80 ? txt.slice(0, 80) + "…" : txt}”</>, sub: "Comment" });
+  });
+
+  const typeMatch = (e) => typeFilter === "all" || (typeFilter === "visit" && e.type === "visit") || (typeFilter === "resolved" && e.type === "resolved") || (typeFilter === "escalation" && e.type === "escalation");
+  const feed = events.filter(typeMatch).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  const iconFor = (t) => {
+    const map = {
+      opened: { bg: "#fdecec", stroke: "#c0392b", path: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></> },
+      acknowledged: { bg: "#f1edfa", stroke: "#7c5cbf", path: <polyline points="20 6 9 17 4 12"/> },
+      visit: { bg: "#fef6ec", stroke: "#b45309", path: <><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></> },
+      comment: { bg: "#f0fdfa", stroke: "#0f766e", path: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/> },
+      warranty: { bg: "#ecfdf5", stroke: "#16a34a", path: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></> },
+      resolved: { bg: "#eef6ff", stroke: "#2563eb", path: <polyline points="20 6 9 17 4 12"/> },
+      escalation: { bg: "#fff7ed", stroke: "#c2410c", path: <><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></> },
+    };
+    return map[t] || map.comment;
+  };
+  const relTime = (d) => {
+    const mins = Math.floor((Date.now() - new Date(d)) / 60000);
+    if (mins < 60) return `${Math.max(1, mins)}m ago`;
+    const hrs = Math.floor(mins / 60); if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24); return days === 1 ? "1d ago" : `${days}d ago`;
+  };
+  const dayLabel = (d) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const dd = new Date(d); dd.setHours(0, 0, 0, 0);
+    const diff = Math.round((today - dd) / 86400000);
+    if (diff === 0) return "Today"; if (diff === 1) return "Yesterday";
+    return new Date(d).toLocaleDateString("en-PK", { weekday: "long", day: "numeric", month: "short" });
+  };
+
+  const chips = [{ k: "all", l: "All" }, { k: "visit", l: "Visits" }, { k: "resolved", l: "Resolved" }, { k: "escalation", l: "Escalations" }];
+  let lastDay = null;
+
+  return (
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: T.ink, letterSpacing: "-0.3px" }}>Activity Log</div>
+        {onReset && <button onClick={onReset} style={{ fontSize: 11.5, fontWeight: 700, color: "#c0392b", background: "#fdecec", border: "1px solid #f5c6c0", borderRadius: 8, padding: "7px 13px", cursor: "pointer" }}>Reset Activity Log</button>}
+      </div>
+      <div style={{ fontSize: 13, color: T.slate, marginBottom: 18 }}>Recent activity across tickets — last 30 days. {scopeProvider ? "Your sites." : "All sites."}</div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18, alignItems: "center" }}>
+        {canScope && (
+          <select value={siteFilter} onChange={e => setSiteFilter(e.target.value)} style={{ fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 10, border: `1.5px solid ${T.line}`, background: "#fff", color: T.ink, cursor: "pointer", outline: "none" }}>
+            <option value="all">All sites</option>
+            <optgroup label="By service provider">
+              <option value="Novair">Novair</option>
+              <option value="Intexim">Intexim</option>
+              <option value="Z-Corps">Z-Corps</option>
+            </optgroup>
+          </select>
+        )}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: canScope ? "auto" : 0 }}>
+          {chips.map(ch => (
+            <button key={ch.k} onClick={() => setTypeFilter(ch.k)} style={{ fontSize: 11.5, fontWeight: 700, padding: "7px 13px", borderRadius: 20, cursor: "pointer", border: typeFilter === ch.k ? "1.5px solid transparent" : `1.5px solid ${T.line}`, background: typeFilter === ch.k ? "linear-gradient(135deg, #0d9488, #0f766e)" : "#fff", color: typeFilter === ch.k ? "#fff" : T.slate }}>{ch.l}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{ background: "#fff", borderRadius: 16, border: `1px solid ${T.line}`, boxShadow: "0 1px 2px rgba(15,76,71,0.04)", overflow: "hidden" }}>
+        {feed.length === 0 ? <div style={{ padding: "40px 20px", textAlign: "center", color: T.mute, fontSize: 13 }}>No activity in the selected filter.</div> : feed.map(e => {
+          const ic = iconFor(e.type);
+          const showDay = dayLabel(e.date) !== lastDay; lastDay = dayLabel(e.date);
+          return (
+            <React.Fragment key={e.id}>
+              {showDay && <div style={{ fontSize: 10.5, fontWeight: 800, color: T.mute, textTransform: "uppercase", letterSpacing: "0.1em", padding: "14px 20px 8px", background: "#fafcfb", borderBottom: `1px solid ${T.line}`, borderTop: lastDay ? `1px solid ${T.line}` : "none" }}>{dayLabel(e.date)}</div>}
+              <div onClick={() => onViewSite(e.hospital)} style={{ display: "flex", gap: 13, padding: "13px 20px", borderBottom: `1px solid #f3f7f6`, cursor: "pointer" }} onMouseEnter={ev => ev.currentTarget.style.background = T.teal50} onMouseLeave={ev => ev.currentTarget.style.background = "transparent"}>
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: ic.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ic.stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{ic.path}</svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, color: T.ink, lineHeight: 1.4 }}>{e.text}</div>
+                  <div style={{ fontSize: 11, color: T.mute, marginTop: 2 }}><span style={{ fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 5, textTransform: "uppercase", background: ic.bg, color: ic.stroke }}>{e.sub}</span> <span style={{ marginLeft: 6 }}>{getProvider(e.hospital)}</span></div>
+                </div>
+                <span style={{ fontSize: 11, color: T.mute, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>{relTime(e.date)}</span>
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails = [], siteNotes, shutdowns, onRefresh, onLogout }) {
   const [tab, setTab] = useState("dashboard"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
   const [editingUser, setEditingUser] = useState(null); const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
@@ -4135,6 +4379,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
     { id: "sites", icon: "sites", label: "Site Status" },
     { id: "equipment", icon: "equipment", label: "Equipment" },
     { id: "tickets", icon: "tickets", label: "Tickets" },
+    { id: "activity", icon: "activity", label: "Activity" },
     { id: "submit", icon: "submit", label: "Submit" },
     { id: "maintenance", icon: "maintenance", label: "Maintenance" },
     { id: "analytics", icon: "analytics", label: "Analytics" },
@@ -4146,7 +4391,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
 
   const PAGE_TITLES = {
     dashboard: "Dashboard", sites: "Site Status", equipment: "Equipment", tickets: "Tickets", submit: "Submit Ticket",
-    maintenance: "Maintenance", analytics: "Analytics", users: "Users", emails: "Emails"
+    maintenance: "Maintenance", analytics: "Analytics", users: "Users", emails: "Emails", activity: "Activity"
   };
 
   return (
@@ -4229,6 +4474,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
               </div>
             </section>
           )}
+          {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={null} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} onReset={async () => { if (window.confirm("Reset the activity log? This clears all comment history that feeds the log. Ticket data (dates, statuses) is not affected. This cannot be undone.")) { await dbWrite({ action: "reset_all_comments" }); alert("Activity log reset."); await onRefresh(); } }} />}
           {tab === "maintenance" && <MaintenancePage />}
           {tab === "analytics" && <AnalyticsPage />}
           {tab === "users" && (<>
@@ -4421,18 +4667,20 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
   const staffOptions = (users || []).filter(u => u.role === "company" && (u.company_role === "engineer" || u.company_role === "technician" || u.company_role === "manager"));
   const funcCount = myHospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
 
+  const showActivity = ["Novair", "Amex", "Intexim", "Z-Corps"].includes(companyName);
   const NAV_ITEMS = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "sites", icon: "sites", label: "Site Status" },
     { id: "equipment", icon: "equipment", label: "Equipment" },
     { id: "tickets", icon: "tickets", label: "Tickets" },
+    ...(showActivity ? [{ id: "activity", icon: "activity", label: "Activity" }] : []),
     { id: "maintenance", icon: "maintenance", label: "Maintenance" },
     { id: "analytics", icon: "analytics", label: "Analytics" },
   ];
 
   const PAGE_TITLES = {
     dashboard: "Dashboard", sites: "Site Status", equipment: "Equipment", tickets: "Tickets",
-    maintenance: "Maintenance", analytics: "Analytics"
+    activity: "Activity", maintenance: "Maintenance", analytics: "Analytics"
   };
 
   return (
@@ -4469,6 +4717,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
             <GroupedHospitalList groups={myGroups} complaints={complaints} siteNotes={siteNotes} onSelect={setSelected} />
           </>)}
           {tab === "tickets" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onAssign={handleAssign} onLogVisit={handleLogVisit} onMarkResolved={handleMarkResolved} onVerify={handleVerify} onRejectVerify={handleRejectVerify} onDelete={() => {}} onRefresh={onRefresh} staffOptions={staffOptions} focusInfo={pendingFocus} />)}
+          {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={["Intexim","Z-Corps"].includes(companyName) ? companyName : null} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "maintenance" && <MaintenancePage />}
           {tab === "analytics" && <AnalyticsPage />}
           </div>
