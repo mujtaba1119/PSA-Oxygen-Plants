@@ -1132,16 +1132,20 @@ function saveSessionUser(u) {
   else sessionStorage.setItem(SESSION_KEY, JSON.stringify({ id: u.id, name: u.name, role: u.role, company: u.company || null, company_role: u.company_role || null }));
 }
 
-function LoadingScreen() {
+function LoadingScreen({ progress = 0 }) {
   const svgRef = useRef(null);
   const rafRef = useRef(null);
-  const startRef = useRef(null);
+  const currentBarRef = useRef(0);
+  const progressRef = useRef(0);
+
+  /* Keep progressRef in sync with prop so the animation loop reads the latest value */
+  useEffect(() => { progressRef.current = progress; }, [progress]);
 
   useEffect(() => {
     const svgEl = svgRef.current;
     if (!svgEl) return;
     const CX = 140, CY = 140, R = 112;
-    const SA = 135, SW = 270, MAX = 8, TARGET = 6.2;
+    const SA = 135, SW = 270, MAX = 8;
     const degRad = d => d * Math.PI / 180;
     const pol = (a, r) => ({ x: CX + r * Math.cos(degRad(a)), y: CY + r * Math.sin(degRad(a)) });
     const bToA = b => SA + (b / MAX) * SW;
@@ -1192,30 +1196,23 @@ function LoadingScreen() {
       labelG.appendChild(tx);
     }
 
-    /* Animation — fast to ~75%, then crawls; component unmounts when data loads */
-    const fastDur = 2000;
-    const fastTarget = TARGET * 0.75;
-    const easeOut = t => 1 - Math.pow(1 - t, 3);
+    /* Animation — needle chases real loading progress (0-1 → 0-8 bar) with smooth interpolation */
+    function tick() {
+      const targetBar = progressRef.current * MAX;
+      /* Smoothly chase the target — fast enough to feel responsive, slow enough to look analog */
+      const diff = targetBar - currentBarRef.current;
+      const speed = Math.abs(diff) > 2 ? 0.08 : Math.abs(diff) > 0.5 ? 0.06 : 0.04;
+      currentBarRef.current += diff * speed;
+      /* Small oscillation when near target to feel like a real gauge */
+      const bar = currentBarRef.current + (Math.abs(diff) < 0.15 ? Math.sin(Date.now() * 0.004) * 0.06 : 0);
 
-    function tick(ts) {
-      if (!startRef.current) startRef.current = ts;
-      const el = ts - startRef.current;
-      let bar;
-      if (el < fastDur) {
-        bar = easeOut(el / fastDur) * fastTarget;
-      } else {
-        const crawlEl = el - fastDur;
-        const crawlRate = 0.00012;
-        bar = fastTarget + crawlEl * crawlRate;
-        if (bar > TARGET) bar = TARGET + Math.sin(crawlEl * 0.003) * 0.12;
-      }
       const ca = bToA(bar);
       if (bar > 0.05) fillArc.setAttribute("d", ap(SA, ca, R));
       const tp = pol(ca, R);
       tipDot.setAttribute("cx", tp.x); tipDot.setAttribute("cy", tp.y);
       tipDot.setAttribute("opacity", bar > 0.05 ? "0.9" : "0");
       needleG.setAttribute("transform", `rotate(${ca + 180}, ${CX}, ${CY})`);
-      barNum.textContent = bar.toFixed(1);
+      if (barNum) barNum.textContent = Math.max(0, bar).toFixed(1);
       rafRef.current = requestAnimationFrame(tick);
     }
     rafRef.current = requestAnimationFrame(tick);
@@ -1268,9 +1265,12 @@ function AppInner() {
   const [escalationEmails, setEscalationEmails] = useState([]);
   const [ready, setReady] = useState(false);
   const [dataReady, setDataReady] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0);
 
-  const reload = useCallback(async () => {
-    const [c, u, e, s, sd, ee] = await Promise.all([fetchComplaints(), fetchUsers(), fetchEmails(), fetchSiteNotes(), fetchShutdowns(), fetchEscalationEmails()]);
+  const reload = useCallback(async (onProgress) => {
+    const total = 6; let done = 0;
+    const track = onProgress ? (p) => p.then(r => { done++; onProgress(done / total); return r; }) : (p) => p;
+    const [c, u, e, s, sd, ee] = await Promise.all([track(fetchComplaints()), track(fetchUsers()), track(fetchEmails()), track(fetchSiteNotes()), track(fetchShutdowns()), track(fetchEscalationEmails())]);
     setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s); setShutdowns(sd); setEscalationEmails(ee);
     return u;
   }, []);
@@ -1284,7 +1284,8 @@ function AppInner() {
     }
     let cancelled = false;
     setDataReady(false);
-    reload().then((freshUsers) => {
+    setLoadProgress(0);
+    reload((p) => { if (!cancelled) setLoadProgress(p); }).then((freshUsers) => {
       if (cancelled) return;
       // Re-hydrate the logged-in user from the fresh DB record. A restored session may be
       // missing fields like company_role (older sessions didn't store it), which would make
@@ -1324,9 +1325,9 @@ function AppInner() {
     setDataReady(false);
   };
 
-  if (!ready) return <LoadingScreen />;
+  if (!ready) return <LoadingScreen progress={0} />;
   if (!user) return <LoginScreen onLogin={handleLogin} />;
-  if (!dataReady) return <LoadingScreen />;
+  if (!dataReady) return <LoadingScreen progress={loadProgress} />;
   if (user.role === "hospital") return <HospitalDashboard user={user} complaints={complaints} onRefresh={reload} onLogout={handleLogout} />;
   if (user.role === "admin") return <AdminDashboard user={user} users={users} complaints={complaints} notifEmails={notifEmails} escalationEmails={escalationEmails} siteNotes={siteNotes} shutdowns={shutdowns} onRefresh={reload} onLogout={handleLogout} />;
   return <CompanyDashboard user={user} users={users} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} onRefresh={reload} onLogout={handleLogout} />;
