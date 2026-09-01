@@ -2732,7 +2732,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const [ackOpen, setAckOpen] = useState(false);
   const [ackNote, setAckNote] = useState("");
   const [ackFiles, setAckFiles] = useState([]);
-  const [ackMode, setAckMode] = useState("remote"); // "remote" | "visit"
+  const [ackMode, setAckMode] = useState(null); // "remote" | "visit" — must be chosen explicitly
   const [ackVisitDate, setAckVisitDate] = useState("");
   const [ackBusy, setAckBusy] = useState(false);
   const [equipOpen, setEquipOpen] = useState(false);
@@ -2762,7 +2762,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   // Acknowledge: record who/when, post the note as a comment, upload any files, then either
   // resolve remotely (→ Resolved, awaiting verification) or log the chosen visit date.
   const handleAcknowledge = async () => {
-    if (ackBusy) return;
+    if (ackBusy || !ackMode) return;
     if (ackMode === "visit" && !ackVisitDate) return;
     setAckBusy(true);
     const who = currentUser.name;
@@ -2775,7 +2775,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     } else {
       await onLogVisit(c.id, ackVisitDate);
     }
-    setAckOpen(false); setAckNote(""); setAckFiles([]); setAckVisitDate(""); setAckMode("remote");
+    setAckOpen(false); setAckNote(""); setAckFiles([]); setAckVisitDate(""); setAckMode(null);
     setAckBusy(false);
     await onRefresh();
   };
@@ -2885,15 +2885,20 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                   </label>
                   {ackFiles.length > 0 && <span style={{ fontSize: 12, color: C.textMid }}>{ackFiles.length} file{ackFiles.length === 1 ? "" : "s"} selected <button onClick={() => setAckFiles([])} style={{ border: "none", background: "none", color: "#c0392b", cursor: "pointer", fontWeight: 700 }}>✕</button></span>}
                 </div>
-                <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: C.textMid, marginTop: 12, marginBottom: 6 }}>How will you handle it?</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button onClick={() => setAckMode("remote")} style={{ fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer", border: ackMode === "remote" ? "1.5px solid transparent" : `1.5px solid ${C.tealLight}`, background: ackMode === "remote" ? "linear-gradient(135deg, #0d9488, #0f766e)" : "#fff", color: ackMode === "remote" ? "#fff" : C.tealDark }}>Resolve remotely</button>
                   <button onClick={() => setAckMode("visit")} style={{ fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer", border: ackMode === "visit" ? "1.5px solid transparent" : `1.5px solid ${C.tealLight}`, background: ackMode === "visit" ? "linear-gradient(135deg, #0d9488, #0f766e)" : "#fff", color: ackMode === "visit" ? "#fff" : C.tealDark }}>Schedule visit</button>
                   {ackMode === "visit" && <input type="date" value={ackVisitDate} onChange={e => setAckVisitDate(e.target.value)} style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} />}
                 </div>
-                <div style={{ fontSize: 11, color: C.textLight, marginTop: 8 }}>{ackMode === "remote" ? "The ticket will be marked Resolved and sent for verification." : "The ticket will move to In Progress with this visit logged. You can add more visits later."}</div>
+                <div style={{ fontSize: 11, color: C.textLight, marginTop: 8 }}>
+                  {ackMode === "remote" && "⚠ This will mark the ticket Resolved and send it for verification."}
+                  {ackMode === "visit" && "The ticket will move to Open · In Progress with this visit logged. You can add more visits later."}
+                  {!ackMode && "Choose one of the options above to continue."}
+                </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                  <button style={styles.btnTealSmall} onClick={handleAcknowledge} disabled={ackBusy || (ackMode === "visit" && !ackVisitDate)}>{ackBusy ? "…" : "Confirm & Acknowledge"}</button>
-                  <button style={{ ...styles.btnTealSmall, background: "#fff", color: C.textMid, border: `1px solid ${C.borderLight}`, boxShadow: "none" }} onClick={() => setAckOpen(false)} disabled={ackBusy}>Cancel</button>
+                  <button style={{ ...styles.btnTealSmall, opacity: (!ackMode || (ackMode === "visit" && !ackVisitDate)) ? 0.5 : 1 }} onClick={handleAcknowledge} disabled={ackBusy || !ackMode || (ackMode === "visit" && !ackVisitDate)}>{ackBusy ? "…" : ackMode === "remote" ? "Acknowledge & Resolve" : ackMode === "visit" ? "Acknowledge & Schedule Visit" : "Acknowledge"}</button>
+                  <button style={{ ...styles.btnTealSmall, background: "#fff", color: C.textMid, border: `1px solid ${C.borderLight}`, boxShadow: "none" }} onClick={() => { setAckOpen(false); setAckMode(null); }} disabled={ackBusy}>Cancel</button>
                 </div>
               </div>
             )}
