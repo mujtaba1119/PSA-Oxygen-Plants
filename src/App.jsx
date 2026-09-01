@@ -1398,7 +1398,7 @@ function WebVessel() {
 }
 
 function LoginScreen({ onLogin }) {
-  const [id, setId] = useState(""); const [pw, setPw] = useState(""); const [err, setErr] = useState("");
+  const [id, setId] = useState(""); const [pw, setPw] = useState(""); const [err, setErr] = useState(""); const [showPw, setShowPw] = useState(false);
   const [attempts, setAttempts] = useState(0); const [locked, setLocked] = useState(false); const [submitting, setSubmitting] = useState(false);
   const submit = async () => {
     if (locked || submitting) return;
@@ -1435,7 +1435,7 @@ function LoginScreen({ onLogin }) {
         <div style={{ fontSize: 26, fontWeight: 800, color: "#fff", letterSpacing: 0.3 }}>PSA Oxygen Plants</div>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 8 }}>
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#5eead4", display: "inline-block" }} />
-          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: 500 }}>Management System</span>
+          <span style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: 500 }}>Maintenance & Monitoring Portal</span>
         </div>
       </div>
 
@@ -1456,7 +1456,12 @@ function LoginScreen({ onLogin }) {
             <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
             <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
-          <input style={{ width: "100%", padding: "14px 16px 14px 44px", fontSize: 14, border: `1.5px solid ${C.borderLight}`, borderRadius: 12, outline: "none", boxSizing: "border-box", background: "#fff", color: "#111" }} type="password" placeholder="Password" value={pw} onChange={e => { setPw(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.borderLight} autoComplete="current-password" />
+          <input style={{ width: "100%", padding: "14px 44px 14px 44px", fontSize: 14, border: `1.5px solid ${C.borderLight}`, borderRadius: 12, outline: "none", boxSizing: "border-box", background: "#fff", color: "#111" }} type={showPw ? "text" : "password"} placeholder="Password" value={pw} onChange={e => { setPw(e.target.value); setErr(""); }} onKeyDown={e => e.key === "Enter" && submit()} onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.borderLight} autoComplete="current-password" />
+          <button type="button" onClick={() => setShowPw(v => !v)} style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center" }}>
+            {showPw
+              ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>}
+          </button>
         </div>
         {err && <p style={{ color: C.red, fontSize: 13, fontWeight: 600, margin: "0 0 14px", textAlign: "center" }}>{err}</p>}
         <button style={{ width: "100%", padding: "15px 0", fontSize: 14.5, fontWeight: 700, color: "#fff", background: (locked || submitting) ? "#9db8b4" : C.teal, border: "none", borderRadius: 12, cursor: (locked || submitting) ? "not-allowed" : "pointer", boxShadow: "0 4px 12px rgba(13,148,136,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={submit} disabled={locked || submitting}>{submitting ? "Signing in…" : locked ? "Locked" : "Sign in"}{!submitting && !locked && <span style={{ fontSize: 16 }}>→</span>}</button>
