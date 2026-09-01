@@ -240,7 +240,7 @@ const isAmexUser = u => getCompanyName(u) === "Amex";
 const isProviderUser = u => ["Novair", "Intexim", "Z-Corps"].includes(getCompanyName(u));
 const isManagerUser = u => u.role === "company" && u.company_role === "manager";
 
-function statusLabel(status) { return status === "Verified" ? "Resolved & Verified" : status; }
+function statusLabel(status) { return status === "Verified" ? "Resolved & Verified" : status === "In Progress" ? "Open · In Progress" : status; }
 
 // assigned_to is stored as an array of names (a ticket can have multiple assignees)
 function assigneeNames(c) {
@@ -264,44 +264,51 @@ function visitHasArrived(c) {
   });
 }
 
+// ── New workflow ──
+// A ticket is "Open" from creation until it is resolved. There is no staff-assignment step: every
+// ticket is simply tagged "Assigned to: <site's service provider>". The service provider
+// ACKNOWLEDGES the ticket (with a note / upload), which moves it to "In Progress" while still open.
+// From there they can log visits (past or future) and add notes until they Mark Resolved, after
+// which Amex verifies as before.
+function isAcknowledged(c) { return !!c.acknowledged_at; }
+
 function getEffectiveStatus(c) {
-  if (c.status === "Open") {
-    if (visitHasArrived(c)) return "In Progress";
-    if (hasAssignees(c)) return "Assigned";
-    return "Open";
-  }
+  if (c.status === "Open") return isAcknowledged(c) ? "In Progress" : "Open";
   return c.status;
 }
 
-// Only a manager belonging to the site's own service-provider company (or admin) can assign staff.
-// Assignment can happen repeatedly (to add more people) as long as the ticket is still in the raw
-// "Open" bucket — deliberately checks raw status, not the derived display label, so it keeps working
-// once the label has already flipped to "Assigned".
-function canAssignTicket(user, hospital, c) {
-  if (c.status !== "Open") return false;
+// Any user of the site's own service-provider company (or admin) may acknowledge an open,
+// not-yet-acknowledged ticket.
+function canAcknowledgeTicket(user, hospital, c) {
+  if (c.status !== "Open" || isAcknowledged(c)) return false;
   if (user.role === "admin") return true;
-  return isManagerUser(user) && isProviderUser(user) && getProvider(hospital) === getCompanyName(user);
+  return isProviderUser(user) && getProvider(hospital) === getCompanyName(user);
 }
-// Must have at least one assignee before a visit can be logged
-function canLogVisitTicket(user, hospital, c) {
-  return canAssignTicket(user, hospital, c) && hasAssignees(c);
+// Once acknowledged, the provider can keep working the ticket: log visits, add notes/uploads.
+function canWorkTicket(user, hospital, c) {
+  if (c.status !== "Open" || !isAcknowledged(c)) return false;
+  if (user.role === "admin") return true;
+  return isProviderUser(user) && getProvider(hospital) === getCompanyName(user);
 }
-// Hospital or the assigned provider can mark resolved, once a visit has actually happened
+// Kept for compatibility: visits can be logged once the ticket is acknowledged.
+function canLogVisitTicket(user, hospital, c) { return canWorkTicket(user, hospital, c); }
+// Legacy assign gate — assignment step is removed; always false so old UI paths stay hidden.
+function canAssignTicket() { return false; }
+// Hospital or the provider can mark resolved once the ticket has been acknowledged.
 function canMarkResolvedTicket(user, hospital, c) {
   if (user.role === "admin") return c.status === "Open";
-  if (getEffectiveStatus(c) !== "In Progress") return false;
+  if (c.status !== "Open" || !isAcknowledged(c)) return false;
   if (user.role === "hospital") return true;
   return isProviderUser(user) && getProvider(hospital) === getCompanyName(user);
 }
-// Only "Resolved" or "Verified" count as no-longer-open; "Open"/"Assigned"/"In Progress" are open.
+// Only "Resolved" or "Verified" count as no-longer-open; "Open"/"In Progress" are open.
 function isClosedStatus(status) { return status === "Resolved" || status === "Verified"; }
-// Global ticket sort order: Open, then Assigned, then In Progress, then Resolved, then Verified —
+// Global ticket sort order: Open, then In Progress, then Resolved, then Verified —
 // irrespective of when each ticket was opened. Within the same status, most recent first.
-const STATUS_SORT_ORDER = { "Open": 0, "Assigned": 1, "In Progress": 2, "Resolved": 3, "Verified": 4 };
+const STATUS_SORT_ORDER = { "Open": 0, "In Progress": 1, "Resolved": 2, "Verified": 3 };
 // Ordered stage list + solid bar colors for the HomeTab ticket pipeline visualization
 const STAGE_META = [
   { key: "Open", color: "#c2622f" },
-  { key: "Assigned", color: "#7c5cbf" },
   { key: "In Progress", color: "#d69e2e" },
   { key: "Resolved", color: "#2874a6" },
   { key: "Verified", color: "#2f9e58" },
@@ -345,6 +352,45 @@ async function notifyComplaintEmail(hospital, title, description) {
 async function updateComplaintFields(id, fields) {
   const data = await dbWrite({ action: "update_complaint_fields", id, fields });
   return !data.error;
+}
+// Provider acknowledges an open ticket: records who/when. Requires the `acknowledged_by` and
+// `acknowledged_at` columns on the complaints table.
+async function acknowledgeComplaint(id, acknowledgedBy) {
+  return updateComplaintFields(id, { acknowledged_by: acknowledgedBy || null, acknowledged_at: new Date().toISOString() });
+}
+// Downscale large images before upload (shared)
+const compressImageFile = (file) => new Promise((resolve) => {
+  if (!file.type.startsWith("image/")) { resolve(file); return; }
+  const canvas = document.createElement("canvas");
+  const img = new Image();
+  img.onload = () => {
+    const maxW = 1200; const maxH = 1200;
+    let w = img.width; let h = img.height;
+    if (w > maxW) { h = (h * maxW) / w; w = maxW; }
+    if (h > maxH) { w = (w * maxH) / h; h = maxH; }
+    canvas.width = w; canvas.height = h;
+    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+    canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", 0.7);
+  };
+  img.src = URL.createObjectURL(file);
+});
+// Upload one or more files as attachments on a complaint (shared by submission forms + the
+// acknowledgement / work-notes panel).
+async function uploadComplaintAttachments(complaintId, fileList) {
+  for (const rawFile of fileList) {
+    try {
+      const file = await compressImageFile(rawFile);
+      const base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch("/api/attachment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ complaintId, fileName: file.name, contentType: file.type, base64Data }) });
+      const data = await res.json();
+      if (!res.ok) console.error("Upload error:", data.error);
+    } catch (e) { console.error("Upload failed:", e); }
+  }
 }
 async function requestResolution(id, requestedBy) {
   const data = await dbWrite({ action: "request_resolution", id, requested_by: requestedBy });
@@ -1891,11 +1937,11 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 18, padding: "0 18px 12px 22px", borderBottom: `1px solid #f3f7f6` }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Reported</span><span style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>{fmtDate(c.created_at) || "—"}</span></div>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Days Open</span><span style={{ fontSize: 12, fontWeight: 600, color: T.ink }}>{c.days} day{c.days === 1 ? "" : "s"}</span></div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Assigned To</span>{names.length ? <span style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>{names.map(n => <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: T.teal50, border: `1px solid ${T.teal100}`, borderRadius: 20, padding: "2px 9px 2px 3px", fontSize: 11, fontWeight: 600, color: T.teal700 }}><span style={{ width: 16, height: 16, borderRadius: "50%", background: T.teal500, color: "#fff", fontSize: 7.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{initialsFor(n)}</span>{n}</span>)}</span> : <span style={{ fontSize: 12, fontWeight: 500, color: T.mute }}>— not assigned</span>}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Assigned To</span><span style={{ fontSize: 12, fontWeight: 700, color: T.teal700 }}>{getProvider(c.hospital)}{c.acknowledged_by ? <span style={{ color: T.mute, fontWeight: 500 }}> · ack. by {c.acknowledged_by}</span> : <span style={{ color: "#c0392b", fontWeight: 600 }}> · awaiting acknowledgement</span>}</span></div>
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.05em" }}>Last Visit</span><span style={{ fontSize: 12, fontWeight: 600, color: lastVisit ? T.ink : T.mute }}>{lastVisit || "—"}</span></div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", padding: "12px 18px 14px 22px", background: "#fafcfb" }}>
-          <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 14px", cursor: "pointer", border: "none", background: "linear-gradient(135deg, #0d9488, #0f766e)", color: "#fff", boxShadow: "0 2px 6px rgba(13,148,136,0.22)" }}>{names.length ? "Manage Ticket →" : "Assign Staff →"}</button>
+          <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 14px", cursor: "pointer", border: "none", background: "linear-gradient(135deg, #0d9488, #0f766e)", color: "#fff", boxShadow: "0 2px 6px rgba(13,148,136,0.22)" }}>Manage Ticket →</button>
           <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 14px", cursor: "pointer", background: "#fff", border: `1.5px solid ${T.teal300}`, color: T.teal700 }}>View Details</button>
         </div>
       </div>
@@ -1923,7 +1969,7 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
     // full lifecycle timeline — greyed steps haven't happened yet
     const steps = [
       { label: "Reported", date: fmtDate(c.created_at), done: true },
-      { label: "Assigned", date: c.assigned_at ? fmtDate(c.assigned_at) : null, done: !!c.assigned_at },
+      { label: "Acknowledged", date: c.acknowledged_at ? fmtDate(c.acknowledged_at) : null, done: !!c.acknowledged_at },
       ...visits.map((v, i) => ({ label: visits.length > 1 ? `Visit ${i + 1}` : "Visit", date: fmtDate(v), done: true })),
       { label: "Resolved", date: c.resolved_at ? fmtDate(c.resolved_at) : null, done: isResolved },
       { label: "Verified", date: c.verified_at ? fmtDate(c.verified_at) : null, done: isVerified },
@@ -1979,7 +2025,10 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.mute} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             <span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>Assigned</span>
           </div>
-          {names.length ? <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{names.map(n => <span key={n} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", border: `1.5px solid ${T.teal100}`, borderRadius: 20, padding: "3px 12px 3px 3px", fontSize: 11.5, fontWeight: 600, color: T.teal700, boxShadow: "0 1px 3px rgba(15,118,110,0.06)" }}><span style={{ width: 20, height: 20, borderRadius: "50%", background: "linear-gradient(135deg, #0d9488, #0f766e)", color: "#fff", fontSize: 8.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{initialsFor(n)}</span>{n}</span>)}</div> : <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#c0392b", background: "#fdecec", padding: "4px 12px", borderRadius: 20 }}>Not assigned yet</span>}
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", border: `1.5px solid ${T.teal100}`, borderRadius: 20, padding: "3px 12px 3px 3px", fontSize: 11.5, fontWeight: 700, color: T.teal700, boxShadow: "0 1px 3px rgba(15,118,110,0.06)" }}><span style={{ width: 20, height: 20, borderRadius: "50%", background: "linear-gradient(135deg, #0d9488, #0f766e)", color: "#fff", fontSize: 8.5, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{getProvider(c.hospital)[0]}</span>{getProvider(c.hospital)}</span>
+          {c.acknowledged_by
+            ? <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: "#166534", background: "#ecfdf5", border: "1px solid #bbf7d0", padding: "3px 11px", borderRadius: 20 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Acknowledged by {c.acknowledged_by}</span>
+            : <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#c0392b", background: "#fdecec", padding: "4px 12px", borderRadius: 20 }}>Awaiting acknowledgement</span>}
         </div>
         {/* ── activity log ── */}
         <div style={{ padding: "12px 24px 14px", borderTop: `1px solid #f3f7f6`, background: "#fbfdfc" }}>
@@ -2151,7 +2200,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, onViewSite, user })
   const issueSites = hospitals.filter(h => getSiteDisplayStatus(h, complaints, siteNotes) === "Functional");
 
   const scoped = complaints.filter(c => hospitals.some(h => hospitalMatches(h, c.hospital)));
-  const stageCounts = { "Open": 0, "Assigned": 0, "In Progress": 0, "Resolved": 0, "Verified": 0 };
+  const stageCounts = { "Open": 0, "In Progress": 0, "Resolved": 0, "Verified": 0 };
   scoped.forEach(c => { const s = getEffectiveStatus(c); if (stageCounts[s] !== undefined) stageCounts[s]++; });
 
   const oneWeekAgo = new Date(); oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
@@ -2679,6 +2728,13 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const [visitDatePick, setVisitDatePick] = useState("");
   const [resolveDatePick, setResolveDatePick] = useState("");
   const [verifyDatePick, setVerifyDatePick] = useState("");
+  // Acknowledgement panel (new workflow)
+  const [ackOpen, setAckOpen] = useState(false);
+  const [ackNote, setAckNote] = useState("");
+  const [ackFiles, setAckFiles] = useState([]);
+  const [ackMode, setAckMode] = useState("remote"); // "remote" | "visit"
+  const [ackVisitDate, setAckVisitDate] = useState("");
+  const [ackBusy, setAckBusy] = useState(false);
   const [equipOpen, setEquipOpen] = useState(false);
   const [equipPicks, setEquipPicks] = useState(() => extractSerials(complaint.description));
   const [equipSaving, setEquipSaving] = useState(false);
@@ -2687,12 +2743,15 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   // Open (unresolved/unverified) tickets start expanded; fully closed tickets start collapsed until clicked
   const [expanded, setExpanded] = useState(effStatus !== "Verified");
 
-  const canAssign = canAssignTicket(currentUser, c.hospital, c);
+  const canAssign = false; // assignment step removed in the new workflow
+  const canAcknowledge = canAcknowledgeTicket(currentUser, c.hospital, c);
+  const canWork = canWorkTicket(currentUser, c.hospital, c);
   const canLogVisit = canLogVisitTicket(currentUser, c.hospital, c);
   const canMarkResolved = canMarkResolvedTicket(currentUser, c.hospital, c);
   const canVerify = canVerifyTicket(currentUser) && c.status === "Resolved";
   const alreadyAssigned = assigneeNames(c);
   const availableStaff = staffOptions.filter(s => !alreadyAssigned.includes(s.name));
+  const providerName = getProvider(c.hospital);
 
   // Auto-expand when this card is focused from a notification
   useEffect(() => { if (cardHighlight || (highlightCommentText && highlightCommentText.trim())) setExpanded(true); }, [cardHighlight, highlightCommentText]);
@@ -2700,9 +2759,29 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const toggleAssignee = (name) => setAssigneePicks(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
   const handleAssign = async () => { if (!assigneePicks.length) return; setBusy(true); await onAssign(c.id, assigneePicks); setAssigneePicks([]); setBusy(false); };
   const handleLogVisit = async () => { if (!visitDatePick) return; setBusy(true); await onLogVisit(c.id, visitDatePick); setVisitDatePick(""); setBusy(false); };
+  // Acknowledge: record who/when, post the note as a comment, upload any files, then either
+  // resolve remotely (→ Resolved, awaiting verification) or log the chosen visit date.
+  const handleAcknowledge = async () => {
+    if (ackBusy) return;
+    if (ackMode === "visit" && !ackVisitDate) return;
+    setAckBusy(true);
+    const who = currentUser.name;
+    await acknowledgeComplaint(c.id, who);
+    const noteText = ackNote.trim();
+    await insertComment(c.id, who, currentUser.role, noteText ? `Acknowledged — ${noteText}` : "Acknowledged the ticket.");
+    if (ackFiles.length) await uploadComplaintAttachments(c.id, ackFiles);
+    if (ackMode === "remote") {
+      await onMarkResolved(c.id);
+    } else {
+      await onLogVisit(c.id, ackVisitDate);
+    }
+    setAckOpen(false); setAckNote(""); setAckFiles([]); setAckVisitDate(""); setAckMode("remote");
+    setAckBusy(false);
+    await onRefresh();
+  };
   const handleMarkResolved = async () => { setBusy(true); await onMarkResolved(c.id, resolveDatePick || undefined); setResolveDatePick(""); setBusy(false); };
   const handleVerify = async () => { setBusy(true); await onVerify(c.id, verifyDatePick || undefined); setVerifyDatePick(""); setBusy(false); };
-  const handleRejectVerify = async () => { if (!window.confirm("Reject this resolution? The ticket will go back to Open and will need to be reassigned.")) return; setBusy(true); await onRejectVerify(c.id); setBusy(false); };
+  const handleRejectVerify = async () => { if (!window.confirm("Reject this resolution? The ticket will go back to Open · In Progress for the service provider to continue working.")) return; setBusy(true); await onRejectVerify(c.id); setBusy(false); };
   const handleRemoveAssignee = async (name) => { if (!window.confirm(`Remove ${name} from this ticket?`)) return; setBusy(true); await removeAssignee(c.id, name); setBusy(false); await onRefresh(); };
   const handleRemoveVisit = async (d) => { if (!window.confirm("Remove this logged visit?")) return; setBusy(true); await removeVisit(c.id, d); setBusy(false); await onRefresh(); };
   const handleUndoResolve = async () => { if (!window.confirm("Undo resolving this ticket? It will go back to In Progress.")) return; setBusy(true); await undoResolve(c.id); setBusy(false); await onRefresh(); };
@@ -2741,24 +2820,31 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
           {expanded && (
           <div style={{ padding: 16 }}>
             <p style={styles.cardDesc}>{cleanDescription(c.description)}</p>
-            {/* Submitted by + assigned staff row */}
-            {(c.submitted_by || hasAssignees(c)) && (
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
-                {c.submitted_by && (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "#5f6b7a", background: "#f4f4f0", padding: "4px 11px", borderRadius: 20 }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8a9199" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    {c.submitted_by}
-                  </span>
-                )}
-                {hasAssignees(c) && <AssignedTag complaint={c} isAdmin={isAdmin} onRemove={handleRemoveAssignee} />}
-              </div>
-            )}
+            {/* Submitted by + assigned-provider tag (permanent) + acknowledged-by */}
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, marginTop: 12 }}>
+              {c.submitted_by && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "#5f6b7a", background: "#f4f4f0", padding: "4px 11px", borderRadius: 20 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#8a9199" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  {c.submitted_by}
+                </span>
+              )}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: C.tealDark, background: C.tealBg, border: `1px solid ${C.tealLight}`, padding: "4px 11px", borderRadius: 20 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.tealDark} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                Assigned to: {providerName}
+              </span>
+              {isAcknowledged(c) && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: "#166534", background: "#ecfdf5", border: "1px solid #bbf7d0", padding: "4px 11px", borderRadius: 20 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Acknowledged by {c.acknowledged_by || providerName}
+                </span>
+              )}
+            </div>
             {/* Lifecycle milestone strip */}
             <div style={{ marginTop: 12, background: "#fafbfb", border: "1px solid #eef1f0", borderRadius: 12, padding: "14px 16px", display: "flex", flexWrap: "wrap", justifyContent: "space-around", gap: 16 }}>
               {(() => {
                 const milestones = [];
                 milestones.push({ label: "Opened", value: new Date(c.created_at).toLocaleDateString("en-PK", dateFmt), color: "#0f766e" });
-                if (c.assigned_at) milestones.push({ label: "Assigned", value: new Date(c.assigned_at).toLocaleDateString("en-PK", dateFmt), color: "#5b3a9c" });
+                if (c.acknowledged_at) milestones.push({ label: "Acknowledged", value: new Date(c.acknowledged_at).toLocaleDateString("en-PK", dateFmt), color: "#5b3a9c" });
                 if (hasVisits(c)) milestones.push({ label: effStatus === "In Progress" ? (visitDates(c).length > 1 ? "Visits" : "Visit") : "Visit Scheduled", color: "#b45309", visitList: true });
                 if ((c.status === "Resolved" || c.status === "Verified") && c.resolved_at) milestones.push({ label: "Resolved", value: new Date(c.resolved_at).toLocaleDateString("en-PK", dateFmt), color: "#16a34a" });
                 if (c.status === "Verified" && c.verified_at) milestones.push({ label: "Verified", value: new Date(c.verified_at).toLocaleDateString("en-PK", dateFmt), color: "#16a34a" });
@@ -2781,25 +2867,41 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               })()}
             </div>
             <AttachmentViewer attachments={c.attachments} />
-            {canAssign && availableStaff.length > 0 && (
-              <div style={{ marginTop: 14, border: `1px solid ${C.tealLight}`, borderRadius: 10, padding: 10, background: "#fbfefe" }}>
-                <div style={{ fontSize: 11.5, fontWeight: 600, color: C.textMid, marginBottom: 8 }}>{alreadyAssigned.length ? "Assign additional staff" : "Assign staff"}</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 8 }}>
-                  {availableStaff.map(s => (
-                    <label key={s.id} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, cursor: "pointer" }}>
-                      <input type="checkbox" checked={assigneePicks.includes(s.name)} onChange={() => toggleAssignee(s.name)} />
-                      {s.name} <span style={{ color: C.textLight, fontSize: 11 }}>({s.company_role === "technician" ? "Technician" : s.company_role === "manager" ? "Manager" : "Engineer"})</span>
-                    </label>
-                  ))}
+            {/* ── Acknowledge (provider) ── */}
+            {canAcknowledge && !ackOpen && (
+              <div style={{ marginTop: 14 }}>
+                <button style={styles.btnTealSmall} onClick={() => setAckOpen(true)}>✓ Acknowledge Ticket</button>
+              </div>
+            )}
+            {canAcknowledge && ackOpen && (
+              <div style={{ marginTop: 14, border: `1px solid ${C.tealLight}`, borderRadius: 12, padding: 14, background: "#fbfefe" }}>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: C.tealDark, marginBottom: 10 }}>Acknowledge this ticket</div>
+                <textarea value={ackNote} onChange={e => setAckNote(e.target.value)} placeholder="Add a note (what you found, what you did / plan to do)…" rows={3} style={{ width: "100%", fontSize: 13, padding: "10px 12px", border: `1px solid ${C.tealLight}`, borderRadius: 8, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", border: `1px dashed ${C.tealLight}`, borderRadius: 8 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Upload photos / report
+                    <input type="file" accept="image/*,application/pdf" multiple style={{ display: "none" }} onChange={e => setAckFiles(prev => [...prev, ...Array.from(e.target.files)])} />
+                  </label>
+                  {ackFiles.length > 0 && <span style={{ fontSize: 12, color: C.textMid }}>{ackFiles.length} file{ackFiles.length === 1 ? "" : "s"} selected <button onClick={() => setAckFiles([])} style={{ border: "none", background: "none", color: "#c0392b", cursor: "pointer", fontWeight: 700 }}>✕</button></span>}
                 </div>
-                <button style={styles.btnTealSmall} onClick={handleAssign} disabled={busy || assigneePicks.length === 0}>{busy ? "…" : assigneePicks.length ? `Assign (${assigneePicks.length})` : "Assign"}</button>
+                <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                  <button onClick={() => setAckMode("remote")} style={{ fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer", border: ackMode === "remote" ? "1.5px solid transparent" : `1.5px solid ${C.tealLight}`, background: ackMode === "remote" ? "linear-gradient(135deg, #0d9488, #0f766e)" : "#fff", color: ackMode === "remote" ? "#fff" : C.tealDark }}>Resolve remotely</button>
+                  <button onClick={() => setAckMode("visit")} style={{ fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer", border: ackMode === "visit" ? "1.5px solid transparent" : `1.5px solid ${C.tealLight}`, background: ackMode === "visit" ? "linear-gradient(135deg, #0d9488, #0f766e)" : "#fff", color: ackMode === "visit" ? "#fff" : C.tealDark }}>Schedule visit</button>
+                  {ackMode === "visit" && <input type="date" value={ackVisitDate} onChange={e => setAckVisitDate(e.target.value)} style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} />}
+                </div>
+                <div style={{ fontSize: 11, color: C.textLight, marginTop: 8 }}>{ackMode === "remote" ? "The ticket will be marked Resolved and sent for verification." : "The ticket will move to In Progress with this visit logged. You can add more visits later."}</div>
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <button style={styles.btnTealSmall} onClick={handleAcknowledge} disabled={ackBusy || (ackMode === "visit" && !ackVisitDate)}>{ackBusy ? "…" : "Confirm & Acknowledge"}</button>
+                  <button style={{ ...styles.btnTealSmall, background: "#fff", color: C.textMid, border: `1px solid ${C.borderLight}`, boxShadow: "none" }} onClick={() => setAckOpen(false)} disabled={ackBusy}>Cancel</button>
+                </div>
               </div>
             )}
             <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
               {canLogVisit && (
                 <>
                   <input type="date" style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={visitDatePick} onChange={e => setVisitDatePick(e.target.value)} />
-                  <button style={styles.btnTealSmall} onClick={handleLogVisit} disabled={busy || !visitDatePick}>{busy ? "…" : hasVisits(c) ? "Log Another Visit" : "Log Visit"}</button>
+                  <button style={styles.btnTealSmall} onClick={handleLogVisit} disabled={busy || !visitDatePick}>{busy ? "…" : hasVisits(c) ? "Schedule Another Visit" : "Schedule Visit"}</button>
                 </>
               )}
               {canMarkResolved && (
