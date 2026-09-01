@@ -1133,18 +1133,128 @@ function saveSessionUser(u) {
 }
 
 function LoadingScreen() {
+  const svgRef = useRef(null);
+  const rafRef = useRef(null);
+  const startRef = useRef(null);
+
+  useEffect(() => {
+    const svgEl = svgRef.current;
+    if (!svgEl) return;
+    const CX = 140, CY = 140, R = 112;
+    const SA = 135, SW = 270, MAX = 8, TARGET = 6.2;
+    const degRad = d => d * Math.PI / 180;
+    const pol = (a, r) => ({ x: CX + r * Math.cos(degRad(a)), y: CY + r * Math.sin(degRad(a)) });
+    const bToA = b => SA + (b / MAX) * SW;
+    const ap = (a1, a2, r) => { const s = pol(a1, r), e = pol(a2, r); return `M ${s.x} ${s.y} A ${r} ${r} 0 ${(a2 - a1) > 180 ? 1 : 0} 1 ${e.x} ${e.y}`; };
+
+    /* Build static parts */
+    const ns = "http://www.w3.org/2000/svg";
+    const trackArc = svgEl.getElementById("gTrack");
+    const fillArc = svgEl.getElementById("gFill");
+    const tipDot = svgEl.getElementById("gTip");
+    const needleG = svgEl.getElementById("gNeedle");
+    const barNum = document.getElementById("gBarNum");
+    const tickG = svgEl.getElementById("gTicks");
+    const labelG = svgEl.getElementById("gLabels");
+    const zoneG = svgEl.getElementById("gZone");
+
+    trackArc.setAttribute("d", ap(SA, SA + SW, R));
+
+    /* Target zone 5-7 bar */
+    const za = document.createElementNS(ns, "path");
+    za.setAttribute("d", ap(bToA(5), bToA(7), R));
+    za.setAttribute("fill", "none"); za.setAttribute("stroke", "rgba(94,234,212,0.1)"); za.setAttribute("stroke-width", "18");
+    zoneG.appendChild(za);
+
+    /* Ticks 0-8 */
+    for (let v = 0; v <= MAX; v++) {
+      const a = bToA(v), inn = pol(a, R - 14), out = pol(a, R + 10), lp = pol(a, R + 24);
+      const hl = v >= 5 && v <= 7;
+      const ln = document.createElementNS(ns, "line");
+      ln.setAttribute("x1", inn.x); ln.setAttribute("y1", inn.y); ln.setAttribute("x2", out.x); ln.setAttribute("y2", out.y);
+      ln.setAttribute("stroke", hl ? "rgba(94,234,212,0.5)" : "rgba(255,255,255,0.18)");
+      ln.setAttribute("stroke-width", "1.5"); ln.setAttribute("stroke-linecap", "round");
+      tickG.appendChild(ln);
+      if (v < MAX) for (let s = 1; s <= 3; s++) {
+        const sa2 = bToA(v + s * 0.25), si = pol(sa2, R - 6), so = pol(sa2, R + 3);
+        const sl = document.createElementNS(ns, "line");
+        sl.setAttribute("x1", si.x); sl.setAttribute("y1", si.y); sl.setAttribute("x2", so.x); sl.setAttribute("y2", so.y);
+        sl.setAttribute("stroke", "rgba(255,255,255,0.06)"); sl.setAttribute("stroke-width", "0.8");
+        tickG.appendChild(sl);
+      }
+      const tx = document.createElementNS(ns, "text");
+      tx.setAttribute("x", lp.x); tx.setAttribute("y", lp.y);
+      tx.setAttribute("text-anchor", "middle"); tx.setAttribute("dominant-baseline", "central");
+      tx.setAttribute("fill", hl ? "rgba(94,234,212,0.7)" : "rgba(255,255,255,0.25)");
+      tx.setAttribute("font-size", "10"); tx.setAttribute("font-weight", "600");
+      tx.setAttribute("font-family", "'DM Sans',sans-serif");
+      tx.textContent = v;
+      labelG.appendChild(tx);
+    }
+
+    /* Animation — fast to ~75%, then crawls; component unmounts when data loads */
+    const fastDur = 2000;
+    const fastTarget = TARGET * 0.75;
+    const easeOut = t => 1 - Math.pow(1 - t, 3);
+
+    function tick(ts) {
+      if (!startRef.current) startRef.current = ts;
+      const el = ts - startRef.current;
+      let bar;
+      if (el < fastDur) {
+        bar = easeOut(el / fastDur) * fastTarget;
+      } else {
+        const crawlEl = el - fastDur;
+        const crawlRate = 0.00012;
+        bar = fastTarget + crawlEl * crawlRate;
+        if (bar > TARGET) bar = TARGET + Math.sin(crawlEl * 0.003) * 0.12;
+      }
+      const ca = bToA(bar);
+      if (bar > 0.05) fillArc.setAttribute("d", ap(SA, ca, R));
+      const tp = pol(ca, R);
+      tipDot.setAttribute("cx", tp.x); tipDot.setAttribute("cy", tp.y);
+      tipDot.setAttribute("opacity", bar > 0.05 ? "0.9" : "0");
+      needleG.setAttribute("transform", `rotate(${ca + 180}, ${CX}, ${CY})`);
+      barNum.textContent = bar.toFixed(1);
+      rafRef.current = requestAnimationFrame(tick);
+    }
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, []);
+
   return (
-    <div style={styles.loadWrap}><div style={{ textAlign: "center" }}>
-      <div style={{ width: 100, height: 100, borderRadius: "50%", border: "2px solid #111", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px", animation: "breathe 3s ease-in-out infinite" }}>
-        <span style={{ fontSize: 32, fontWeight: 800, color: "#111", letterSpacing: -2 }}>O₂</span>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "linear-gradient(180deg, #041e1c 0%, #072f2b 25%, #0b3b38 50%, #0f5650 80%, #0f766e 100%)", fontFamily: "'DM Sans', system-ui, sans-serif", position: "relative" }}>
+      <div style={{ position: "absolute", width: 420, height: 420, borderRadius: "50%", background: "radial-gradient(circle, rgba(94,234,212,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ position: "relative", width: 280, height: 280, zIndex: 2 }}>
+        <svg ref={svgRef} viewBox="0 0 280 280" xmlns="http://www.w3.org/2000/svg" style={{ width: "100%", height: "100%", filter: "drop-shadow(0 0 30px rgba(94,234,212,0.1))" }}>
+          <defs>
+            <linearGradient id="gArcGr" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#0f766e"/><stop offset="50%" stopColor="#14b8a6"/><stop offset="100%" stopColor="#5eead4"/></linearGradient>
+            <filter id="gGlow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+            <linearGradient id="gNdGr" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#fff"/><stop offset="100%" stopColor="#5eead4"/></linearGradient>
+          </defs>
+          <circle cx="140" cy="140" r="130" fill="none" stroke="rgba(94,234,212,0.06)" strokeWidth="1.5"/>
+          <circle cx="140" cy="140" r="118" fill="none" stroke="rgba(94,234,212,0.04)" strokeWidth="0.5"/>
+          <path id="gTrack" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="14" strokeLinecap="round"/>
+          <g id="gZone"/>
+          <g id="gTicks"/>
+          <path id="gFill" fill="none" stroke="url(#gArcGr)" strokeWidth="14" strokeLinecap="round"/>
+          <circle id="gTip" r="4" fill="#5eead4" opacity="0" filter="url(#gGlow)"/>
+          <g id="gNeedle">
+            <line x1="140" y1="140" x2="140" y2="46" stroke="url(#gNdGr)" strokeWidth="2.5" strokeLinecap="round"/>
+            <circle cx="140" cy="140" r="8" fill="#0b3b38" stroke="rgba(94,234,212,0.3)" strokeWidth="1.5"/>
+            <circle cx="140" cy="140" r="3" fill="#5eead4"/>
+          </g>
+          <g id="gLabels"/>
+        </svg>
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-46%)", textAlign: "center", zIndex: 3 }}>
+          <div style={{ fontSize: 38, fontWeight: 800, color: "#fff", letterSpacing: -2, lineHeight: 1 }}>O₂</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#5eead4", marginTop: 4 }}><span id="gBarNum">0.0</span> <span style={{ fontSize: 10, fontWeight: 500, color: "rgba(94,234,212,0.5)" }}>bar</span></div>
+        </div>
       </div>
-      <div style={{ fontSize: 10, fontWeight: 600, color: "#999", letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 20 }}>PSA Oxygen Plants</div>
-      <div style={{ display: "flex", gap: 6, justifyContent: "center" }}>
-        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#111", animation: "pulse 1.2s ease-in-out infinite", animationDelay: "0s" }}></span>
-        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#111", animation: "pulse 1.2s ease-in-out infinite", animationDelay: "0.2s" }}></span>
-        <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#111", animation: "pulse 1.2s ease-in-out infinite", animationDelay: "0.4s" }}></span>
+      <div style={{ zIndex: 3, textAlign: "center", marginTop: 28 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: "rgba(94,234,212,0.5)", letterSpacing: 2.5, textTransform: "uppercase" }}>PSA Oxygen Plants</div>
       </div>
-    </div></div>
+    </div>
   );
 }
 
