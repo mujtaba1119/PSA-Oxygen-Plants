@@ -1599,7 +1599,7 @@ function Speedometer({ value, teal, dark }) {
 
 /* ─── UNDP / CMU oversight dashboard — donor/coordinator view focused on after-sales service.
    Teal-monochrome palette, provider performance, critical issues, 6-month trend. ─── */
-function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite, pkBoundary, pinColor, scoped, funcCount, openTickets, sevCounts, resolvedThisMonth, resolutionRate, raisedThisMonth, stageCounts, closedAll, totalDowntimeDays, uptimePct, excludedDownSites }) {
+function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite, pkBoundary, pinColor, scoped, funcCount, openTickets, sevCounts, resolvedThisMonth, resolutionRate, raisedThisMonth, stageCounts, closedAll, totalDowntimeDays, uptimePct, excludedDownSites, avgResolutionDays, shutdowns = [] }) {
   const T = { ink: "#12211f", slate: "#5a6b68", mute: "#94a3a0", line: "#e7edec", card: "#fff", teal900: "#0f4c47", teal700: "#0f766e", teal500: "#0d9488", teal300: "#5eead4", teal100: "#ccfbf1", teal50: "#f0fdfa" };
   const [hoverMonth, setHoverMonth] = useState(null);
   const [slide, setSlide] = useState(0); // 0 = Map, 1 = Program Overview
@@ -1620,7 +1620,10 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
     const closed = provComplaints.filter(c => isClosedStatus(c.status)).length;
     const total = provComplaints.length;
     const rate = total > 0 ? Math.round(closed / total * 100) : null;
-    return { prov, siteCount: provSites.length, open, closed, total, rate };
+    const downtime = provSites.reduce((sum, h) => sum + siteDowntimeDays(h, shutdowns), 0);
+    const verified = provComplaints.filter(c => c.status === "Verified" && c.created_at && c.verified_at);
+    const avgRes = verified.length > 0 ? Math.round(verified.reduce((s, c) => s + (new Date(c.verified_at) - new Date(c.created_at)), 0) / verified.length / (1000 * 60 * 60 * 24) * 10) / 10 : null;
+    return { prov, siteCount: provSites.length, open, closed, total, rate, downtime, avgRes };
   }).filter(r => r.siteCount > 0);
   const provColors = { Novair: "#0f766e", Intexim: "#7c5cbf", "Z-Corps": "#2f9e58" };
 
@@ -1710,27 +1713,35 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
         </div>
       </div>
 
-      {/* ── Uptime & Downtime row ── */}
-      <div className="ox-stagger" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
+      {/* ── Uptime / Downtime / Avg Resolution row ── */}
+      <div className="ox-stagger" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 20 }}>
         {/* Network Uptime */}
         <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e7edec", boxShadow: "0 1px 2px rgba(15,76,71,0.04)", padding: "18px 22px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 3, borderRadius: "0 0 3px 3px", background: "linear-gradient(90deg, #0f766e, #2dd4a8)" }} />
           <div style={{ fontSize: 10.5, fontWeight: 700, color: "#94a3a0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Network Uptime</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <div style={{ fontSize: 32, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>{uptimePct == null ? "—" : uptimePct}<span style={{ fontSize: 16, fontWeight: 500, color: "#94a3a0" }}>%</span></div>
-            <span style={{ fontSize: 11, color: "#5a6b68", fontWeight: 600 }}>rolling 12-month, fault shutdowns only</span>
-          </div>
-          {uptimePct != null && <div style={{ height: 7, borderRadius: 4, background: "#eef4f2", overflow: "hidden", marginTop: 12 }}><div style={{ height: "100%", borderRadius: 4, width: `${uptimePct}%`, background: "linear-gradient(90deg, #0d9488, #5eead4)" }} /></div>}
+          <div style={{ fontSize: 30, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>{uptimePct == null ? "—" : uptimePct}<span style={{ fontSize: 15, fontWeight: 500, color: "#94a3a0" }}>%</span></div>
+          {uptimePct != null && <div style={{ height: 6, borderRadius: 4, background: "#eef4f2", overflow: "hidden", marginTop: 12 }}><div style={{ height: "100%", borderRadius: 4, width: `${uptimePct}%`, background: "linear-gradient(90deg, #0d9488, #5eead4)" }} /></div>}
+          <div style={{ fontSize: 10.5, color: "#94a3a0", fontWeight: 600, marginTop: 9 }}>rolling 12-month · fault shutdowns only</div>
         </div>
         {/* Total Downtime */}
         <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e7edec", boxShadow: "0 1px 2px rgba(15,76,71,0.04)", padding: "18px 22px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 3, borderRadius: "0 0 3px 3px", background: "linear-gradient(90deg, #b45309, #f0b968)" }} />
           <div style={{ fontSize: 10.5, fontWeight: 700, color: "#94a3a0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Total Plant Downtime</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-            <div style={{ fontSize: 32, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>{totalDowntimeDays}</div>
-            <span style={{ fontSize: 15, fontWeight: 500, color: "#94a3a0" }}>plant-days</span>
+            <div style={{ fontSize: 30, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>{totalDowntimeDays}</div>
+            <span style={{ fontSize: 14, fontWeight: 500, color: "#94a3a0" }}>plant-days</span>
           </div>
-          <div style={{ fontSize: 11, color: "#5a6b68", fontWeight: 600, marginTop: 10 }}>Equipment-fault shutdowns, all-time{excludedDownSites > 0 ? ` · excludes ${excludedDownSites} site${excludedDownSites === 1 ? "" : "s"} down for external/planned reasons` : ""}</div>
+          <div style={{ fontSize: 10.5, color: "#94a3a0", fontWeight: 600, marginTop: 12 }}>Equipment-fault, all-time{excludedDownSites > 0 ? ` · excludes ${excludedDownSites} external/planned` : ""}</div>
+        </div>
+        {/* Avg Resolution Time */}
+        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e7edec", boxShadow: "0 1px 2px rgba(15,76,71,0.04)", padding: "18px 22px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 3, borderRadius: "0 0 3px 3px", background: "linear-gradient(90deg, #2563eb, #7cc0f0)" }} />
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: "#94a3a0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Avg Resolution Time</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+            <div style={{ fontSize: 30, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>{avgResolutionDays == null ? "—" : avgResolutionDays}</div>
+            <span style={{ fontSize: 14, fontWeight: 500, color: "#94a3a0" }}>days</span>
+          </div>
+          <div style={{ fontSize: 10.5, color: "#94a3a0", fontWeight: 600, marginTop: 12 }}>opened → verified · verified tickets</div>
         </div>
       </div>
       {/* ── Full-width tablet: map + program overview, swipeable ── */}
@@ -1830,21 +1841,23 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                {["Provider", "Sites", "Open", "Closed", "Resolution"].map((th, i) => (
-                  <th key={th} style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.08em", padding: "14px 18px 10px", textAlign: i === 0 ? "left" : "center", borderBottom: `1px solid ${T.line}` }}>{th}</th>
+                {["Provider", "Sites", "Open", "Closed", "Downtime", "Avg Time", "Resolution Rate"].map((th, i) => (
+                  <th key={th} style={{ fontSize: 9, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em", padding: "14px 12px 10px", textAlign: i === 0 ? "left" : "center", borderBottom: `1px solid ${T.line}` }}>{th}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {providerRows.map((r, i) => (
                 <tr key={r.prov} style={{ borderBottom: i < providerRows.length - 1 ? `1px solid #f5f8f7` : "none" }}>
-                  <td style={{ padding: "16px 18px", textAlign: "left" }}>
+                  <td style={{ padding: "16px 12px 16px 18px", textAlign: "left" }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{r.prov}</span>
                   </td>
-                  <td style={{ padding: "16px 18px", textAlign: "center", fontSize: 13, fontWeight: 600, color: T.slate }}>{r.siteCount}</td>
-                  <td style={{ padding: "16px 18px", textAlign: "center", fontSize: 13, fontWeight: 700, color: r.open > 0 ? "#d9822b" : T.mute }}>{r.open}</td>
-                  <td style={{ padding: "16px 18px", textAlign: "center", fontSize: 13, fontWeight: 700, color: T.slate }}>{r.closed}</td>
-                  <td style={{ padding: "16px 18px", textAlign: "center", fontSize: 15, fontWeight: 800, color: r.rate === null ? T.mute : T.teal600 || T.teal500, letterSpacing: "-0.02em" }}>{r.rate === null ? "—" : `${r.rate}%`}</td>
+                  <td style={{ padding: "16px 12px", textAlign: "center", fontSize: 13, fontWeight: 600, color: T.slate }}>{r.siteCount}</td>
+                  <td style={{ padding: "16px 12px", textAlign: "center", fontSize: 13, fontWeight: 700, color: r.open > 0 ? "#d9822b" : T.mute }}>{r.open}</td>
+                  <td style={{ padding: "16px 12px", textAlign: "center", fontSize: 13, fontWeight: 700, color: T.slate }}>{r.closed}</td>
+                  <td style={{ padding: "16px 12px", textAlign: "center", fontSize: 13, fontWeight: 700, color: r.downtime > 0 ? "#b45309" : T.mute }}>{r.downtime > 0 ? `${r.downtime}d` : "—"}</td>
+                  <td style={{ padding: "16px 12px", textAlign: "center", fontSize: 13, fontWeight: 700, color: T.slate }}>{r.avgRes == null ? "—" : `${r.avgRes}d`}</td>
+                  <td style={{ padding: "16px 18px 16px 12px", textAlign: "center", fontSize: 15, fontWeight: 800, color: r.rate === null ? T.mute : T.teal600 || T.teal500, letterSpacing: "-0.02em" }}>{r.rate === null ? "—" : `${r.rate}%`}</td>
                 </tr>
               ))}
             </tbody>
@@ -2318,8 +2331,14 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, shutdowns = [], onV
   const windowDays = 365;
   const uptimePct = hospitals.length > 0 ? Math.max(0, Math.min(100, Math.round((1 - totalDowntimeDays / (hospitals.length * windowDays)) * 1000) / 10)) : null;
 
+  // Average resolution time: opened → verified, over verified tickets only.
+  const verifiedTix = scoped.filter(c => c.status === "Verified" && c.created_at && c.verified_at);
+  const avgResolutionDays = verifiedTix.length > 0
+    ? Math.round(verifiedTix.reduce((sum, c) => sum + (new Date(c.verified_at) - new Date(c.created_at)), 0) / verifiedTix.length / (1000 * 60 * 60 * 24) * 10) / 10
+    : null;
+
   if (isUndpCmu) {
-    return <UndpCmuDashboard hospitals={hospitals} groups={groups} complaints={complaints} siteNotes={siteNotes} onViewSite={onViewSite} pkBoundary={pkBoundary} pinColor={pinColor} scoped={scoped} funcCount={funcCount} openTickets={openTickets} sevCounts={sevCounts} resolvedThisMonth={resolvedThisMonth} resolutionRate={resolutionRate} raisedThisMonth={raisedThisMonth} stageCounts={stageCounts} closedAll={closedAll} totalDowntimeDays={totalDowntimeDays} uptimePct={uptimePct} excludedDownSites={excludedDownSites} />;
+    return <UndpCmuDashboard hospitals={hospitals} groups={groups} complaints={complaints} siteNotes={siteNotes} onViewSite={onViewSite} pkBoundary={pkBoundary} pinColor={pinColor} scoped={scoped} funcCount={funcCount} openTickets={openTickets} sevCounts={sevCounts} resolvedThisMonth={resolvedThisMonth} resolutionRate={resolutionRate} raisedThisMonth={raisedThisMonth} stageCounts={stageCounts} closedAll={closedAll} totalDowntimeDays={totalDowntimeDays} uptimePct={uptimePct} excludedDownSites={excludedDownSites} avgResolutionDays={avgResolutionDays} shutdowns={shutdowns} />;
   }
 
   return (
