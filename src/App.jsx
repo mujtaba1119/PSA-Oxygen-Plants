@@ -2760,6 +2760,15 @@ function GroupedHospitalList({ groups, complaints, siteNotes, onSelect }) {
   const groupOpenFor = hs => complaints.filter(c => hs.includes(c.hospital) && !isClosedStatus(c.status)).length;
   const totalOpen = complaints.filter(c => !isClosedStatus(c.status)).length;
   const totalResolved = complaints.filter(c => isClosedStatus(c.status)).length;
+  // Per-site resolution rate (closed ÷ total) and avg resolution time (opened → verified).
+  const siteStats = (h) => {
+    const cs = complaints.filter(c => hospitalMatches(c.hospital, h));
+    const closed = cs.filter(c => isClosedStatus(c.status)).length;
+    const rate = cs.length > 0 ? Math.round(closed / cs.length * 100) : null;
+    const verified = cs.filter(c => c.status === "Verified" && c.created_at && c.verified_at);
+    const avgRes = verified.length > 0 ? Math.round(verified.reduce((s, c) => s + (new Date(c.verified_at) - new Date(c.created_at)), 0) / verified.length / (1000 * 60 * 60 * 24) * 10) / 10 : null;
+    return { rate, avgRes };
+  };
   return (
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <div style={{ marginBottom: 22 }}>
@@ -2815,6 +2824,18 @@ function GroupedHospitalList({ groups, complaints, siteNotes, onSelect }) {
                             Clear
                           </span>}
                   </div>
+                  {(() => { const st = siteStats(h); return (
+                    <div style={{ display: "flex", borderTop: "1px solid #f1f5f4" }}>
+                      <div style={{ flex: 1, padding: "10px 18px", textAlign: "center", borderRight: "1px solid #f1f5f4" }}>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: st.rate == null ? "#c4c8cc" : "#0f766e", lineHeight: 1 }}>{st.rate == null ? "—" : `${st.rate}%`}</div>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 4 }}>Resolution Rate</div>
+                      </div>
+                      <div style={{ flex: 1, padding: "10px 18px", textAlign: "center" }}>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: st.avgRes == null ? "#c4c8cc" : "#1a1d21", lineHeight: 1 }}>{st.avgRes == null ? "—" : `${st.avgRes}d`}</div>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 4 }}>Avg Resolution</div>
+                      </div>
+                    </div>
+                  ); })()}
                 </div>
               );
             })}
