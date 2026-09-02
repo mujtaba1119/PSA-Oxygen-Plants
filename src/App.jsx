@@ -4582,7 +4582,8 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
     if (newUserPw.trim().length < 8) { alert("Password must be at least 8 characters"); return; }
     setAddingUser(true);
     const autoId = newUserName.trim().toLowerCase().replace(/\s+/g, "");
-    const created = await createUser(autoId, newUserName.trim(), "company", newUserPw.trim(), newUserCompany, newUserEmail.trim() || null, newUserCompanyRole);
+    const roleToSend = ["Novair", "Amex", "Intexim", "Z-Corps"].includes(newUserCompany) ? newUserCompanyRole : null;
+    const created = await createUser(autoId, newUserName.trim(), "company", newUserPw.trim(), newUserCompany, newUserEmail.trim() || null, roleToSend);
     setAddingUser(false);
     if (!created) return;
     setNewUserName(""); setNewUserId(""); setNewUserPw(""); setNewUserEmail(""); await onRefresh();
