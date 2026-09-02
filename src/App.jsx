@@ -3228,6 +3228,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false); const [editTitle, setEditTitle] = useState(complaint.title);
   const [editDesc, setEditDesc] = useState(cleanDescription(complaint.description)); const [editSaving, setEditSaving] = useState(false);
+  const [sevEditing, setSevEditing] = useState(false); const [sevBusy, setSevBusy] = useState(false);
   const [assigneePicks, setAssigneePicks] = useState([]);
   const [visitDatePick, setVisitDatePick] = useState("");
   const [resolveDatePick, setResolveDatePick] = useState("");
@@ -3318,6 +3319,8 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const handleEditSave = async () => { if (!editTitle.trim() || !editDesc.trim()) return; setEditSaving(true); const preservedSerials = extractSerials(complaint.description); const newDesc = encodeSerials(editDesc.trim(), preservedSerials); await updateComplaintFields(c.id, { title: editTitle.trim(), description: newDesc }); setEditSaving(false); setEditing(false); await onRefresh(); };
   const toggleEquipPick = (serial) => setEquipPicks(prev => prev.includes(serial) ? prev.filter(s => s !== serial) : [...prev, serial]);
   const handleSaveEquip = async () => { setEquipSaving(true); const newDesc = encodeSerials(cleanDescription(c.description), equipPicks); await updateComplaintFields(c.id, { description: newDesc }); setEquipSaving(false); setEquipOpen(false); await onRefresh(); };
+  const canChangeSeverity = (isAdmin || isAmexUser(currentUser)) && !isClosedStatus(c.status);
+  const handleChangeSeverity = async (newSev) => { if (sevBusy) return; setSevBusy(true); await updateComplaintFields(c.id, { severity: newSev }); await insertComment(c.id, isAdmin ? "" : currentUser.name, currentUser.role, `Severity changed to ${newSev}.`); setSevBusy(false); setSevEditing(false); await onRefresh(); };
   const dateFmt = { year: "numeric", month: "short", day: "numeric" };
   const accentMap = { "Open": C.red, "In Progress": "#e0912f", "Resolved": "#2874a6", "Verified": C.green };
   const accent = accentMap[effStatus] || C.red;
@@ -3337,7 +3340,11 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               <span style={{ width: 9, height: 9, borderRadius: "50%", background: accent, flexShrink: 0 }} />
               {ticketNumber && <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: "linear-gradient(135deg, #0d9488, #0f766e)", border: "none", borderRadius: 7, padding: "3px 10px", flexShrink: 0, letterSpacing: 0.3 }}>Ticket ID: {ticketNumber}</span>}
               <strong style={{ fontSize: 14.5, fontWeight: 700, color: C.black, whiteSpace: expanded ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</strong>
-              {!isClosedStatus(c.status) && <SeverityBadge severity={c.severity} />}
+              {!isClosedStatus(c.status) && (
+                canChangeSeverity
+                  ? <span onClick={(e) => { e.stopPropagation(); setSevEditing(v => !v); }} style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 3 }} title="Click to change severity"><SeverityBadge severity={c.severity} /><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#94a3a0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+                  : <SeverityBadge severity={c.severity} />
+              )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
               {isClosedStatus(c.status) && c.verified_at && c.created_at
@@ -3354,6 +3361,15 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               <span style={{ fontSize: 16, color: C.tealDark, transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>⌄</span>
             </div>
           </div>
+          {canChangeSeverity && sevEditing && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", background: "#fffdf5", borderBottom: "1px solid #f0e6c0", flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.textMid }}>Change severity:</span>
+              {["Critical", "High", "Low"].map(sev => (
+                <button key={sev} onClick={() => handleChangeSeverity(sev)} disabled={sevBusy} style={{ fontSize: 11.5, fontWeight: 700, padding: "5px 12px", borderRadius: 7, cursor: sevBusy ? "wait" : "pointer", border: c.severity === sev ? "1.5px solid transparent" : "1.5px solid #e2e8f0", background: c.severity === sev ? (sev === "Critical" ? "#c0392b" : sev === "High" ? "#d9822b" : "#94a3a0") : "#fff", color: c.severity === sev ? "#fff" : "#4a5568" }}>{sev}{c.severity === sev ? " ✓" : ""}</button>
+              ))}
+              <button onClick={() => setSevEditing(false)} style={{ fontSize: 11.5, fontWeight: 600, padding: "5px 10px", borderRadius: 7, cursor: "pointer", border: "none", background: "none", color: C.textLight, marginLeft: "auto" }}>Cancel</button>
+            </div>
+          )}
           {/* Warranty / Dispute banner (visible collapsed or expanded) */}
           {c.warranty_status === "under_warranty" && (
             <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 16px", background: "#ecfdf5", borderBottom: "1px solid #bbf7d0" }}>
