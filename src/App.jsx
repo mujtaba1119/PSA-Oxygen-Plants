@@ -988,7 +988,10 @@ function PartnerFooter() {
         /* Official Leaflet fix for Chromium tile gaps (Leaflet PR #8891, shipped in 1.9.4). */
         .leaflet-tile-container img.leaflet-tile { mix-blend-mode: plus-lighter; }
         .site-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 14px; overflow: hidden; box-shadow: none; background: transparent; border: none; }
-        .site-popup .leaflet-popup-content { margin: 0; width: auto !important; }
+        .site-popup .leaflet-popup-content { margin: 0; width: 316px !important; }
+        .site-popup-wide .leaflet-popup-content { margin: 0; width: 380px !important; }
+        .site-popup-wide .leaflet-popup-content-wrapper { padding: 0; border-radius: 14px; overflow: hidden; box-shadow: none; background: transparent; border: none; }
+        .site-popup-wide .leaflet-popup-tip { background: #fff; box-shadow: 0 2px 8px rgba(15,118,110,0.08); }
         .site-popup .leaflet-popup-tip { background: #fff; box-shadow: 0 2px 8px rgba(15,118,110,0.08); }
         /* make the leaflet attribution as small and unobtrusive as possible */
         .leaflet-control-attribution { font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important; background: rgba(255,255,255,0.55) !important; opacity: 0.65; }
@@ -1987,7 +1990,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
                 <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
                   <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
                   {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: T.teal500, weight: 1.5, fillColor: T.teal100, fillOpacity: 0.15 }} />}
-                  {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; const sc = s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#d97706" : "#16a34a"; const sd = s === "Shut Down" ? activeShutdown(h, shutdowns) : null; const popW = sd ? 400 : 340; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={popW} maxWidth={popW} className="site-popup"><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "row", alignItems: "stretch", border: "1.5px solid #e2e8f0", borderRadius: 16, background: "#fff", boxShadow: "0 6px 20px rgba(15,118,110,0.14)", padding: 12, gap: 12 }}>
+                  {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; const sc = s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#d97706" : "#16a34a"; const sd = s === "Shut Down" ? activeShutdown(h, shutdowns) : null; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={sd ? 404 : 340} maxWidth={sd ? 404 : 340} className={sd ? "site-popup site-popup-wide" : "site-popup"}><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "row", alignItems: "stretch", border: "1.5px solid #e2e8f0", borderRadius: 16, background: "#fff", boxShadow: "0 6px 20px rgba(15,118,110,0.14)", padding: 12, gap: 12 }}>
                     {/* image column — fixed square, does not stretch */}
                     <div style={{ flexShrink: 0, width: 96, height: 96, alignSelf: "center", borderRadius: 12, overflow: "hidden", background: "linear-gradient(135deg, #0b3b38, #0f766e)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
                       {imgSrc ? (
@@ -2001,7 +2004,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: sc, flexShrink: 0 }} /><span style={{ fontSize: 11.5, fontWeight: 700, color: sc }}>{s}</span></div>
                       <div style={{ fontSize: 11.5, color: "#64748b" }}>Service Provider: <span style={{ fontWeight: 700, color: "#0f766e" }}>{getProvider(h)}</span></div>
                       {sd && (
-                        <div style={{ background: `${shutdownReasonMeta(sd.reason).color}0f`, border: `1px solid ${shutdownReasonMeta(sd.reason).color}33`, borderRadius: 8, padding: "6px 9px", marginTop: 1 }}>
+                        <div style={{ background: `${shutdownReasonMeta(sd.reason).color}0f`, border: `1px solid ${shutdownReasonMeta(sd.reason).color}33`, borderRadius: 8, padding: "6px 9px" }}>
                           <div style={{ fontSize: 10, fontWeight: 700, color: shutdownReasonMeta(sd.reason).color, textTransform: "uppercase", letterSpacing: 0.3 }}>{sd.reason}</div>
                           {sd.note && <div style={{ fontSize: 11, color: "#5a6b68", marginTop: 2, lineHeight: 1.35 }}>{sd.note}</div>}
                         </div>
@@ -4164,6 +4167,7 @@ function EquipmentTab({ hospitals, complaints, siteNotes, shutdowns = [], isAdmi
   const [sdForm, setSdForm] = useState({ start_date: "", end_date: "", reason: "Equipment fault", note: "" });
   const [sdBusy, setSdBusy] = useState(false);
   const [addingSd, setAddingSd] = useState(false);
+  const [showShutdowns, setShowShutdowns] = useState(false);
 
   // Read/write maintenance records from siteNotes JSON (keyed as _maint_{serial})
   const getNotesMap = (h) => { try { const raw = siteNotes.find(s => hospitalMatches(s.hospital, h))?.equipment_note || ""; const parsed = JSON.parse(raw); return typeof parsed === "object" && parsed !== null ? parsed : { _legacy: raw }; } catch { const raw = siteNotes.find(s => hospitalMatches(s.hospital, h))?.equipment_note || ""; return raw ? { _legacy: raw } : {}; } };
@@ -4198,6 +4202,68 @@ function EquipmentTab({ hospitals, complaints, siteNotes, shutdowns = [], isAdmi
     if (onRefresh) await onRefresh();
   };
   // Equipment history view — combines tickets + maintenance into one activity table.
+  // Shutdown history view — dedicated page like equipment history.
+  if (selectedSite && showShutdowns) {
+    const siteShutdowns = (shutdowns || []).filter(s => hospitalMatches(s.hospital, selectedSite)).sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+    const fmtSd = (d) => d ? new Date(d).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" }) : null;
+    const startEdit = (s) => { setEditingSd(s.id); setSdForm({ start_date: s.start_date || "", end_date: s.end_date || "", reason: s.reason || "Equipment fault", note: s.note || "" }); setAddingSd(false); };
+    const startAdd = () => { setAddingSd(true); setEditingSd(null); setSdForm({ start_date: new Date().toISOString().slice(0, 10), end_date: "", reason: "Equipment fault", note: "" }); };
+    const saveSd = async () => { if (!sdForm.start_date || sdBusy) return; setSdBusy(true); if (addingSd) { await insertShutdownRecord(selectedSite, sdForm.start_date, sdForm.end_date || null, sdForm.reason, sdForm.note, "admin"); } else { await updateShutdownRecord(editingSd, { start_date: sdForm.start_date, end_date: sdForm.end_date || null, reason: sdForm.reason, note: sdForm.note || null }); } setSdBusy(false); setEditingSd(null); setAddingSd(false); if (onRefresh) await onRefresh(); };
+    const delSd = async (id) => { if (!window.confirm("Delete this shutdown record permanently?")) return; setSdBusy(true); await deleteShutdownRecord(id); setSdBusy(false); if (onRefresh) await onRefresh(); };
+    const totalDt = siteShutdowns.filter(s => shutdownReasonMeta(s.reason).counts).reduce((sum, s) => sum + shutdownDays(s), 0);
+    const sdFormBlock = (
+      <div style={{ background: "#fafbfb", border: "1px solid #eef1f0", borderRadius: 10, padding: 14, marginBottom: 14 }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+          <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>Start Date</label><input type="date" value={sdForm.start_date} onChange={e => setSdForm(f => ({ ...f, start_date: e.target.value }))} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }} /></div>
+          <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>End Date <span style={{ fontWeight: 400 }}>(blank = ongoing)</span></label><input type="date" value={sdForm.end_date} onChange={e => setSdForm(f => ({ ...f, end_date: e.target.value }))} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }} /></div>
+          <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>Reason</label><select value={sdForm.reason} onChange={e => setSdForm(f => ({ ...f, reason: e.target.value }))} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }}>{SHUTDOWN_REASONS.map(r => <option key={r.key} value={r.key}>{r.key}</option>)}</select></div>
+        </div>
+        <textarea value={sdForm.note} onChange={e => setSdForm(f => ({ ...f, note: e.target.value }))} placeholder="Note (optional)" style={{ width: "100%", boxSizing: "border-box", fontSize: 12.5, padding: "8px 10px", border: "1px solid #e5e5e0", borderRadius: 7, minHeight: 50, resize: "vertical", fontFamily: "inherit", marginBottom: 10 }} />
+        <div style={{ display: "flex", gap: 8 }}><button onClick={saveSd} disabled={sdBusy || !sdForm.start_date} style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: C.teal, border: "none", borderRadius: 7, padding: "7px 16px", cursor: "pointer" }}>{sdBusy ? "…" : "Save"}</button><button onClick={() => { setAddingSd(false); setEditingSd(null); }} style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", background: "none", border: "none", cursor: "pointer" }}>Cancel</button></div>
+      </div>
+    );
+    return (
+      <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+        <button onClick={() => { setShowShutdowns(false); setAddingSd(false); setEditingSd(null); }} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: 0, letterSpacing: "-0.01em" }}>Shutdown History</h2>
+            <div style={{ fontSize: 12, color: "#8a9199", marginTop: 3 }}>{displayName(selectedSite)} · {siteShutdowns.length} record{siteShutdowns.length === 1 ? "" : "s"} · {totalDt}d counted downtime</div>
+          </div>
+          {isAdmin && !addingSd && <button onClick={startAdd} style={{ fontSize: 12.5, fontWeight: 700, color: "#0f766e", background: "#e6f5f0", border: "1px solid #cfeae2", borderRadius: 9, padding: "9px 16px", cursor: "pointer" }}>+ Add Record</button>}
+        </div>
+        {addingSd && isAdmin && sdFormBlock}
+        <div style={{ background: "#fff", border: "1px solid #eef1f0", borderRadius: 14, padding: "6px 20px" }}>
+          {siteShutdowns.length === 0 && !addingSd && <div style={{ fontSize: 13, color: "#94a3b8", padding: "30px 0", textAlign: "center" }}>No shutdown records for this site.</div>}
+          {siteShutdowns.map(s => {
+            const meta = shutdownReasonMeta(s.reason);
+            const days = shutdownDays(s);
+            if (editingSd === s.id && isAdmin) return <div key={s.id} style={{ padding: "14px 0" }}>{sdFormBlock}</div>;
+            return (
+              <div key={s.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "16px 0", borderBottom: `1px solid #f3f7f6` }}>
+                <div style={{ width: 4, alignSelf: "stretch", borderRadius: 2, background: meta.color, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: meta.color, background: `${meta.color}14`, padding: "2px 8px", borderRadius: 6 }}>{s.reason}{meta.counts ? "" : " · not counted"}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1d21" }}>{fmtSd(s.start_date)} → {s.end_date ? fmtSd(s.end_date) : "Ongoing"}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>· {days} day{days === 1 ? "" : "s"}</span>
+                  </div>
+                  {s.note && <div style={{ fontSize: 13, color: "#5a6b68", marginTop: 5, lineHeight: 1.4 }}>{s.note}</div>}
+                  {s.logged_by && <div style={{ fontSize: 10.5, color: "#b0b8bd", marginTop: 4 }}>Logged by {s.logged_by}</div>}
+                </div>
+                {isAdmin && (
+                  <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                    <button onClick={() => startEdit(s)} style={{ fontSize: 11.5, fontWeight: 600, color: "#0f766e", background: "none", border: "none", cursor: "pointer" }}>Edit</button>
+                    <button onClick={() => delSd(s.id)} style={{ fontSize: 11.5, fontWeight: 600, color: "#c0392b", background: "none", border: "none", cursor: "pointer" }}>Delete</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
   if (selectedSite && selectedEquip) {
     const dateFmt = { year: "numeric", month: "short", day: "numeric" };
     const fmt = (d) => d ? new Date(d).toLocaleDateString("en-PK", dateFmt) : "—";
@@ -4328,78 +4394,15 @@ function EquipmentTab({ hospitals, complaints, siteNotes, shutdowns = [], isAdmi
         `}</style>
         <div className="equip-page">
         <button onClick={() => { setSelectedSite(null); setSelectedEquip(null); }} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: 0, letterSpacing: "-0.01em" }}>{displayName(selectedSite)}</h2>
+          {(() => { const cnt = (shutdowns || []).filter(s => hospitalMatches(s.hospital, selectedSite)).length; return (
+            <button onClick={() => setShowShutdowns(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 700, color: "#c0392b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 9, padding: "9px 16px", cursor: "pointer" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              Shutdown History{cnt > 0 ? ` (${cnt})` : ""}
+            </button>
+          ); })()}
         </div>
-        {(() => {
-          const siteShutdowns = (shutdowns || []).filter(s => hospitalMatches(s.hospital, selectedSite)).sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
-          const fmtSd = (d) => d ? new Date(d).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" }) : null;
-          const startEdit = (s) => { setEditingSd(s.id); setSdForm({ start_date: s.start_date || "", end_date: s.end_date || "", reason: s.reason || "Equipment fault", note: s.note || "" }); setAddingSd(false); };
-          const startAdd = () => { setAddingSd(true); setEditingSd(null); setSdForm({ start_date: new Date().toISOString().slice(0, 10), end_date: "", reason: "Equipment fault", note: "" }); };
-          const saveSd = async () => { if (!sdForm.start_date || sdBusy) return; setSdBusy(true); if (addingSd) { await insertShutdownRecord(selectedSite, sdForm.start_date, sdForm.end_date || null, sdForm.reason, sdForm.note, "admin"); } else { await updateShutdownRecord(editingSd, { start_date: sdForm.start_date, end_date: sdForm.end_date || null, reason: sdForm.reason, note: sdForm.note || null }); } setSdBusy(false); setEditingSd(null); setAddingSd(false); if (onRefresh) await onRefresh(); };
-          const delSd = async (id) => { if (!window.confirm("Delete this shutdown record permanently?")) return; setSdBusy(true); await deleteShutdownRecord(id); setSdBusy(false); if (onRefresh) await onRefresh(); };
-          return (
-            <div style={{ marginBottom: 32, background: "#fff", border: "1px solid #eef1f0", borderRadius: 14, padding: "18px 20px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: siteShutdowns.length > 0 || addingSd ? 14 : 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1d21", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 8 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                  Shutdown Records {siteShutdowns.length > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8" }}>({siteShutdowns.length})</span>}
-                </div>
-                {isAdmin && !addingSd && <button onClick={startAdd} style={{ fontSize: 12, fontWeight: 700, color: "#0f766e", background: "#e6f5f0", border: "1px solid #cfeae2", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>+ Add Record</button>}
-              </div>
-              {addingSd && isAdmin && (
-                <div style={{ background: "#fafbfb", border: "1px solid #eef1f0", borderRadius: 10, padding: 14, marginBottom: 12 }}>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-                    <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>Start Date</label><input type="date" value={sdForm.start_date} onChange={e => setSdForm(f => ({ ...f, start_date: e.target.value }))} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }} /></div>
-                    <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>End Date <span style={{ fontWeight: 400 }}>(blank = ongoing)</span></label><input type="date" value={sdForm.end_date} onChange={e => setSdForm(f => ({ ...f, end_date: e.target.value }))} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }} /></div>
-                    <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>Reason</label><select value={sdForm.reason} onChange={e => setSdForm(f => ({ ...f, reason: e.target.value }))} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }}>{SHUTDOWN_REASONS.map(r => <option key={r.key} value={r.key}>{r.key}</option>)}</select></div>
-                  </div>
-                  <textarea value={sdForm.note} onChange={e => setSdForm(f => ({ ...f, note: e.target.value }))} placeholder="Note (optional)" style={{ width: "100%", boxSizing: "border-box", fontSize: 12.5, padding: "8px 10px", border: "1px solid #e5e5e0", borderRadius: 7, minHeight: 50, resize: "vertical", fontFamily: "inherit", marginBottom: 10 }} />
-                  <div style={{ display: "flex", gap: 8 }}><button onClick={saveSd} disabled={sdBusy || !sdForm.start_date} style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: C.teal, border: "none", borderRadius: 7, padding: "7px 16px", cursor: "pointer" }}>{sdBusy ? "…" : "Save"}</button><button onClick={() => setAddingSd(false)} style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", background: "none", border: "none", cursor: "pointer" }}>Cancel</button></div>
-                </div>
-              )}
-              {siteShutdowns.length === 0 && !addingSd && <div style={{ fontSize: 12.5, color: "#94a3b8", marginTop: 10 }}>No shutdown records for this site.</div>}
-              {siteShutdowns.map(s => {
-                const meta = shutdownReasonMeta(s.reason);
-                const days = shutdownDays(s);
-                const isEditing = editingSd === s.id;
-                if (isEditing && isAdmin) {
-                  return (
-                    <div key={s.id} style={{ background: "#fafbfb", border: "1px solid #eef1f0", borderRadius: 10, padding: 14, marginBottom: 10 }}>
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-                        <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>Start Date</label><input type="date" value={sdForm.start_date} onChange={e => setSdForm(f => ({ ...f, start_date: e.target.value }))} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }} /></div>
-                        <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>End Date <span style={{ fontWeight: 400 }}>(blank = ongoing)</span></label><input type="date" value={sdForm.end_date} onChange={e => setSdForm(f => ({ ...f, end_date: e.target.value }))} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }} /></div>
-                        <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>Reason</label><select value={sdForm.reason} onChange={e => setSdForm(f => ({ ...f, reason: e.target.value }))} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }}>{SHUTDOWN_REASONS.map(r => <option key={r.key} value={r.key}>{r.key}</option>)}</select></div>
-                      </div>
-                      <textarea value={sdForm.note} onChange={e => setSdForm(f => ({ ...f, note: e.target.value }))} placeholder="Note (optional)" style={{ width: "100%", boxSizing: "border-box", fontSize: 12.5, padding: "8px 10px", border: "1px solid #e5e5e0", borderRadius: 7, minHeight: 50, resize: "vertical", fontFamily: "inherit", marginBottom: 10 }} />
-                      <div style={{ display: "flex", gap: 8 }}><button onClick={saveSd} disabled={sdBusy} style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: C.teal, border: "none", borderRadius: 7, padding: "7px 16px", cursor: "pointer" }}>{sdBusy ? "…" : "Save"}</button><button onClick={() => setEditingSd(null)} style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", background: "none", border: "none", cursor: "pointer" }}>Cancel</button></div>
-                    </div>
-                  );
-                }
-                return (
-                  <div key={s.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 0", borderBottom: `1px solid #f3f7f6` }}>
-                    <div style={{ width: 4, alignSelf: "stretch", borderRadius: 2, background: meta.color, flexShrink: 0 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 11.5, fontWeight: 700, color: meta.color, background: `${meta.color}14`, padding: "2px 8px", borderRadius: 6 }}>{s.reason}{meta.counts ? "" : " · not counted"}</span>
-                        <span style={{ fontSize: 12.5, fontWeight: 600, color: "#1a1d21" }}>{fmtSd(s.start_date)} → {s.end_date ? fmtSd(s.end_date) : "Ongoing"}</span>
-                        <span style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8" }}>· {days}d</span>
-                      </div>
-                      {s.note && <div style={{ fontSize: 12.5, color: "#5a6b68", marginTop: 4, lineHeight: 1.4 }}>{s.note}</div>}
-                      {s.logged_by && <div style={{ fontSize: 10.5, color: "#b0b8bd", marginTop: 3 }}>Logged by {s.logged_by}</div>}
-                    </div>
-                    {isAdmin && (
-                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-                        <button onClick={() => startEdit(s)} style={{ fontSize: 11, fontWeight: 600, color: "#0f766e", background: "none", border: "none", cursor: "pointer" }}>Edit</button>
-                        <button onClick={() => delSd(s.id)} style={{ fontSize: 11, fontWeight: 600, color: "#c0392b", background: "none", border: "none", cursor: "pointer" }}>Delete</button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
         {(() => { let idx = 0; return EQUIP_CATEGORIES.map(cat => {
           const gc = EQUIP_GROUP_COLORS[cat.group];
           const catItems = cat.items.filter(item => equip[item.key]);
