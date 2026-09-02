@@ -3919,7 +3919,7 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
       <div style={{ position: "relative", paddingBottom: 30 }}>
         {/* Teal header shape with a curved bottom edge — this IS the boundary. Everything
             below the curve is transparent, so page content scrolls up behind the curve. */}
-        <svg viewBox="0 0 1200 94" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", zIndex: 0 }}>
+        <svg viewBox="0 0 1200 110" preserveAspectRatio="none" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", zIndex: 0 }}>
           <defs>
             <linearGradient id="tb-grad" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0" stopColor="#0b3b38" />
@@ -3928,9 +3928,9 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
               <stop offset="1" stopColor="#0b3b38" />
             </linearGradient>
           </defs>
-          <path d="M0,0 L1200,0 L1200,76 C1000,78 1000,90 750,90 C500,90 200,80 0,94 Z" fill="url(#tb-grad)" />
+          <path d="M0,0 L1200,0 L1200,90 C1000,92 1000,106 750,106 C500,106 200,94 0,110 Z" fill="url(#tb-grad)" />
         </svg>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", height: 64, color: "#fff", position: "relative" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: "0 32px", minHeight: 78, paddingTop: 10, paddingBottom: 6, color: "#fff", position: "relative" }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", letterSpacing: 1.5, textTransform: "uppercase" }}>
               {typeof title === "string" && title.includes("Oxygen") ? (<>
@@ -3939,7 +3939,8 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
             </div>
             
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {children}
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <button className="refresh-btn tb-glass" title="Refresh" aria-label="Refresh" onClick={onRefresh} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.25)", color: "rgba(255,255,255,0.85)", borderRadius: 10, cursor: "pointer", padding: "7px 16px", lineHeight: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12, fontWeight: 500, letterSpacing: 0.3, transition: "all 0.2s", fontFamily: "'DM Sans', system-ui, sans-serif", width: 118, boxSizing: "border-box" }}>
@@ -3952,10 +3953,11 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
               Sign Out
             </button>
             </div>
+            </div>
             {user && user.role !== "hospital" && (
-              <div style={{ textAlign: "right", marginLeft: 4, minWidth: 0 }}>
-                <div style={{ fontSize: 11.5, fontWeight: 700, color: "#fff", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</div>
-                <div style={{ fontSize: 9.5, fontWeight: 500, color: "rgba(255,255,255,0.55)", lineHeight: 1.2, marginTop: 1 }}>{user.role === "admin" ? "Administrator" : getCompanyName(user)}</div>
+              <div style={{ textAlign: "right" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>{user.name}</span>
+                <span style={{ fontSize: 10, fontWeight: 500, color: "rgba(255,255,255,0.5)", marginLeft: 6 }}>{user.role === "admin" ? "Administrator" : getCompanyName(user)}</span>
               </div>
             )}
           </div>
