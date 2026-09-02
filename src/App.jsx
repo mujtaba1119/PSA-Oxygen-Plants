@@ -2339,34 +2339,6 @@ function NovairDashboard({ complaints, siteNotes, onViewSite, userCompany }) {
             ? <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 600, color: "#166534", background: "#ecfdf5", border: "1px solid #bbf7d0", padding: "3px 11px", borderRadius: 20 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Acknowledged by {c.acknowledged_by}</span>
             : <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#c0392b", background: "#fdecec", padding: "4px 12px", borderRadius: 20 }}>Awaiting acknowledgement</span>}
         </div>
-        {/* ── activity log ── */}
-        <div style={{ padding: "12px 24px 14px", borderTop: `1px solid #f3f7f6`, background: "#fbfdfc" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: activityLog.length ? 10 : 0 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={T.mute} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4l3 3M3.05 11a9 9 0 1 1 .5 4"/><polyline points="3 4 3 8 7 8" transform="translate(0,0)"/></svg>
-            <span style={{ fontSize: 9.5, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>Activity Log</span>
-          </div>
-          {activityLog.length ? (
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              {activityLog.slice(0, 5).map((a, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "7px 0", borderBottom: i < Math.min(activityLog.length, 5) - 1 ? "1px solid #eef4f2" : "none" }}>
-                  <span style={{ width: 24, height: 24, borderRadius: 8, background: a.type === "report" ? "#eef6ff" : T.teal50, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
-                    {a.type === "report"
-                      ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-                      : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={T.teal700} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>}
-                  </span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, color: T.ink, lineHeight: 1.35 }}>
-                      <b style={{ fontWeight: 700 }}>{a.who !== "—" ? a.who : "Someone"}</b> <span style={{ color: T.slate }}>{a.action}</span>
-                      {a.type === "comment" && a.detail && <span style={{ color: T.slate }}>: “{a.detail.length > 70 ? a.detail.slice(0, 70) + "…" : a.detail}”</span>}
-                    </div>
-                    <div style={{ fontSize: 10.5, color: T.mute, fontWeight: 500, marginTop: 1 }}>{fmtDate(a.date)}</div>
-                  </div>
-                </div>
-              ))}
-              {activityLog.length > 5 && <div style={{ fontSize: 11, color: T.teal700, fontWeight: 600, marginTop: 6, cursor: "pointer" }} onClick={() => onViewSite(c.hospital)}>+ {activityLog.length - 5} more in ticket</div>}
-            </div>
-          ) : <span style={{ fontSize: 12, color: T.mute, fontWeight: 500 }}>No activity yet</span>}
-        </div>
         {/* ── action ── */}
         <div style={{ display: "flex", gap: 8, padding: "12px 20px 14px 24px", background: "#fafcfb", borderTop: `1px solid #f3f7f6` }}>
           <button onClick={() => onViewSite(c.hospital)} style={{ fontSize: 11.5, fontWeight: 700, borderRadius: 8, padding: "8px 16px", cursor: "pointer", border: "none", background: "linear-gradient(135deg, #0d9488, #0f766e)", color: "#fff", boxShadow: "0 2px 6px rgba(13,148,136,0.22)" }}>Manage Ticket →</button>
@@ -2380,37 +2352,36 @@ function NovairDashboard({ complaints, siteNotes, onViewSite, userCompany }) {
     const isCollapsed = collapsed[sec.prov];
     const allClear = sec.openCount === 0;
     return (
-      <div key={sec.prov} style={{ marginBottom: 26 }}>
-        <div onClick={() => setCollapsed(p => ({ ...p, [sec.prov]: !p[sec.prov] }))} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14, cursor: "pointer", userSelect: "none" }}>
-          <span style={{ width: 12, height: 12, borderRadius: 4, background: provColor[sec.prov], flexShrink: 0 }} />
-          <span style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.3px", color: T.ink }}>{sec.prov} Sites</span>
-          <span style={{ fontSize: 12, color: T.mute, fontWeight: 600 }}>{sec.siteCount} sites · Novair resolves as manufacturer</span>
-          <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", padding: "4px 10px", borderRadius: 20, background: provTint[sec.prov], color: provColor[sec.prov] }}>Manufacturer support</span>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.mute} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: isCollapsed ? "rotate(-90deg)" : "none", transition: "transform 0.25s" }}><polyline points="6 9 12 15 18 9"/></svg>
-          </span>
-        </div>
-        {!isCollapsed && (<>
-          <div style={{ display: "flex", gap: 12, marginBottom: allClear ? 0 : 14 }}>
-            {[{ v: sec.openCount, l: "Open", c: "#c0392b" }, { v: sec.inProgress, l: "In Progress", c: "#d9822b" }, { v: sec.resolvedMo, l: "Resolved (mo)", c: T.teal700 }].map((t, i) => (
-              <div key={i} style={{ flex: 1, ...cardBase, padding: "14px 16px", textAlign: "center" }}>
-                <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1, color: t.c }}>{t.v}</div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 6 }}>{t.l}</div>
-              </div>
-            ))}
+      <div key={sec.prov} className="ox-in" style={{ marginBottom: 30 }}>
+        {/* dark table heading — same design as primary section */}
+        <div onClick={() => setCollapsed(p => ({ ...p, [sec.prov]: !p[sec.prov] }))} style={{ ...darkCard, padding: "14px 22px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", userSelect: "none" }}>
+          <div style={darkAccent} />
+          <div style={{ width: 38, height: 38, borderRadius: 11, background: "rgba(94,234,212,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5eead4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M6 21V8l6-4 6 4v13"/><path d="M10 21v-5h4v5"/><circle cx="12" cy="10" r="1.5"/></svg>
           </div>
-          {allClear ? (
-            <div style={{ ...cardBase, padding: "16px 20px", display: "flex", alignItems: "center", gap: 10, marginTop: 14, color: T.teal700, fontSize: 13, fontWeight: 600 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", letterSpacing: "-0.3px" }}>{sec.prov}</div>
+            <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.6)", fontWeight: 600, marginTop: 2 }}>{sec.siteCount} sites serviced</div>
+          </div>
+          <div style={{ textAlign: "right", marginRight: 6 }}>
+            <div style={{ fontSize: 26, fontWeight: 800, color: sec.openCount > 0 ? "#5eead4" : "#fff", lineHeight: 1 }}>{sec.openCount}</div>
+            <div style={{ fontSize: 9.5, fontWeight: 700, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 4 }}>Open Tickets</div>
+          </div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transform: isCollapsed ? "rotate(-90deg)" : "none", transition: "transform 0.25s" }}><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        {!isCollapsed && (
+          allClear ? (
+            <div style={{ ...cardBase, padding: "16px 20px", display: "flex", alignItems: "center", gap: 10, color: T.teal700, fontSize: 13, fontWeight: 600 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.teal500} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              All clear — no open complaints in {sec.prov} sites
+              All clear — no open tickets in {sec.prov} sites
             </div>
           ) : (
             <div style={{ position: "relative", paddingLeft: 22 }}>
               <div style={{ position: "absolute", left: 5, top: 8, bottom: 8, width: 3, borderRadius: 2, background: provColor[sec.prov], opacity: 0.35 }} />
               {sec.openCards.map(renderNovairTicket)}
             </div>
-          )}
-        </>)}
+          )
+        )}
       </div>
     );
   };
