@@ -1128,8 +1128,8 @@ function GlobalAnimations() {
       .ox-bar { transform-origin: bottom; animation: ox-grow-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
       /* subtle hover lift for dashboard cards, tiles and tables */
-      .ox-lift { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s cubic-bezier(0.16,1,0.3,1); }
-      .ox-lift:hover { transform: translateY(-4px) !important; box-shadow: 0 12px 28px rgba(15,76,71,0.16) !important; z-index: 5; }
+      .ox-lift { transition: transform 0.45s cubic-bezier(0.22,1,0.36,1), box-shadow 0.45s cubic-bezier(0.22,1,0.36,1); }
+      .ox-lift:hover { transform: translateY(-6px) !important; box-shadow: 0 16px 34px rgba(15,76,71,0.16) !important; z-index: 5; }
       @media (prefers-reduced-motion: reduce) { .ox-lift:hover { transform: none !important; } }
 
       /* image gently zooms inside its frame when the parent card is hovered */
@@ -3261,6 +3261,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const [warrOpen, setWarrOpen] = useState(false);
   const [warrChoice, setWarrChoice] = useState(null); // 'under_warranty' | 'not_under_warranty'
   const [warrNote, setWarrNote] = useState("");
+  const [warrAs, setWarrAs] = useState(""); // admin only: set warranty on behalf of a provider
   const [warrBusy, setWarrBusy] = useState(false);
   const [equipOpen, setEquipOpen] = useState(false);
   const [equipPicks, setEquipPicks] = useState(() => extractSerials(complaint.description));
@@ -3282,8 +3283,9 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const handleSetWarranty = async () => {
     if (warrBusy || !warrChoice) return;
     setWarrBusy(true);
-    await setWarrantyStatus(c.id, warrChoice, warrNote.trim(), currentUser.name);
-    setWarrOpen(false); setWarrChoice(null); setWarrNote(""); setWarrBusy(false);
+    const by = isAdmin ? (warrAs || "Admin") : currentUser.name;
+    await setWarrantyStatus(c.id, warrChoice, warrNote.trim(), by);
+    setWarrOpen(false); setWarrChoice(null); setWarrNote(""); setWarrAs(""); setWarrBusy(false);
     await onRefresh();
   };
 
@@ -3557,6 +3559,17 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               <div style={{ marginTop: 14, border: `1px solid ${warrChoice === "not_under_warranty" ? "#fecaca" : "#bbf7d0"}`, borderRadius: 12, padding: 14, background: warrChoice === "not_under_warranty" ? "#fef5f5" : "#f5fdf9" }}>
                 <div style={{ fontSize: 12.5, fontWeight: 700, color: warrChoice === "not_under_warranty" ? "#b91c1c" : "#166534", marginBottom: 8 }}>{warrChoice === "not_under_warranty" ? "Mark as Not Under Warranty (raises a dispute)" : "Mark as Under Warranty"}</div>
                 <textarea value={warrNote} onChange={e => setWarrNote(e.target.value)} placeholder={warrChoice === "not_under_warranty" ? "Reason it's not covered (optional but recommended)…" : "Note (optional)…"} rows={2} style={{ width: "100%", fontSize: 13, padding: "10px 12px", border: "1px solid #e5e7eb", borderRadius: 8, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
+                {isAdmin && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, background: "#fffdf5", border: "1px solid #f0e6c0", borderRadius: 8, padding: "8px 12px", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: "#92700c" }}>Admin — set as:</span>
+                    <select value={warrAs} onChange={e => setWarrAs(e.target.value)} style={{ fontSize: 12, padding: "6px 10px", border: "1px solid #e5d9a8", borderRadius: 7, background: "#fff" }}>
+                      <option value="">Admin</option>
+                      <option value="Novair">Novair</option>
+                      <option value="Intexim">Intexim</option>
+                      <option value="Z-Corps">Z-Corps</option>
+                    </select>
+                  </div>
+                )}
                 <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                   <button onClick={handleSetWarranty} disabled={warrBusy} style={{ fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer", border: "none", color: "#fff", background: warrChoice === "not_under_warranty" ? "linear-gradient(135deg, #dc2626, #ef5350)" : "linear-gradient(135deg, #0d9488, #0f766e)" }}>{warrBusy ? "…" : "Confirm"}</button>
                   <button onClick={() => { setWarrOpen(false); setWarrChoice(null); }} disabled={warrBusy} style={{ fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer", background: "#fff", border: `1px solid ${C.borderLight}`, color: C.textMid }}>Cancel</button>
