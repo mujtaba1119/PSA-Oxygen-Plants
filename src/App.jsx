@@ -2067,7 +2067,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                {["Provider", "Sites", "Open", "Closed", "Downtime", "Avg Time", "Resolution Rate"].map((th, i) => (
+                {["Provider", "Sites", "Open", "Closed", "Downtime", "Avg Resolution Time", "Resolution Rate"].map((th, i) => (
                   <th key={th} style={{ fontSize: 9, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em", padding: "14px 12px 10px", textAlign: i === 0 ? "left" : "center", borderBottom: `1px solid ${T.line}` }}>{th}</th>
                 ))}
               </tr>
