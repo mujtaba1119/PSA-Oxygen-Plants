@@ -1127,6 +1127,11 @@ function GlobalAnimations() {
 
       .ox-bar { transform-origin: bottom; animation: ox-grow-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
+      /* subtle hover lift for dashboard cards, tiles and tables */
+      .ox-lift { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s cubic-bezier(0.16,1,0.3,1); }
+      .ox-lift:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(15,76,71,0.16); }
+      @media (prefers-reduced-motion: reduce) { .ox-lift:hover { transform: none; } }
+
       /* image gently zooms inside its frame when the parent card is hovered */
       .ox-imgzoom img { transition: transform 0.5s cubic-bezier(0.16,1,0.3,1); }
       .ox-imgzoom:hover img { transform: scale(1.06); }
@@ -1882,7 +1887,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
       {/* ── Stat tiles ── */}
       <div className="ox-stagger" style={{ display: "grid", gridTemplateColumns: "1fr 1.7fr 1fr", gap: 14, marginBottom: 20, alignItems: "stretch" }}>
         {/* Sites Functional */}
-        <div style={{ ...darkCard, padding: "12px 16px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div className="ox-lift" style={{ ...darkCard, padding: "12px 16px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div style={darkAccent} />
           <div style={{ ...gradHeading, height: 13, marginBottom: 12 }}>Sites Functional</div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -1894,7 +1899,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
         </div>
 
         {/* Tickets Overview (wide) */}
-        <div style={{ ...darkCard, padding: "12px 16px", display: "flex", flexDirection: "column" }}>
+        <div className="ox-lift" style={{ ...darkCard, padding: "12px 16px", display: "flex", flexDirection: "column" }}>
           <div style={darkAccent} />
           <div style={{ ...gradHeading, height: 13, marginBottom: 12 }}>Tickets Overview</div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flex: 1 }}>
@@ -1926,7 +1931,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
         </div>
 
         {/* Resolution Rate */}
-        <div style={{ ...darkCard, padding: "12px 16px 10px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div className="ox-lift" style={{ ...darkCard, padding: "12px 16px 10px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div style={darkAccent} />
           <div style={{ ...gradHeading, height: 13, marginBottom: 4 }}>Resolution Rate</div>
           <Speedometer value={resolutionRate} teal={{ ink: "#ffffff", mute: "rgba(255,255,255,0.6)" }} dark />
@@ -1937,14 +1942,14 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
       {/* ── Uptime / Downtime / Avg Resolution row ── */}
       <div className="ox-stagger" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginBottom: 20 }}>
         {/* Network Uptime */}
-        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e7edec", boxShadow: "0 1px 2px rgba(15,76,71,0.04)", padding: "18px 22px", position: "relative", overflow: "hidden" }}>
+        <div className="ox-lift" style={{ background: "#fff", borderRadius: 16, border: "1px solid #e7edec", boxShadow: "0 1px 2px rgba(15,76,71,0.04)", padding: "18px 22px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 3, borderRadius: "0 0 3px 3px", background: "linear-gradient(90deg, #0f766e, #2dd4a8)" }} />
           <div style={{ fontSize: 10.5, fontWeight: 700, color: "#94a3a0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Network Uptime</div>
           <div style={{ fontSize: 30, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>{uptimePct == null ? "—" : uptimePct}<span style={{ fontSize: 15, fontWeight: 500, color: "#94a3a0" }}>%</span></div>
           {uptimePct != null && <div style={{ height: 6, borderRadius: 4, background: "#eef4f2", overflow: "hidden", marginTop: 12 }}><div style={{ height: "100%", borderRadius: 4, width: `${uptimePct}%`, background: "linear-gradient(90deg, #0d9488, #5eead4)" }} /></div>}
         </div>
         {/* Total Downtime */}
-        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e7edec", boxShadow: "0 1px 2px rgba(15,76,71,0.04)", padding: "18px 22px", position: "relative", overflow: "hidden" }}>
+        <div className="ox-lift" style={{ background: "#fff", borderRadius: 16, border: "1px solid #e7edec", boxShadow: "0 1px 2px rgba(15,76,71,0.04)", padding: "18px 22px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 3, borderRadius: "0 0 3px 3px", background: "linear-gradient(90deg, #b45309, #f0b968)" }} />
           <div style={{ fontSize: 10.5, fontWeight: 700, color: "#94a3a0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Total Plant Downtime</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
@@ -1953,7 +1958,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
           </div>
         </div>
         {/* Avg Resolution Time */}
-        <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #e7edec", boxShadow: "0 1px 2px rgba(15,76,71,0.04)", padding: "18px 22px", position: "relative", overflow: "hidden" }}>
+        <div className="ox-lift" style={{ background: "#fff", borderRadius: 16, border: "1px solid #e7edec", boxShadow: "0 1px 2px rgba(15,76,71,0.04)", padding: "18px 22px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 3, borderRadius: "0 0 3px 3px", background: "linear-gradient(90deg, #2563eb, #7cc0f0)" }} />
           <div style={{ fontSize: 10.5, fontWeight: 700, color: "#94a3a0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Avg Resolution Time</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
@@ -2061,7 +2066,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
 
       {/* ── Provider performance + Critical issues ── */}
       <div className="ox-in ox-in-d2" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 14, marginBottom: 20 }}>
-        <div style={cardBase}>
+        <div className="ox-lift" style={cardBase}>
           <div style={{ ...accentBar, background: "linear-gradient(90deg, #0f766e, #14b8a6)", opacity: 0.75 }} />
           <div style={cardHeader}><h3 style={cardTitle}>Service Provider Performance</h3></div>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -2090,7 +2095,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
           </table>
         </div>
 
-        <div style={cardBase}>
+        <div className="ox-lift" style={cardBase}>
           <div style={accentBar} />
           <div style={cardHeader}><h3 style={cardTitle}>Priority Issues</h3></div>
           <div style={{ maxHeight: 360, overflowY: "auto" }}>
@@ -2109,7 +2114,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
       </div>
 
       {/* ── 12-month trend ── */}
-      <div className="ox-in ox-in-d3" style={darkCard}>
+      <div className="ox-in ox-in-d3 ox-lift" style={darkCard}>
         <div style={darkAccent} />
         <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid rgba(255,255,255,0.08)", textAlign: "center" }}>
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, letterSpacing: 0.2, color: "#ffffff" }}>Tickets Opened <span style={{ color: "rgba(255,255,255,0.5)", fontWeight: 500, margin: "0 3px" }}>vs</span> Resolved</h3>
@@ -2394,7 +2399,7 @@ function NovairDashboard({ complaints, siteNotes, onViewSite, userCompany }) {
       {/* ── Top tiles (same as oversight dashboard) ── */}
       <div className="ox-stagger" style={{ display: "grid", gridTemplateColumns: "1fr 1.7fr 1fr", gap: 14, marginBottom: 24, alignItems: "stretch" }}>
         {/* Sites Functional */}
-        <div style={{ ...darkCard, padding: "12px 16px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div className="ox-lift" style={{ ...darkCard, padding: "12px 16px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div style={darkAccent} />
           <div style={{ ...gradHeading, height: 13, marginBottom: 12 }}>Sites Functional</div>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -2405,7 +2410,7 @@ function NovairDashboard({ complaints, siteNotes, onViewSite, userCompany }) {
           </div>
         </div>
         {/* Tickets Overview */}
-        <div style={{ ...darkCard, padding: "12px 16px", display: "flex", flexDirection: "column" }}>
+        <div className="ox-lift" style={{ ...darkCard, padding: "12px 16px", display: "flex", flexDirection: "column" }}>
           <div style={darkAccent} />
           <div style={{ ...gradHeading, height: 13, marginBottom: 12 }}>Tickets Overview</div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flex: 1 }}>
@@ -2433,7 +2438,7 @@ function NovairDashboard({ complaints, siteNotes, onViewSite, userCompany }) {
           </div>
         </div>
         {/* Resolution Rate */}
-        <div style={{ ...darkCard, padding: "12px 16px 10px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <div className="ox-lift" style={{ ...darkCard, padding: "12px 16px 10px", display: "flex", flexDirection: "column", alignItems: "center" }}>
           <div style={darkAccent} />
           <div style={{ ...gradHeading, height: 13, marginBottom: 4 }}>Resolution Rate</div>
           <Speedometer value={resolutionRate} teal={{ ink: "#ffffff", mute: "rgba(255,255,255,0.6)" }} dark />
