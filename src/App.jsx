@@ -375,40 +375,62 @@ function canSetWarranty(user, hospital, c) {
   const company = getCompanyName(user);
   return company === "Novair" || getProvider(hospital) === company; // manufacturer or the site's provider
 }
-// Downscale large images before upload (shared)
+// Downscale large images before upload (shared). Always resolves — never hangs.
 const compressImageFile = (file) => new Promise((resolve) => {
-  if (!file.type.startsWith("image/")) { resolve(file); return; }
-  const canvas = document.createElement("canvas");
-  const img = new Image();
-  img.onload = () => {
-    const maxW = 1200; const maxH = 1200;
-    let w = img.width; let h = img.height;
-    if (w > maxW) { h = (h * maxW) / w; w = maxW; }
-    if (h > maxH) { w = (w * maxH) / h; h = maxH; }
-    canvas.width = w; canvas.height = h;
-    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-    canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", 0.7);
-  };
-  img.src = URL.createObjectURL(file);
+  if (!file || !file.type || !file.type.startsWith("image/")) { resolve(file); return; }
+  try {
+    const canvas = document.createElement("canvas");
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    let done = false;
+    const finish = (result) => { if (done) return; done = true; try { URL.revokeObjectURL(url); } catch {} resolve(result); };
+    img.onload = () => {
+      try {
+        const maxW = 1200; const maxH = 1200;
+        let w = img.width; let h = img.height;
+        if (w > maxW) { h = (h * maxW) / w; w = maxW; }
+        if (h > maxH) { w = (w * maxH) / h; h = maxH; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        canvas.toBlob((blob) => finish(blob ? new File([blob], file.name, { type: "image/jpeg" }) : file), "image/jpeg", 0.7);
+      } catch { finish(file); }
+    };
+    img.onerror = () => finish(file); // fall back to original if image can't be decoded
+    setTimeout(() => finish(file), 8000); // safety: never hang more than 8s
+    img.src = url;
+  } catch { resolve(file); }
 });
 // Upload one or more files as attachments on a complaint (shared by submission forms + the
 // acknowledgement / work-notes panel).
 async function uploadComplaintAttachments(complaintId, fileList) {
+  const files = Array.from(fileList || []);
+  if (files.length === 0) return [];
   const uploadOne = async (rawFile, idx) => {
     try {
       const file = await compressImageFile(rawFile);
-      const path = `complaints/${complaintId}/${Date.now()}_${idx}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-      const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type, upsert: false });
+      const rand = Math.random().toString(36).slice(2, 8);
+      const safeName = (rawFile.name || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `complaints/${complaintId}/${Date.now()}_${idx}_${rand}_${safeName}`;
+      const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: true });
       if (error) { console.error("Upload error:", rawFile.name, error.message); return null; }
       return { name: rawFile.name, path };
     } catch (e) { console.error("Upload failed for", rawFile.name, e); return null; }
   };
-  const results = (await Promise.all(Array.from(fileList).map((f, i) => uploadOne(f, i)))).filter(Boolean);
+  // Upload all files in parallel
+  const results = (await Promise.all(files.map((f, i) => uploadOne(f, i)))).filter(Boolean);
+  // Persist to the complaint record. Re-read the LATEST attachments right before writing to
+  // minimize clobbering when several uploads/comments land close together.
   if (results.length > 0) {
     try {
       const { data: existing } = await supabase.from("complaints").select("attachments").eq("id", complaintId).single();
       const current = Array.isArray(existing?.attachments) ? existing.attachments : [];
-      await dbWrite({ action: "update_complaint_fields", id: complaintId, fields: { attachments: [...current, ...results] } });
+      const merged = [...current, ...results];
+      // Try direct Supabase update first (fast, no server whitelist); fall back to dbWrite.
+      const { error: updErr } = await supabase.from("complaints").update({ attachments: merged }).eq("id", complaintId);
+      if (updErr) {
+        console.error("Direct update failed, trying dbWrite:", updErr.message);
+        await updateComplaintFields(complaintId, { attachments: merged });
+      }
     } catch (e) { console.error("Failed to update complaint attachments:", e); }
   }
   return results;
@@ -2954,6 +2976,11 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
     if (commentFiles.length > 0) {
       let uploaded = [];
       try { uploaded = await uploadComplaintAttachments(complaintId, commentFiles); } catch (e) { console.error("Upload error:", e); }
+      if (uploaded.length < commentFiles.length) {
+        const failedCount = commentFiles.length - uploaded.length;
+        alert(`${failedCount} file${failedCount > 1 ? "s" : ""} failed to upload. ${uploaded.length > 0 ? "The rest were posted." : "Please try again."}`);
+        if (uploaded.length === 0) { setPosting(false); return; }
+      }
       if (uploaded.length > 0) {
         const pathEntries = uploaded.map(u => `${u.name}|${u.path}`).join(",");
         msgParts.push(`[attached:${pathEntries}]`);
