@@ -2089,7 +2089,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
 /* ─── Novair Manager dashboard — Novair is the manufacturer for all 36 sites, so this shows
    three territory sections (Novair, Intexim, Z-Corps). Each section: summary tiles + a card
    per open complaint with dates, assignees and quick access to the ticket's actions. ─── */
-function NovairDashboard({ complaints, siteNotes, onViewSite }) {
+function NovairDashboard({ complaints, siteNotes, onViewSite, userCompany }) {
   const T = { ink: "#12211f", slate: "#5a6b68", mute: "#94a3a0", line: "#e7edec", card: "#fff", teal900: "#0b3b38", teal700: "#0f766e", teal500: "#0d9488", teal300: "#5eead4", teal100: "#ccfbf1", teal50: "#f0fdfa" };
   const SEV = { Critical: "#c0392b", High: "#d9822b", Low: "#94a3a0" };
   const provColor = { Novair: "#0f766e", Intexim: "#7c5cbf", "Z-Corps": "#2f9e58" };
@@ -2141,8 +2141,10 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
     const resolvedMo = provComplaints.filter(c => isClosedStatus(c.status) && c.resolved_at && new Date(c.resolved_at) >= oneMonthAgo).length;
     return { prov, siteCount: sites.length, openCount: open.length, inProgress, resolvedMo, openCards };
   };
-  const novair = buildSection("Novair");
-  const otherSections = [buildSection("Intexim"), buildSection("Z-Corps")];
+  const primaryProv = userCompany || "Novair";
+  const allProvs = ["Novair", "Intexim", "Z-Corps"];
+  const primarySection = buildSection(primaryProv);
+  const otherSections = allProvs.filter(p => p !== primaryProv).map(buildSection);
 
   const cardBase = { background: T.card, borderRadius: 16, border: `1px solid ${T.line}`, boxShadow: "0 1px 2px rgba(15,76,71,0.04)", position: "relative", overflow: "hidden" };
   const gradHeading = { fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", textAlign: "center", background: "linear-gradient(135deg, #5eead4, #ccfbf1)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "transparent" };
@@ -2392,7 +2394,7 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
         </div>
       </div>
 
-      {/* ── Novair own sites ── */}
+      {/* ── Primary provider sites ── */}
       <div className="ox-in" style={{ marginBottom: 30 }}>
         {/* dark table heading */}
         <div style={{ ...darkCard, padding: "14px 22px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14 }}>
@@ -2401,28 +2403,28 @@ function NovairDashboard({ complaints, siteNotes, onViewSite }) {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5eead4" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M6 21V8l6-4 6 4v13"/><path d="M10 21v-5h4v5"/><circle cx="12" cy="10" r="1.5"/></svg>
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", letterSpacing: "-0.3px" }}>Novair</div>
-            <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.6)", fontWeight: 600, marginTop: 2 }}>{novair.siteCount} sites serviced</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#fff", letterSpacing: "-0.3px" }}>{primaryProv}</div>
+            <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.6)", fontWeight: 600, marginTop: 2 }}>{primarySection.siteCount} sites serviced</div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 26, fontWeight: 800, color: novair.openCount > 0 ? "#5eead4" : "#fff", lineHeight: 1 }}>{novair.openCount}</div>
+            <div style={{ fontSize: 26, fontWeight: 800, color: primarySection.openCount > 0 ? "#5eead4" : "#fff", lineHeight: 1 }}>{primarySection.openCount}</div>
             <div style={{ fontSize: 9.5, fontWeight: 700, color: "rgba(255,255,255,0.6)", textTransform: "uppercase", letterSpacing: "0.06em", marginTop: 4 }}>Open Tickets</div>
           </div>
         </div>
-        {novair.openCards.length > 0 ? (
+        {primarySection.openCards.length > 0 ? (
           <div style={{ position: "relative", paddingLeft: 22 }}>
-            <div style={{ position: "absolute", left: 5, top: 8, bottom: 8, width: 3, borderRadius: 2, background: provColor.Novair, opacity: 0.35 }} />
-            {novair.openCards.map(renderNovairTicket)}
+            <div style={{ position: "absolute", left: 5, top: 8, bottom: 8, width: 3, borderRadius: 2, background: provColor[primaryProv] || provColor.Novair, opacity: 0.35 }} />
+            {primarySection.openCards.map(renderNovairTicket)}
           </div>
         ) : (
           <div style={{ ...cardBase, padding: "16px 20px", display: "flex", alignItems: "center", gap: 10, color: T.teal700, fontSize: 13, fontWeight: 600 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={T.teal500} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            All clear — no open tickets in Novair sites
+            All clear — no open tickets in {primaryProv} sites
           </div>
         )}
       </div>
 
-      {/* ── Intexim & Z-Corps ── */}
+      {/* ── Other providers ── */}
       {otherSections.map(renderTerritory)}
     </div>
   );
@@ -4708,7 +4710,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
               <div style={{ flex: 1, minWidth: 140 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Full Name</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Full Name" value={newUserName} onChange={e => { setNewUserName(e.target.value); setNewUserId(e.target.value.trim().toLowerCase().replace(/\s+/g, "")); }} /></div>
               <div style={{ minWidth: 120 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Organization</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserCompany} onChange={e => setNewUserCompany(e.target.value)}>{companyGroups.map(g => <option key={g} value={g}>{g}</option>)}</select></div>
-              {["Novair", "Amex", "Intexim", "Z-Corps"].includes(newUserCompany) && <div style={{ minWidth: 110 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Account Type</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserCompanyRole} onChange={e => setNewUserCompanyRole(e.target.value)}><option value="manager">Manager</option><option value="engineer">Engineer</option><option value="technician">Technician</option></select></div>}
+              {["Novair", "Amex", "Intexim", "Z-Corps"].includes(newUserCompany) && <div style={{ minWidth: 110 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Account Type</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserCompanyRole} onChange={e => setNewUserCompanyRole(e.target.value)}><option value="manager">Manager</option><option value="engineer">Engineer</option>{newUserCompany !== "Amex" && <option value="technician">Technician</option>}</select></div>}
               <div style={{ flex: 1, minWidth: 140 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Email (optional)</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} type="email" placeholder="email@company.com" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} /></div>
               <div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Password</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} type="password" placeholder="Min 8 chars" value={newUserPw} onChange={e => setNewUserPw(e.target.value)} /></div>
               <button style={styles.pwSaveBtn} onClick={handleAddUser}>{addingUser ? "…" : "Add"}</button>
@@ -4903,8 +4905,8 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${myHospitals.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing} />
         <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px", width: "100%", flex: 1 }}>
           <div key={tab} className="scale-in">
-          {tab === "dashboard" && (companyName === "Novair" && isManagerUser(user)
-            ? <NovairDashboard complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />
+          {tab === "dashboard" && (["Novair", "Intexim", "Z-Corps"].includes(companyName)
+            ? <NovairDashboard complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} userCompany={companyName} />
             : <HomeTab hospitals={myHospitals} groups={myGroups} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} user={user} />)}
           {tab === "sites" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "equipment" && <EquipmentTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} isAdmin={false} onRefresh={onRefresh} />}
