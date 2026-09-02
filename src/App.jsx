@@ -3405,7 +3405,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
                   {c.escalated_at ? "Escalate Again" : "Escalate"}
                 </button>
-                <span style={{ fontSize: 11, color: C.textLight, marginLeft: 10 }}>Open {openDays} days</span>
+                
               </div>
             )}
             {/* Warranty decision (after a visit) */}
@@ -4498,8 +4498,11 @@ function ActivityLog({ complaints, scopeProvider, currentUser, onViewSite, onRes
 
 function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails = [], siteNotes, shutdowns, onRefresh, onLogout }) {
   const [tab, setTab] = useState("dashboard"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
-  const [activitySeen, setActivitySeen] = useState(() => Date.now());
-  const handleAdminTabSelect = (t) => { if (t === "activity") setActivitySeen(Date.now()); setTab(t); setSelected(null); };
+  const [activitySeen, setActivitySeen] = useState(0);
+  const latestActivityTs = React.useMemo(() => { let mx = 0; complaints.forEach(c => { [c.created_at, c.acknowledged_at, c.resolved_at, c.verified_at, c.escalated_at, c.warranty_at].filter(Boolean).forEach(d => { const t = new Date(d).getTime(); if (t > mx) mx = t; }); }); return mx; }, [complaints]);
+  useEffect(() => { if (latestActivityTs > 0 && activitySeen === 0) setActivitySeen(latestActivityTs); }, [latestActivityTs, activitySeen]);
+  const hasNewActivity = activitySeen > 0 && latestActivityTs > activitySeen;
+  const handleAdminTabSelect = (t) => { if (t === "activity") setActivitySeen(latestActivityTs || Date.now()); setTab(t); setSelected(null); };
   const [editingUser, setEditingUser] = useState(null); const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
   const [newEscEmail, setNewEscEmail] = useState(""); const [escSaving, setEscSaving] = useState(false);
@@ -4606,10 +4609,6 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
   const adminFuncCount = ALL_HOSPITALS.filter(h => isFunctional(h, complaints, siteNotes)).length;
   const adminResolved = complaints.filter(c => isClosedStatus(c.status)).length;
 
-  const hasNewActivity = complaints.some(c => {
-    const dates = [c.created_at, c.acknowledged_at, c.resolved_at, c.verified_at, c.escalated_at, c.warranty_at].filter(Boolean);
-    return dates.some(d => new Date(d).getTime() > activitySeen);
-  });
   const NAV_ITEMS = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "sites", icon: "sites", label: "Site Status" },
@@ -4852,8 +4851,11 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
 /* ─── Company Dashboard (Sidebar Layout) ─── */
 function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRefresh, onLogout }) {
   const [tab, setTab] = useState("dashboard"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
-  const [activitySeen, setActivitySeen] = useState(() => Date.now());
-  const handleCompanyTabSelect = (t) => { if (t === "activity") setActivitySeen(Date.now()); setTab(t); setSelected(null); };
+  const [activitySeen, setActivitySeen] = useState(0);
+  const latestActivityTs = React.useMemo(() => { let mx = 0; complaints.forEach(c => { [c.created_at, c.acknowledged_at, c.resolved_at, c.verified_at, c.escalated_at, c.warranty_at].filter(Boolean).forEach(d => { const t = new Date(d).getTime(); if (t > mx) mx = t; }); }); return mx; }, [complaints]);
+  useEffect(() => { if (latestActivityTs > 0 && activitySeen === 0) setActivitySeen(latestActivityTs); }, [latestActivityTs, activitySeen]);
+  const hasNewActivity = activitySeen > 0 && latestActivityTs > activitySeen;
+  const handleCompanyTabSelect = (t) => { if (t === "activity") setActivitySeen(latestActivityTs || Date.now()); setTab(t); setSelected(null); };
   const [pendingFocus, setPendingFocus] = useState(null);
   const handleNotifFocus = (info) => {
     setTab("tickets");
@@ -4880,10 +4882,6 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
   const funcCount = myHospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
 
   const showActivity = ["Novair", "Amex", "Intexim", "Z-Corps"].includes(companyName);
-  const hasNewActivity = complaints.some(c => {
-    const dates = [c.created_at, c.acknowledged_at, c.resolved_at, c.verified_at, c.escalated_at, c.warranty_at].filter(Boolean);
-    return dates.some(d => new Date(d).getTime() > activitySeen);
-  });
   const NAV_ITEMS = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "sites", icon: "sites", label: "Site Status" },
