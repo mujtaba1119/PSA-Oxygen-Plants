@@ -1130,6 +1130,9 @@ function GlobalAnimations() {
       /* subtle hover lift for dashboard cards, tiles and tables */
       .ox-lift { transition: transform 0.45s cubic-bezier(0.22,1,0.36,1), box-shadow 0.45s cubic-bezier(0.22,1,0.36,1); }
       .ox-lift:hover { transform: translateY(-6px) !important; box-shadow: 0 16px 34px rgba(15,76,71,0.16) !important; z-index: 5; }
+      /* when a lift tile is a staggered child, its entrance animation must release the transform
+         so the hover transition runs smoothly (same feel as the ungrouped panels) */
+      .ox-stagger > .ox-lift { animation-name: ox-fade-in; }
       @media (prefers-reduced-motion: reduce) { .ox-lift:hover { transform: none !important; } }
 
       /* image gently zooms inside its frame when the parent card is hovered */
