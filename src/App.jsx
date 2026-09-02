@@ -4396,9 +4396,10 @@ function EquipmentTab({ hospitals, complaints, siteNotes, shutdowns = [], isAdmi
         <div style={{ marginBottom: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: 0, letterSpacing: "-0.01em" }}>{displayName(selectedSite)}</h2>
           {(() => { const cnt = (shutdowns || []).filter(s => hospitalMatches(s.hospital, selectedSite)).length; return (
-            <button onClick={() => setShowShutdowns(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 700, color: "#c0392b", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 9, padding: "9px 16px", cursor: "pointer" }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              Shutdown History{cnt > 0 ? ` (${cnt})` : ""}
+            <button onClick={() => setShowShutdowns(true)} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 16px rgba(11,59,56,0.28)"; }} onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 3px 10px rgba(11,59,56,0.2)"; }} style={{ display: "inline-flex", alignItems: "center", gap: 9, fontSize: 12.5, fontWeight: 700, color: "#fff", background: "linear-gradient(135deg, #0b3b38, #0f766e)", border: "none", borderRadius: 11, padding: "10px 18px", cursor: "pointer", boxShadow: "0 3px 10px rgba(11,59,56,0.2)", transition: "all 0.18s", letterSpacing: 0.2 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5eead4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              View Shutdown History
+              {cnt > 0 && <span style={{ fontSize: 11, fontWeight: 800, color: "#0b3b38", background: "#5eead4", borderRadius: 20, padding: "1px 8px", lineHeight: "16px" }}>{cnt}</span>}
             </button>
           ); })()}
         </div>
