@@ -177,7 +177,7 @@ const COMPLAINT_EQUIP_GROUPS = {
   "Monitoring/CSS Issue": [{ label: "CSS Panel", keys: ["css"] }],
   "Power Generator Issue": [{ label: "Power Generator", keys: ["generator"] }],
   "Booster Filling System Issue": [{ label: "HP Oxygen Panel", keys: ["hpox"] }],
-  "Electrical/Power Issue": [{ label: "Power Generator", keys: ["generator"] }],
+  "Electrical/Power Issue": [],
   "Backup Manifold Issue": [{ label: "Medical Gas Panel", keys: ["medgas"] }],
 };
 // Returns grouped serial options for a given site + complaint type:
