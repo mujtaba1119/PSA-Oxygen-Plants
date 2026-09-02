@@ -2191,8 +2191,9 @@ function NovairDashboard({ complaints, siteNotes, onViewSite, userCompany }) {
   const statusColor = (s) => s === "Open" ? "#c0392b" : s === "Assigned" ? "#d9822b" : s === "In Progress" ? "#0f766e" : "#16a34a";
   const statusBg = (s) => s === "Open" ? "#fdecec" : s === "Assigned" ? "#fef6ec" : "#e6f7f2";
 
-  // ── Top-tile data across ALL 36 sites (manufacturer view) ──
-  const allHospitals = ALL_HOSPITALS;
+  // ── Top-tile data. Novair (manufacturer) sees all 36 sites; Intexim/Z-Corps see only their own. ──
+  const tileProv = userCompany || "Novair";
+  const allHospitals = tileProv === "Novair" ? ALL_HOSPITALS : (GROUPS[tileProv] || []);
   const scoped = complaints.filter(c => allHospitals.some(h => hospitalMatches(h, c.hospital)));
   const funcCount = allHospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
   const openTickets = scoped.filter(c => !isClosedStatus(c.status));
@@ -2217,7 +2218,9 @@ function NovairDashboard({ complaints, siteNotes, onViewSite, userCompany }) {
   const primaryProv = userCompany || "Novair";
   const allProvs = ["Novair", "Intexim", "Z-Corps"];
   const primarySection = buildSection(primaryProv);
-  const otherSections = allProvs.filter(p => p !== primaryProv).map(buildSection);
+  // Novair is the manufacturer and supports all providers, so it sees the other territories too.
+  // Intexim and Z-Corps only see their own sites.
+  const otherSections = primaryProv === "Novair" ? allProvs.filter(p => p !== primaryProv).map(buildSection) : [];
 
   const cardBase = { background: T.card, borderRadius: 16, border: `1px solid ${T.line}`, boxShadow: "0 1px 2px rgba(15,76,71,0.04)", position: "relative", overflow: "hidden" };
   const gradHeading = { fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", textAlign: "center", background: "linear-gradient(135deg, #5eead4, #ccfbf1)", WebkitBackgroundClip: "text", backgroundClip: "text", WebkitTextFillColor: "transparent", color: "transparent" };
