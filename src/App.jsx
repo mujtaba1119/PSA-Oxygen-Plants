@@ -3253,7 +3253,11 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               <strong style={{ fontSize: 14.5, fontWeight: 700, color: C.black, whiteSpace: expanded ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</strong>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-              <SeverityBadge severity={c.severity} />
+              {isClosedStatus(c.status) && c.verified_at && c.created_at
+                ? (() => { const days = Math.round((new Date(c.verified_at) - new Date(c.created_at)) / (1000 * 60 * 60 * 24) * 10) / 10; return <span style={{ fontSize: 8.5, fontWeight: 700, padding: "2px 6px", borderRadius: 8, color: "#1a5276", background: "#d6eaf8", textTransform: "uppercase", letterSpacing: 0.3, flexShrink: 0, whiteSpace: "nowrap" }}>Resolved in {days}d</span>; })()
+                : isClosedStatus(c.status) && c.resolved_at && c.created_at
+                  ? (() => { const days = Math.round((new Date(c.resolved_at) - new Date(c.created_at)) / (1000 * 60 * 60 * 24) * 10) / 10; return <span style={{ fontSize: 8.5, fontWeight: 700, padding: "2px 6px", borderRadius: 8, color: "#1a5276", background: "#d6eaf8", textTransform: "uppercase", letterSpacing: 0.3, flexShrink: 0, whiteSpace: "nowrap" }}>Resolved in {days}d</span>; })()
+                  : <SeverityBadge severity={c.severity} />}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
                 <StatusBadge status={effStatus} />
                 {!isClosedStatus(c.status) && (() => {
@@ -4356,7 +4360,7 @@ function ActivityFeed({ hospitals, complaints, onViewSite }) {
 /* ─── Activity Log — team coordination feed for Novair, Amex and service providers.
    Assembled from complaint timestamps + comments. Novair/Amex see all sites (with a
    site/provider filter); a service provider sees only its own sites. Past-month only. ─── */
-function ActivityLog({ complaints, scopeProvider, onViewSite, onReset }) {
+function ActivityLog({ complaints, scopeProvider, currentUser, onViewSite, onReset }) {
   const T = { ink: "#12211f", slate: "#5a6b68", mute: "#94a3a0", line: "#e7edec", teal700: "#0f766e", teal50: "#f0fdfa" };
   const [comments, setComments] = useState([]);
   const [siteFilter, setSiteFilter] = useState("all"); // "all" | provider name | hospital name
@@ -4389,14 +4393,17 @@ function ActivityLog({ complaints, scopeProvider, onViewSite, onReset }) {
   // Build events
   const events = [];
   const within = (d) => d && new Date(d) >= monthAgo;
+  const ownName = currentUser ? (currentUser.name || "").toLowerCase().replace(/\s+/g, "") : "";
+  const ownCompany = currentUser ? (getCompanyName(currentUser) || "").toLowerCase().replace(/\s+/g, "") : "";
+  const isOwn = (actor) => { if (!actor || !currentUser) return false; const a = actor.toLowerCase().replace(/\s+/g, ""); return a === ownName || a === ownCompany || (ownName && a.includes(ownName)); };
   inScope.forEach(c => {
-    if (within(c.created_at)) events.push({ id: `${c.id}-open`, cid: c.id, type: "opened", date: c.created_at, hospital: c.hospital, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> — new complaint: <b>{c.title}</b></>, sub: "Opened" });
-    if (within(c.acknowledged_at)) events.push({ id: `${c.id}-ack`, cid: c.id, type: "acknowledged", date: c.acknowledged_at, hospital: c.hospital, text: <><b>{c.acknowledged_by || getProvider(c.hospital)}</b> acknowledged <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b></>, sub: "Acknowledged" });
+    if (within(c.created_at)) events.push({ id: `${c.id}-open`, cid: c.id, type: "opened", date: c.created_at, hospital: c.hospital, actor: c.hospital, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> — new complaint: <b>{c.title}</b></>, sub: "Opened" });
+    if (within(c.acknowledged_at)) events.push({ id: `${c.id}-ack`, cid: c.id, type: "acknowledged", date: c.acknowledged_at, hospital: c.hospital, actor: c.acknowledged_by || getProvider(c.hospital), text: <><b>{c.acknowledged_by || getProvider(c.hospital)}</b> acknowledged <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b></>, sub: "Acknowledged" });
     visitDates(c).forEach((v, i) => { if (within(v)) events.push({ id: `${c.id}-visit-${i}`, cid: c.id, type: "visit", date: v, hospital: c.hospital, text: <>Visit logged at <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b></>, sub: "Visit" }); });
     if (within(c.warranty_at)) events.push({ id: `${c.id}-warr`, cid: c.id, type: "warranty", date: c.warranty_at, hospital: c.hospital, text: <><b>{c.warranty_by || "Someone"}</b> marked <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> as {c.warranty_status === "under_warranty" ? "Under Warranty" : "Not Under Warranty"}</>, sub: c.warranty_status === "under_warranty" ? "Warranty" : "Dispute" });
-    if (within(c.resolved_at)) events.push({ id: `${c.id}-res`, cid: c.id, type: "resolved", date: c.resolved_at, hospital: c.hospital, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> marked resolved</>, sub: "Resolved" });
-    if (within(c.verified_at)) events.push({ id: `${c.id}-ver`, cid: c.id, type: "resolved", date: c.verified_at, hospital: c.hospital, text: <>Amex verified resolution at <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b></>, sub: "Verified" });
-    if (within(c.escalated_at)) events.push({ id: `${c.id}-esc`, cid: c.id, type: "escalation", date: c.escalated_at, hospital: c.hospital, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> complaint escalated{c.escalated_by ? <> by <b>{c.escalated_by}</b></> : ""}</>, sub: "Escalation" });
+    if (within(c.resolved_at)) events.push({ id: `${c.id}-res`, cid: c.id, type: "resolved", date: c.resolved_at, hospital: c.hospital, actor: c.resolved_by, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> marked resolved</>, sub: "Resolved" });
+    if (within(c.verified_at)) events.push({ id: `${c.id}-ver`, cid: c.id, type: "resolved", date: c.verified_at, hospital: c.hospital, actor: "Amex", text: <>Amex verified resolution at <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b></>, sub: "Verified" });
+    if (within(c.escalated_at)) events.push({ id: `${c.id}-esc`, cid: c.id, type: "escalation", date: c.escalated_at, hospital: c.hospital, actor: c.escalated_by, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> complaint escalated{c.escalated_by ? <> by <b>{c.escalated_by}</b></> : ""}</>, sub: "Escalation" });
   });
   comments.forEach(cm => {
     if (!scopeIds.has(cm.complaint_id)) return;
@@ -4407,7 +4414,7 @@ function ActivityLog({ complaints, scopeProvider, onViewSite, onReset }) {
   });
 
   const typeMatch = (e) => typeFilter === "all" || (typeFilter === "visit" && e.type === "visit") || (typeFilter === "resolved" && e.type === "resolved") || (typeFilter === "escalation" && e.type === "escalation");
-  const feed = events.filter(typeMatch).sort((a, b) => new Date(b.date) - new Date(a.date));
+  const feed = events.filter(e => typeMatch(e) && !isOwn(e.actor)).sort((a, b) => new Date(b.date) - new Date(a.date));
 
   const iconFor = (t) => {
     const map = {
@@ -4694,7 +4701,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
               </div>
             </section>
           )}
-          {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={null} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} onReset={async () => { if (window.confirm("Reset the activity log? This clears all comment history that feeds the log. Ticket data (dates, statuses) is not affected. This cannot be undone.")) { await dbWrite({ action: "reset_all_comments" }); alert("Activity log reset."); await onRefresh(); } }} />}
+          {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={null} currentUser={user} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} onReset={async () => { if (window.confirm("Reset the activity log? This clears all comment history that feeds the log. Ticket data (dates, statuses) is not affected. This cannot be undone.")) { await dbWrite({ action: "reset_all_comments" }); alert("Activity log reset."); await onRefresh(); } }} />}
           {tab === "maintenance" && <MaintenancePage />}
           {tab === "analytics" && <AnalyticsPage />}
           {tab === "users" && (<>
@@ -4937,7 +4944,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
             <GroupedHospitalList groups={myGroups} complaints={complaints} siteNotes={siteNotes} onSelect={setSelected} />
           </>)}
           {tab === "tickets" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onAssign={handleAssign} onLogVisit={handleLogVisit} onMarkResolved={handleMarkResolved} onVerify={handleVerify} onRejectVerify={handleRejectVerify} onDelete={() => {}} onRefresh={onRefresh} staffOptions={staffOptions} focusInfo={pendingFocus} />)}
-          {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={["Intexim","Z-Corps"].includes(companyName) ? companyName : null} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
+          {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={["Intexim","Z-Corps"].includes(companyName) ? companyName : null} currentUser={user} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "maintenance" && <MaintenancePage />}
           {tab === "analytics" && <AnalyticsPage />}
           </div>
