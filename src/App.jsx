@@ -3249,6 +3249,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const [sevEditing, setSevEditing] = useState(false); const [sevBusy, setSevBusy] = useState(false);
   const [assigneePicks, setAssigneePicks] = useState([]);
   const [visitDatePick, setVisitDatePick] = useState("");
+  const [visitAs, setVisitAs] = useState(""); // admin only: log visit on behalf of a provider
   const [resolveDatePick, setResolveDatePick] = useState("");
   const [verifyDatePick, setVerifyDatePick] = useState("");
   // Acknowledgement panel (new workflow)
@@ -3312,7 +3313,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
 
   const toggleAssignee = (name) => setAssigneePicks(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
   const handleAssign = async () => { if (!assigneePicks.length) return; setBusy(true); await onAssign(c.id, assigneePicks); setAssigneePicks([]); setBusy(false); };
-  const handleLogVisit = async () => { if (!visitDatePick) return; setBusy(true); await onLogVisit(c.id, visitDatePick); setVisitDatePick(""); setBusy(false); };
+  const handleLogVisit = async () => { if (!visitDatePick) return; setBusy(true); await onLogVisit(c.id, visitDatePick, isAdmin ? (visitAs || null) : null); setVisitDatePick(""); setVisitAs(""); setBusy(false); };
   // Acknowledge: record who/when, post the note as a comment, upload any files, and optionally
   // log a visit date. This NEVER resolves the ticket — resolving is a separate action later.
   const handleAcknowledge = async () => {
@@ -3320,11 +3321,14 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     if (ackMode === "visit" && !ackVisitDate) return;
     setAckBusy(true);
     const who = isAdmin ? (ackAs || "Admin") : currentUser.name;
+    // When admin acts on behalf of a provider, store the comment as a company comment (not admin)
+    // so it displays under the provider's name instead of "Admin".
+    const commentRole = (isAdmin && ackAs) ? "company" : currentUser.role;
     await acknowledgeComplaint(c.id, who, isAdmin && ackDate ? ackDate : null);
     const noteText = ackNote.trim();
-    await insertComment(c.id, who, currentUser.role, noteText ? `Acknowledged — ${noteText}` : "Acknowledged the ticket.");
+    await insertComment(c.id, who, commentRole, noteText ? `Acknowledged — ${noteText}` : "Acknowledged the ticket.");
     if (ackFiles.length) await uploadComplaintAttachments(c.id, ackFiles);
-    if (ackMode === "visit" && ackVisitDate) await onLogVisit(c.id, ackVisitDate);
+    if (ackMode === "visit" && ackVisitDate) await onLogVisit(c.id, ackVisitDate, isAdmin ? (ackAs || null) : null);
     setAckOpen(false); setAckNote(""); setAckFiles([]); setAckVisitDate(""); setAckDate(""); setAckAs(""); setAckMode(null);
     setAckBusy(false);
     await onRefresh();
@@ -3583,6 +3587,14 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               {canLogVisit && (
                 <>
                   <input type="date" style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={visitDatePick} onChange={e => setVisitDatePick(e.target.value)} />
+                  {isAdmin && (
+                    <select value={visitAs} onChange={e => setVisitAs(e.target.value)} title="Log visit as" style={{ fontSize: 12, padding: "8px 10px", border: "1px solid #e5d9a8", borderRadius: 8, background: "#fffdf5" }}>
+                      <option value="">as Admin</option>
+                      <option value="Novair">as Novair</option>
+                      <option value="Intexim">as Intexim</option>
+                      <option value="Z-Corps">as Z-Corps</option>
+                    </select>
+                  )}
                   <button style={styles.btnTealSmall} onClick={handleLogVisit} disabled={busy || !visitDatePick}>{busy ? "…" : hasVisits(c) ? "Log Another Visit" : "Log Visit"}</button>
                 </>
               )}
@@ -4756,7 +4768,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
   const totalComplaints = complaints.length; const totalOpen = complaints.filter(c => !isClosedStatus(c.status)).length;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
   const handleAssign = async (id, assignedTo) => { await assignComplaint(id, assignedTo, user.name); const c = complaints.find(x => x.id === id); if (c) notifyUsers("assigned", `Ticket Assigned: ${c.hospital}`, `${c.title} — assigned to ${assignedTo}`, c.hospital, id, "admin").catch(() => {}); await onRefresh(); };
-  const handleLogVisit = async (id, visitDate) => { await logVisit(id, visitDate, user.name); const fmtD = new Date(visitDate).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }); const isFuture = new Date(visitDate) > new Date(); await insertComment(id, "Admin", user.role, isFuture ? `Visit scheduled for ${fmtD}.` : `Visit logged for ${fmtD}. [visit_report]`); await onRefresh(); };
+  const handleLogVisit = async (id, visitDate, asProvider) => { await logVisit(id, visitDate, asProvider || user.name); const fmtD = new Date(visitDate).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }); const isFuture = new Date(visitDate) > new Date(); const who = asProvider || "Admin"; const role = asProvider ? "company" : user.role; await insertComment(id, who, role, isFuture ? `Visit scheduled for ${fmtD}.` : `Visit logged for ${fmtD}. [visit_report]`); await onRefresh(); };
   const handleMarkResolved = async (id, resolveDate) => { if (resolveDate) { await resolveComplaint(id, resolveDate, user.name); } else { await markResolved(id, user.name); } const c = complaints.find(x => x.id === id); if (c) { createNotification("amex", "resolved", `Ready for Verification: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Ready for Verification: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
   const handleVerify = async (id, verifyDate) => { await verifyComplaint(id, user.name); if (verifyDate) { await updateComplaintFields(id, { verified_at: new Date(verifyDate).toISOString() }); } const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
   const handleRejectVerify = async (id) => { await rejectVerification(id); await insertComment(id, "", "admin", "Verification rejected — ticket reopened."); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
