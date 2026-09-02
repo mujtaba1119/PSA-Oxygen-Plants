@@ -390,6 +390,7 @@ const compressImageFile = (file) => new Promise((resolve) => {
 // Upload one or more files as attachments on a complaint (shared by submission forms + the
 // acknowledgement / work-notes panel).
 async function uploadComplaintAttachments(complaintId, fileList) {
+  const results = [];
   for (const rawFile of fileList) {
     try {
       const file = await compressImageFile(rawFile);
@@ -402,8 +403,10 @@ async function uploadComplaintAttachments(complaintId, fileList) {
       const res = await fetch("/api/attachment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ complaintId, fileName: file.name, contentType: file.type, base64Data }) });
       const data = await res.json();
       if (!res.ok) console.error("Upload error:", data.error);
+      else results.push({ name: rawFile.name, path: data.path || `complaints/${complaintId}/${file.name}`, url: data.url });
     } catch (e) { console.error("Upload failed:", e); }
   }
+  return results;
 }
 async function requestResolution(id, requestedBy) {
   const data = await dbWrite({ action: "request_resolution", id, requested_by: requestedBy });
@@ -2818,29 +2821,33 @@ function CommentInlineAttachments({ fileNames, complaintId, complaintAttachments
   const [loadingFile, setLoadingFile] = useState(null);
   if (!fileNames || fileNames.length === 0) return null;
   const atts = Array.isArray(complaintAttachments) ? complaintAttachments : [];
-  const findPath = (name) => {
-    const match = atts.find(a => a.name === name || (a.path && a.path.endsWith("/" + name)));
-    return match ? match.path : `complaints/${complaintId}/${name}`;
-  };
-  const viewFile = async (name) => {
-    setLoadingFile(name);
+  const parsedFiles = fileNames.map(entry => {
+    if (entry.includes("|")) {
+      const [name, path] = entry.split("|");
+      return { name: name.trim(), path: path.trim() };
+    }
+    const match = atts.find(a => a.name === entry || (a.path && a.path.endsWith("/" + entry)));
+    return { name: entry, path: match ? match.path : `complaints/${complaintId}/${entry}` };
+  });
+  const viewFile = async (file) => {
+    setLoadingFile(file.name);
+    const w = window.open("", "_blank");
     try {
-      const path = findPath(name);
-      const res = await fetch(`/api/attachment?path=${encodeURIComponent(path)}`);
+      const res = await fetch(`/api/attachment?path=${encodeURIComponent(file.path)}`);
       const data = await res.json();
-      if (data.url) window.open(data.url, "_blank");
-      else console.error("No URL returned for", path, data);
-    } catch (e) { console.error("Failed to load attachment:", e); }
+      if (data.url) w.location.href = data.url;
+      else { w.close(); console.error("No URL returned for", file.path, data); }
+    } catch (e) { w.close(); console.error("Failed to load attachment:", e); }
     setLoadingFile(null);
   };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
-      {fileNames.map((name, i) => {
-        const isImage = name.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-        const isPdf = name.match(/\.pdf$/i);
-        const loading = loadingFile === name;
+      {parsedFiles.map((file, i) => {
+        const isImage = file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+        const isPdf = file.name.match(/\.pdf$/i);
+        const loading = loadingFile === file.name;
         return (
-          <button key={i} onClick={() => viewFile(name)} disabled={loading} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, fontWeight: 500, color: "#1a2332", background: "#f8fffe", padding: "8px 12px", borderRadius: 10, border: `1px solid ${C.tealLight}`, cursor: loading ? "wait" : "pointer", textAlign: "left", width: "fit-content", maxWidth: "100%", transition: "background 0.15s" }} onMouseEnter={e => { if (!loading) e.currentTarget.style.background = "#e6f5f0"; }} onMouseLeave={e => { e.currentTarget.style.background = "#f8fffe"; }}>
+          <button key={i} onClick={() => viewFile(file)} disabled={loading} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, fontWeight: 500, color: "#1a2332", background: "#f8fffe", padding: "8px 12px", borderRadius: 10, border: `1px solid ${C.tealLight}`, cursor: loading ? "wait" : "pointer", textAlign: "left", width: "fit-content", maxWidth: "100%", transition: "background 0.15s" }} onMouseEnter={e => { if (!loading) e.currentTarget.style.background = "#e6f5f0"; }} onMouseLeave={e => { e.currentTarget.style.background = "#f8fffe"; }}>
             <div style={{ width: 30, height: 30, borderRadius: 8, background: isImage ? "#e6f5f0" : isPdf ? "#fef2f2" : "#f0f4ff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               {isImage
                 ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
@@ -2849,7 +2856,7 @@ function CommentInlineAttachments({ fileNames, complaintId, complaintAttachments
                   : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4f6df5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>}
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#1a2332", wordBreak: "break-all" }}>{loading ? "Opening…" : name}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: "#1a2332", wordBreak: "break-all" }}>{loading ? "Opening…" : file.name}</div>
               <div style={{ fontSize: 10, color: "#94a3a0", marginTop: 1 }}>{isImage ? "Image" : isPdf ? "PDF Document" : "File"} · Tap to view</div>
             </div>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -2914,9 +2921,9 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
     const msgParts = [];
     if (text.trim()) msgParts.push(text.trim());
     if (commentFiles.length > 0) {
-      await uploadComplaintAttachments(complaintId, commentFiles);
-      const names = commentFiles.map(f => f.name).join(",");
-      msgParts.push(`[attached:${names}]`);
+      const uploaded = await uploadComplaintAttachments(complaintId, commentFiles);
+      const pathEntries = uploaded.map(u => `${u.name}|${u.path}`).join(",");
+      msgParts.push(`[attached:${pathEntries}]`);
     }
     await insertComment(complaintId, author, role, msgParts.join("\n"));
     setText(""); setCommentFiles([]); setPosting(false); await loadComments();
