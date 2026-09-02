@@ -398,19 +398,20 @@ async function uploadComplaintAttachments(complaintId, fileList) {
   for (const rawFile of fileList) {
     try {
       const file = await compressImageFile(rawFile);
-      const base64Data = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      const res = await fetch("/api/attachment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ complaintId, fileName: file.name, contentType: file.type, base64Data }) });
-      const data = await res.json();
-      if (!res.ok) console.error("Upload error:", data.error);
-      else results.push({ name: rawFile.name, path: data.path || `complaints/${complaintId}/${file.name}`, url: data.url });
-    } catch (e) { console.error("Upload failed:", e); }
+      const path = `complaints/${complaintId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type, upsert: false });
+      if (error) { console.error("Upload error:", rawFile.name, error.message); continue; }
+      results.push({ name: rawFile.name, path });
+    } catch (e) { console.error("Upload failed for", rawFile.name, e); }
   }
   return results;
+}
+async function getAttachmentUrl(path) {
+  try {
+    const { data, error } = await supabase.storage.from("attachments").createSignedUrl(path, 3600);
+    if (error || !data?.signedUrl) return null;
+    return data.signedUrl;
+  } catch { return null; }
 }
 async function requestResolution(id, requestedBy) {
   const data = await dbWrite({ action: "request_resolution", id, requested_by: requestedBy });
@@ -2836,12 +2837,9 @@ function CommentInlineAttachments({ fileNames, complaintId, complaintAttachments
   const viewFile = async (file) => {
     setLoadingFile(file.name);
     const w = window.open("", "_blank");
-    try {
-      const res = await fetch(`/api/attachment?path=${encodeURIComponent(file.path)}`);
-      const data = await res.json();
-      if (data.url) w.location.href = data.url;
-      else { w.close(); console.error("No URL returned for", file.path, data); }
-    } catch (e) { w.close(); console.error("Failed to load attachment:", e); }
+    const url = await getAttachmentUrl(file.path);
+    if (url) w.location.href = url;
+    else { w.close(); console.error("No URL for", file.path); }
     setLoadingFile(null);
   };
   return (
@@ -2941,9 +2939,12 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
     const msgParts = [];
     if (text.trim()) msgParts.push(text.trim());
     if (commentFiles.length > 0) {
-      const uploaded = await uploadComplaintAttachments(complaintId, commentFiles);
-      const pathEntries = uploaded.map(u => `${u.name}|${u.path}`).join(",");
-      msgParts.push(`[attached:${pathEntries}]`);
+      let uploaded = [];
+      try { uploaded = await uploadComplaintAttachments(complaintId, commentFiles); } catch (e) { console.error("Upload error:", e); }
+      if (uploaded.length > 0) {
+        const pathEntries = uploaded.map(u => `${u.name}|${u.path}`).join(",");
+        msgParts.push(`[attached:${pathEntries}]`);
+      }
     }
     await insertComment(complaintId, author, role, msgParts.join("\n"));
     setText(""); setCommentFiles([]); setPosting(false); await loadComments();
@@ -3141,11 +3142,8 @@ function AttachmentViewer({ attachments }) {
 
   const loadUrl = async (path) => {
     if (urls[path]) return;
-    try {
-      const res = await fetch(`/api/attachment?path=${encodeURIComponent(path)}`);
-      const data = await res.json();
-      if (data.url) setUrls(prev => ({ ...prev, [path]: data.url }));
-    } catch {}
+    const url = await getAttachmentUrl(path);
+    if (url) setUrls(prev => ({ ...prev, [path]: url }));
   };
 
   const handleExpand = () => {
@@ -3629,19 +3627,9 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
     for (const rawFile of fileList) {
       try {
         const file = await compressImage(rawFile);
-        const base64Data = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result.split(",")[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        const res = await fetch("/api/attachment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ complaintId, fileName: file.name, contentType: file.type, base64Data })
-        });
-        const data = await res.json();
-        if (!res.ok) console.error("Upload error:", data.error);
+        const path = `complaints/${complaintId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type, upsert: false });
+        if (error) console.error("Upload error:", error.message);
       } catch (e) { console.error("Upload failed:", e); }
     }
   };
@@ -4608,19 +4596,9 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
     for (const rawFile of fileList) {
       try {
         const file = await adminCompressImage(rawFile);
-        const base64Data = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result.split(",")[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        const res = await fetch("/api/attachment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ complaintId, fileName: file.name, contentType: file.type, base64Data })
-        });
-        const data = await res.json();
-        if (!res.ok) console.error("Upload error:", data.error);
+        const path = `complaints/${complaintId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type, upsert: false });
+        if (error) console.error("Upload error:", error.message);
       } catch (e) { console.error("Upload failed:", e); }
     }
   };
