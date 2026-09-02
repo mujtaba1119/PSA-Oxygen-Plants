@@ -3883,6 +3883,7 @@ function SidebarNav({ items, active, onSelect, bottomItems }) {
                 <SidebarIcon name={item.icon} />
               </div>
               <span style={{ fontSize: 11.5, fontWeight: isActive ? 700 : 500, color: isActive ? "#fff" : "rgba(255,255,255,0.55)", transition: "color 0.15s", letterSpacing: 0.2 }}>{item.label}</span>
+              {item.badge && <span style={{ fontSize: 8.5, fontWeight: 800, color: "#fff", background: "#ef4444", padding: "1px 6px", borderRadius: 8, lineHeight: "14px", letterSpacing: 0.3, textTransform: "uppercase", marginLeft: "auto" }}>New</span>}
             </div>
           );
         })}
@@ -4501,6 +4502,8 @@ function ActivityLog({ complaints, scopeProvider, currentUser, onViewSite, onRes
 
 function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails = [], siteNotes, shutdowns, onRefresh, onLogout }) {
   const [tab, setTab] = useState("dashboard"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
+  const [activitySeen, setActivitySeen] = useState(() => Date.now());
+  const handleAdminTabSelect = (t) => { if (t === "activity") setActivitySeen(Date.now()); setTab(t); setSelected(null); };
   const [editingUser, setEditingUser] = useState(null); const [newPw, setNewPw] = useState(""); const [pwSuccess, setPwSuccess] = useState(""); const [saving, setSaving] = useState(false);
   const [emailGroup, setEmailGroup] = useState("Novair"); const [newEmail, setNewEmail] = useState(""); const [emailSaving, setEmailSaving] = useState(false);
   const [newEscEmail, setNewEscEmail] = useState(""); const [escSaving, setEscSaving] = useState(false);
@@ -4607,12 +4610,16 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
   const adminFuncCount = ALL_HOSPITALS.filter(h => isFunctional(h, complaints, siteNotes)).length;
   const adminResolved = complaints.filter(c => isClosedStatus(c.status)).length;
 
+  const hasNewActivity = complaints.some(c => {
+    const dates = [c.created_at, c.acknowledged_at, c.resolved_at, c.verified_at, c.escalated_at, c.warranty_at].filter(Boolean);
+    return dates.some(d => new Date(d).getTime() > activitySeen);
+  });
   const NAV_ITEMS = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "sites", icon: "sites", label: "Site Status" },
-    { id: "equipment", icon: "equipment", label: "Equipment" },
+    { id: "activity", icon: "activity", label: "Activity", badge: hasNewActivity && tab !== "activity" },
     { id: "tickets", icon: "tickets", label: "Tickets" },
-    { id: "activity", icon: "activity", label: "Activity" },
+    { id: "equipment", icon: "equipment", label: "Equipment" },
     { id: "submit", icon: "submit", label: "Submit" },
     { id: "maintenance", icon: "maintenance", label: "Maintenance" },
     { id: "analytics", icon: "analytics", label: "Analytics" },
@@ -4644,7 +4651,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
           .main-area { margin-left: 0 !important; }
         }
       `}</style>
-      <SidebarNav items={NAV_ITEMS} bottomItems={NAV_BOTTOM} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
+      <SidebarNav items={NAV_ITEMS} bottomItems={NAV_BOTTOM} active={tab} onSelect={handleAdminTabSelect} />
       <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f7f8fa", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${ALL_HOSPITALS.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing} />
         <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px", width: "100%", flex: 1 }}>
@@ -4849,6 +4856,8 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
 /* ─── Company Dashboard (Sidebar Layout) ─── */
 function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRefresh, onLogout }) {
   const [tab, setTab] = useState("dashboard"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
+  const [activitySeen, setActivitySeen] = useState(() => Date.now());
+  const handleCompanyTabSelect = (t) => { if (t === "activity") setActivitySeen(Date.now()); setTab(t); setSelected(null); };
   const [pendingFocus, setPendingFocus] = useState(null);
   const handleNotifFocus = (info) => {
     setTab("tickets");
@@ -4875,12 +4884,16 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
   const funcCount = myHospitals.filter(h => isFunctional(h, complaints, siteNotes)).length;
 
   const showActivity = ["Novair", "Amex", "Intexim", "Z-Corps"].includes(companyName);
+  const hasNewActivity = complaints.some(c => {
+    const dates = [c.created_at, c.acknowledged_at, c.resolved_at, c.verified_at, c.escalated_at, c.warranty_at].filter(Boolean);
+    return dates.some(d => new Date(d).getTime() > activitySeen);
+  });
   const NAV_ITEMS = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "sites", icon: "sites", label: "Site Status" },
-    { id: "equipment", icon: "equipment", label: "Equipment" },
+    ...(showActivity ? [{ id: "activity", icon: "activity", label: "Activity", badge: hasNewActivity && tab !== "activity" }] : []),
     { id: "tickets", icon: "tickets", label: "Tickets" },
-    ...(showActivity ? [{ id: "activity", icon: "activity", label: "Activity" }] : []),
+    { id: "equipment", icon: "equipment", label: "Equipment" },
     { id: "maintenance", icon: "maintenance", label: "Maintenance" },
     { id: "analytics", icon: "analytics", label: "Analytics" },
   ];
@@ -4905,7 +4918,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
           .main-area { margin-left: 0 !important; }
         }
       `}</style>
-      <SidebarNav items={NAV_ITEMS} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
+      <SidebarNav items={NAV_ITEMS} active={tab} onSelect={handleCompanyTabSelect} />
       <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f7f8fa", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${myHospitals.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing} />
         <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px", width: "100%", flex: 1 }}>
