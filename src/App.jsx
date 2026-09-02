@@ -3253,24 +3253,18 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               <span style={{ width: 9, height: 9, borderRadius: "50%", background: accent, flexShrink: 0 }} />
               {ticketNumber && <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: "linear-gradient(135deg, #0d9488, #0f766e)", border: "none", borderRadius: 7, padding: "3px 10px", flexShrink: 0, letterSpacing: 0.3 }}>Ticket ID: {ticketNumber}</span>}
               <strong style={{ fontSize: 14.5, fontWeight: 700, color: C.black, whiteSpace: expanded ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.title}</strong>
+              {!isClosedStatus(c.status) && <SeverityBadge severity={c.severity} />}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
               {isClosedStatus(c.status) && c.verified_at && c.created_at
                 ? (() => { const days = Math.round((new Date(c.verified_at) - new Date(c.created_at)) / (1000 * 60 * 60 * 24) * 10) / 10; return <span style={{ fontSize: 8.5, fontWeight: 700, padding: "2px 6px", borderRadius: 8, color: "#1a5276", background: "#d6eaf8", textTransform: "uppercase", letterSpacing: 0.3, flexShrink: 0, whiteSpace: "nowrap" }}>Resolved in {days}d</span>; })()
                 : isClosedStatus(c.status) && c.resolved_at && c.created_at
                   ? (() => { const days = Math.round((new Date(c.resolved_at) - new Date(c.created_at)) / (1000 * 60 * 60 * 24) * 10) / 10; return <span style={{ fontSize: 8.5, fontWeight: 700, padding: "2px 6px", borderRadius: 8, color: "#1a5276", background: "#d6eaf8", textTransform: "uppercase", letterSpacing: 0.3, flexShrink: 0, whiteSpace: "nowrap" }}>Resolved in {days}d</span>; })()
-                  : <SeverityBadge severity={c.severity} />}
+                  : null}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
-                <StatusBadge status={effStatus} />
-                {!isClosedStatus(c.status) && (() => {
+                {isClosedStatus(c.status) ? <StatusBadge status={effStatus} /> : (() => {
                   const dOpen = Math.max(0, Math.floor((Date.now() - new Date(c.created_at)) / (1000 * 60 * 60 * 24)));
-                  const dProg = c.acknowledged_at ? Math.max(0, Math.floor((Date.now() - new Date(c.acknowledged_at)) / (1000 * 60 * 60 * 24))) : null;
-                  return (
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: "#b45309", background: "#fef6ec", padding: "2px 7px", borderRadius: 5, whiteSpace: "nowrap" }}>Open {dOpen}d</span>
-                      {effStatus === "In Progress" && dProg != null && <span style={{ fontSize: 10, fontWeight: 700, color: "#0f766e", background: "#e6f7f2", padding: "2px 7px", borderRadius: 5, whiteSpace: "nowrap" }}>In progress {dProg}d</span>}
-                    </div>
-                  );
+                  return <span style={{ fontSize: 10, fontWeight: 700, color: "#b45309", background: "#fef6ec", padding: "3px 10px", borderRadius: 6, whiteSpace: "nowrap" }}>Open · {dOpen}d</span>;
                 })()}
               </div>
               <span style={{ fontSize: 16, color: C.tealDark, transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.2s", display: "inline-block" }}>⌄</span>
@@ -3411,7 +3405,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
                   {c.escalated_at ? "Escalate Again" : "Escalate"}
                 </button>
-                <span style={{ fontSize: 11, color: C.textLight, marginLeft: 10 }}>Open {openDays} days · notifies escalation contacts</span>
+                <span style={{ fontSize: 11, color: C.textLight, marginLeft: 10 }}>Open {openDays} days</span>
               </div>
             )}
             {/* Warranty decision (after a visit) */}
@@ -3685,14 +3679,14 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
               <div style={{ textAlign: "center", padding: "12px 18px", background: "#fff", borderRadius: 14, border: "1px solid #d5f0ea", minWidth: 100, boxShadow: "0 2px 8px rgba(13,148,136,0.06)" }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 2 }}>
                   <span style={{ fontSize: 26, fontWeight: 800, color: "#0f766e", lineHeight: 1 }}>{hospResRate != null ? hospResRate : "—"}</span>
-                  {hospResRate != null && <span style={{ fontSize: 13, fontWeight: 700, color: "#5eead4" }}>%</span>}
+                  {hospResRate != null && <span style={{ fontSize: 13, fontWeight: 700, color: "#0f766e" }}>%</span>}
                 </div>
                 <div style={{ fontSize: 9.5, fontWeight: 700, color: "#94a3a0", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 5 }}>Resolution Rate</div>
               </div>
               <div style={{ textAlign: "center", padding: "12px 18px", background: "#fff", borderRadius: 14, border: "1px solid #d5f0ea", minWidth: 100, boxShadow: "0 2px 8px rgba(13,148,136,0.06)" }}>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 2 }}>
                   <span style={{ fontSize: 26, fontWeight: 800, color: "#0f766e", lineHeight: 1 }}>{hospAvgRes != null ? hospAvgRes : "—"}</span>
-                  {hospAvgRes != null && <span style={{ fontSize: 13, fontWeight: 700, color: "#5eead4" }}>d</span>}
+                  {hospAvgRes != null && <span style={{ fontSize: 13, fontWeight: 700, color: "#0f766e" }}>d</span>}
                 </div>
                 <div style={{ fontSize: 9.5, fontWeight: 700, color: "#94a3a0", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 5 }}>Avg Resolution Time</div>
               </div>
