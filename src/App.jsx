@@ -3666,9 +3666,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
         <div style={{ flex: 1 }} />
       </nav>
       <div className="hosp-main" style={{ flex: 1, marginLeft: 180, background: "#f7f8fa", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <TopBar title="PSA Oxygen Plants" user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
-          <NotificationBell user={user} onFocusComplaint={handleFocusComplaint} light={true} complaints={complaints} />
-        </TopBar>
+        <TopBar title="PSA Oxygen Plants" user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing} />
         <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px", width: "100%", flex: 1 }}>
           <div style={{ marginBottom: 24, padding: "22px 24px", background: "linear-gradient(135deg, #f0fdfa, #f7fdfb)", border: "1px solid #d5f0ea", borderRadius: 16, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
             <div style={{ width: 52, height: 52, borderRadius: 14, background: "linear-gradient(135deg, #0b3b38, #0f766e)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 4px 12px rgba(13,148,136,0.25)" }}>
@@ -4640,9 +4638,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
       `}</style>
       <SidebarNav items={NAV_ITEMS} bottomItems={NAV_BOTTOM} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
       <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f7f8fa", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${ALL_HOSPITALS.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
-          <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} light={true} />
-        </TopBar>
+        <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${ALL_HOSPITALS.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing} />
         <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px", width: "100%", flex: 1 }}>
           <div key={tab} className="scale-in">
           {tab === "dashboard" && <HomeTab hospitals={ALL_HOSPITALS} groups={GROUPS} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} user={user} />}
@@ -4711,7 +4707,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
               <div style={{ flex: 1, minWidth: 140 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Full Name</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} placeholder="Full Name" value={newUserName} onChange={e => { setNewUserName(e.target.value); setNewUserId(e.target.value.trim().toLowerCase().replace(/\s+/g, "")); }} /></div>
               <div style={{ minWidth: 120 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Organization</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserCompany} onChange={e => setNewUserCompany(e.target.value)}>{companyGroups.map(g => <option key={g} value={g}>{g}</option>)}</select></div>
-              <div style={{ minWidth: 110 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Account Type</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserCompanyRole} onChange={e => setNewUserCompanyRole(e.target.value)}><option value="manager">Manager</option><option value="engineer">Engineer</option><option value="technician">Technician</option></select></div>
+              {["Novair", "Amex", "Intexim", "Z-Corps"].includes(newUserCompany) && <div style={{ minWidth: 110 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Account Type</label><select style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} value={newUserCompanyRole} onChange={e => setNewUserCompanyRole(e.target.value)}><option value="manager">Manager</option><option value="engineer">Engineer</option><option value="technician">Technician</option></select></div>}
               <div style={{ flex: 1, minWidth: 140 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Email (optional)</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} type="email" placeholder="email@company.com" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} /></div>
               <div style={{ flex: 1, minWidth: 120 }}><label style={{ fontSize: 11, color: C.textLight, display: "block", marginBottom: 2 }}>Password</label><input style={{ ...styles.pwInput, width: "100%", padding: "8px 10px" }} type="password" placeholder="Min 8 chars" value={newUserPw} onChange={e => setNewUserPw(e.target.value)} /></div>
               <button style={styles.pwSaveBtn} onClick={handleAddUser}>{addingUser ? "…" : "Add"}</button>
@@ -4746,26 +4742,14 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
           {["Amex", "Novair", "Intexim", "Z-Corps"].map(company => {
             const masterIds = { "Amex": "amex", "Novair": "novair", "Intexim": "intexim", "Z-Corps": "zcorps" };
             const masterId = masterIds[company];
-            const masterUser = companyUsers.find(u => u.id === masterId || u.name === company);
             const indivUsers = filteredCompanyUsers.filter(u => u.company === company && u.id !== masterId);
-            if (!masterUser && indivUsers.length === 0) return null;
+            if (indivUsers.length === 0) return null;
             return (
               <div key={company} style={{ marginBottom: 24 }}>
                 <div style={{ ...styles.groupHeader, borderBottom: `1px solid ${C.tealLight}`, marginBottom: 10, paddingBottom: 8 }}>
                   <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, letterSpacing: 0.5, textTransform: "uppercase" }}>{company} <span style={{ fontSize: 10, fontWeight: 400, color: C.textLight, letterSpacing: 1 }}>— COMPANY</span></h3>
-                  <span style={{ fontSize: 11, color: C.textLight }}>{(masterUser ? 1 : 0) + indivUsers.length} account(s)</span>
+                  <span style={{ fontSize: 11, color: C.textLight }}>{indivUsers.length} account(s)</span>
                 </div>
-                {masterUser && (
-                  <div style={{ ...styles.pwCard, marginBottom: 4 }}>
-                    <div style={styles.pwRow}>
-                      <div><strong style={styles.pwName}>{masterUser.name}</strong><span style={styles.pwRole}>Master</span>{masterUser.email && <span style={{ fontSize: 11, color: C.textLight, marginLeft: 8 }}>{masterUser.email}</span>}</div>
-                      <div style={styles.pwRight}>
-                        {editingUser === masterUser.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} type="password" placeholder="New password (min 8)" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(masterUser.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(masterUser.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(masterUser.id); setNewPw(""); }}>Password</button>)}
-                      </div>
-                    </div>
-                    {pwSuccess === masterUser.id && <p style={styles.successMsg}>Password updated.</p>}
-                  </div>
-                )}
                 {indivUsers.map(u => (
                   <div key={u.id} style={{ ...styles.pwCard, marginBottom: 4 }}>
                     <div style={styles.pwRow}>
@@ -4791,26 +4775,14 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
           {["UNDP", "CMU", "Global Fund"].map(company => {
             const masterIds = { "UNDP": "undp", "CMU": "cmu", "Global Fund": "globalfund" };
             const masterId = masterIds[company];
-            const masterUser = companyUsers.find(u => u.id === masterId || u.name === company);
             const indivUsers = filteredCompanyUsers.filter(u => u.company === company && u.id !== masterId);
-            if (!masterUser && indivUsers.length === 0) return null;
+            if (indivUsers.length === 0) return null;
             return (
               <div key={company} style={{ marginBottom: 24 }}>
                 <div style={{ ...styles.groupHeader, borderBottom: `1px solid ${C.tealLight}`, marginBottom: 10, paddingBottom: 8 }}>
                   <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, letterSpacing: 0.5, textTransform: "uppercase" }}>{company} <span style={{ fontSize: 10, fontWeight: 400, color: C.textLight, letterSpacing: 1 }}>— VIEWER</span></h3>
-                  <span style={{ fontSize: 11, color: C.textLight }}>{(masterUser ? 1 : 0) + indivUsers.length} account(s)</span>
+                  <span style={{ fontSize: 11, color: C.textLight }}>{indivUsers.length} account(s)</span>
                 </div>
-                {masterUser && (
-                  <div style={{ ...styles.pwCard, marginBottom: 4 }}>
-                    <div style={styles.pwRow}>
-                      <div><strong style={styles.pwName}>{masterUser.name}</strong><span style={styles.pwRole}>Master</span>{masterUser.email && <span style={{ fontSize: 11, color: C.textLight, marginLeft: 8 }}>{masterUser.email}</span>}</div>
-                      <div style={styles.pwRight}>
-                        {editingUser === masterUser.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} type="password" placeholder="New password (min 8)" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(masterUser.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(masterUser.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(masterUser.id); setNewPw(""); }}>Password</button>)}
-                      </div>
-                    </div>
-                    {pwSuccess === masterUser.id && <p style={styles.successMsg}>Password updated.</p>}
-                  </div>
-                )}
                 {indivUsers.map(u => (
                   <div key={u.id} style={{ ...styles.pwCard, marginBottom: 4 }}>
                     <div style={styles.pwRow}>
@@ -4927,9 +4899,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
       `}</style>
       <SidebarNav items={NAV_ITEMS} active={tab} onSelect={(t) => { setTab(t); setSelected(null); }} />
       <div className="main-area" style={{ flex: 1, marginLeft: 180, background: "#f7f8fa", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${myHospitals.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing}>
-          <NotificationBell user={user} onFocusComplaint={handleNotifFocus} onNavigate={(h) => { setTab("tickets"); setSelected(h); }} complaints={complaints} light={true} />
-        </TopBar>
+        <TopBar title="PSA Oxygen Plants" subtitle={`${PAGE_TITLES[tab] || "Dashboard"} · ${myHospitals.length} sites`} user={user} onRefresh={handleRefresh} onLogout={onLogout} refreshing={refreshing} />
         <main style={{ maxWidth: 1060, margin: "0 auto", padding: "28px 32px", width: "100%", flex: 1 }}>
           <div key={tab} className="scale-in">
           {tab === "dashboard" && (companyName === "Novair" && isManagerUser(user)
