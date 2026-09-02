@@ -416,9 +416,14 @@ async function uploadComplaintAttachments(complaintId, fileList) {
 async function getAttachmentUrl(path) {
   try {
     const { data, error } = await supabase.storage.from("attachments").createSignedUrl(path, 3600);
-    if (error || !data?.signedUrl) return null;
-    return data.signedUrl;
-  } catch { return null; }
+    if (!error && data?.signedUrl) return data.signedUrl;
+  } catch {}
+  try {
+    const res = await fetch(`/api/attachment?path=${encodeURIComponent(path)}`);
+    const data = await res.json();
+    if (data.url) return data.url;
+  } catch {}
+  return null;
 }
 async function requestResolution(id, requestedBy) {
   const data = await dbWrite({ action: "request_resolution", id, requested_by: requestedBy });
