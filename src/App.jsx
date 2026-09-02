@@ -64,7 +64,7 @@ const DISPLAY_NAMES = { "Timergara": "Lower Dir - Timergara", "Malakand": "Batkh
 const displayName = h => DISPLAY_NAMES[h] || h;
 // Full hospital names — used ONLY on the hospital account's own dashboard heading.
 const FULL_HOSPITAL_NAMES = { "Rawalpindi": "Rawalpindi - Holy Family Hospital", "Kohat": "DHQ Hospital Kohat", "Swat": "Saidu Teaching Hospital", "Timergara": "DHQ Hospital Timergara", "Malakand": "Batkhela - DHQ Hospital", "Bannu": "Khalifa Gul Nawaz Hospital", "Neelum": "DHQ Hospital Neelum", "Jhelum": "DHQ Hospital Jehlum Valley", "Haveli": "DHQ Hospital Haveli", "Nagar": "DHQ Hospital Nagar", "Ghizer": "DHQ Hospital Gahkuch", "Astore": "DHQ Hospital Eidgah - Astore", "Khaplu": "DHQ Hospital Khaplu - Ghanche", "Islamabad": "PIMS Hospital Islamabad", "Bhakkar": "DHQ Hospital Bhakkar", "Sahiwal": "Sahiwal Teaching Hospital", "Toba Tek Singh": "DHQ Hospital Toba Tek Singh", "Sargodha": "DHQ Hospital Sargodha", "Rahim Yar Khan": "Sheikh Zayed Hospital - Rahim Yar Khan", "Jhang": "DHQ Hospital Jhang", "Faisalabad": "Allied Hospital Faisalabad", "Bhimber": "DHQ Hospital Bhimber", "Multan": "Nishtar Hospital Multan", "Larkana": "Chandka Medical College Hospital", "Jamshoro": "Liaqat University Hospital Jamshoro", "Quetta SZ": "Sheikh Zayed Hospital Quetta", "DM Jamali": "DHQ Hospital Dera Murad Jamali", "Khuzdar": "DHQ Hospital Khuzdar", "Sibbi": "DHQ Hospital Sibbi", "Nawabshah": "DHQ Hospital Benazirabad", "Zhob": "DHQ Teaching Hospital Zhob", "Quetta Sandeman": "Sandman Provincial Hospital Quetta", "Loralai": "DHQ Teaching Hospital Loralai", "Panjgur": "DHQ Hospital Panjgur", "Kharan": "Divisional Hospital Kharan", "Karachi": "Sindh Govt. Hospital Korangi" };
-const fullHospitalName = h => { const n = FULL_HOSPITAL_NAMES[h] || h; if (!n.includes("DHQ")) return n; return n.replace("DHQ Teaching Hospital", "DHQ Teaching").replace("DHQ Hospital", "DHQ").replace(" - DHQ", " - DHQ"); };
+const fullHospitalName = h => { const n = FULL_HOSPITAL_NAMES[h] || h; if (!n.includes("DHQ")) return n; return n.replace("DHQ Teaching Hospital", "THQ").replace("DHQ Hospital", "DHQ").replace(" - DHQ", " - DHQ"); };
 
 // Internal-only site abbreviations for ticket numbering (never shown as labels, only in ticket IDs)
 const SITE_CODES = {
@@ -2886,6 +2886,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
   const handleEdit = async (id) => { if (!editText.trim()) return; await updateCommentContent(id, editText.trim()); setEditingComment(null); setEditText(""); await loadComments(); };
   return (
     <div style={{ marginTop: 10 }}>
+      <input ref={commentFileRef} type="file" accept="image/*,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) { setCommentFiles(prev => [...prev, ...Array.from(e.target.files)]); } e.target.value = ""; }} />
       <button style={styles.commentToggle} onClick={() => setExpanded(!expanded)}>
         {expanded ? "▾ Hide Comments" : "▸ Comments" + (count > 0 ? ` (${count})` : "")}
       </button>
@@ -2926,8 +2927,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
               )}
               <div style={styles.commentInputRow}>
                 <input style={styles.commentInput} placeholder="Write a comment…" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && post()} />
-                <input ref={commentFileRef} type="file" accept="image/*,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={e => { if (e.target.files.length) setCommentFiles(prev => [...prev, ...Array.from(e.target.files)]); e.target.value = ""; }} />
-                <button style={{ background: "none", border: "none", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", borderRadius: 8, color: "#94a3a0", flexShrink: 0 }} onClick={() => commentFileRef.current?.click()} title="Attach file">
+                <button type="button" style={{ background: "none", border: "none", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", borderRadius: 8, color: "#94a3a0", flexShrink: 0 }} onClick={() => { if (commentFileRef.current) commentFileRef.current.click(); }} title="Attach file">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
                 </button>
                 <button style={{ ...styles.commentSendBtn, background: ((!text.trim() && commentFiles.length === 0) || posting) ? "#9db8b4" : C.teal, cursor: ((!text.trim() && commentFiles.length === 0) || posting) ? "not-allowed" : "pointer", boxShadow: ((!text.trim() && commentFiles.length === 0) || posting) ? "none" : "0 3px 8px rgba(13,148,136,0.25)" }} onClick={post} disabled={(!text.trim() && commentFiles.length === 0) || posting}>{posting ? "…" : "Post"}</button>
@@ -3618,13 +3618,19 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
               </div>
             </div>
             <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
-              <div style={{ textAlign: "center", padding: "10px 16px", background: "#fff", borderRadius: 12, border: "1px solid #d5f0ea", minWidth: 90 }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#0f766e", lineHeight: 1 }}>{hospResRate != null ? hospResRate + "%" : "—"}</div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: "#94a3a0", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 4 }}>Resolution Rate</div>
+              <div style={{ textAlign: "center", padding: "12px 18px", background: "#fff", borderRadius: 14, border: "1px solid #d5f0ea", minWidth: 100, boxShadow: "0 2px 8px rgba(13,148,136,0.06)" }}>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 2 }}>
+                  <span style={{ fontSize: 26, fontWeight: 800, color: "#0f766e", lineHeight: 1 }}>{hospResRate != null ? hospResRate : "—"}</span>
+                  {hospResRate != null && <span style={{ fontSize: 13, fontWeight: 700, color: "#5eead4" }}>%</span>}
+                </div>
+                <div style={{ fontSize: 9.5, fontWeight: 700, color: "#94a3a0", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 5 }}>Resolution Rate</div>
               </div>
-              <div style={{ textAlign: "center", padding: "10px 16px", background: "#fff", borderRadius: 12, border: "1px solid #d5f0ea", minWidth: 90 }}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#0f766e", lineHeight: 1 }}>{hospAvgRes != null ? hospAvgRes + "d" : "—"}</div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: "#94a3a0", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 4 }}>Avg Resolution</div>
+              <div style={{ textAlign: "center", padding: "12px 18px", background: "#fff", borderRadius: 14, border: "1px solid #d5f0ea", minWidth: 100, boxShadow: "0 2px 8px rgba(13,148,136,0.06)" }}>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 2 }}>
+                  <span style={{ fontSize: 26, fontWeight: 800, color: "#0f766e", lineHeight: 1 }}>{hospAvgRes != null ? hospAvgRes : "—"}</span>
+                  {hospAvgRes != null && <span style={{ fontSize: 13, fontWeight: 700, color: "#5eead4" }}>d</span>}
+                </div>
+                <div style={{ fontSize: 9.5, fontWeight: 700, color: "#94a3a0", textTransform: "uppercase", letterSpacing: 0.8, marginTop: 5 }}>Avg Resolution Time</div>
               </div>
             </div>
           </div>
