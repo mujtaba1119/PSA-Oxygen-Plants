@@ -3150,19 +3150,24 @@ function AttachmentViewer({ attachments }) {
   const [urls, setUrls] = useState({});
   const [expanded, setExpanded] = useState(false);
   const atts = Array.isArray(attachments) ? attachments : [];
+  const attPaths = atts.map(a => a.path).join(",");
   if (atts.length === 0) return null;
 
-  const loadUrl = async (path) => {
-    if (urls[path]) return;
-    const url = await getAttachmentUrl(path);
-    if (url) setUrls(prev => ({ ...prev, [path]: url }));
-  };
-
   useEffect(() => {
-    if (expanded && atts.length > 0) {
-      atts.forEach(a => { if (a.path && !urls[a.path]) loadUrl(a.path); });
-    }
-  }, [expanded, atts.length]);
+    if (!expanded || atts.length === 0) return;
+    let cancelled = false;
+    atts.forEach(a => {
+      if (!a.path) return;
+      setUrls(prev => {
+        if (prev[a.path]) return prev;
+        getAttachmentUrl(a.path).then(url => {
+          if (!cancelled && url) setUrls(p => ({ ...p, [a.path]: url }));
+        });
+        return prev;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [expanded, attPaths]);
 
   return (
     <div style={{ marginTop: 8 }}>
@@ -3181,7 +3186,7 @@ function AttachmentViewer({ attachments }) {
                       <span style={{ fontSize: 9.5, fontWeight: 600, color: "#4a5568", textAlign: "center", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", wordBreak: "break-all", maxWidth: "100%" }}>{a.name}</span>
                     </a>
               ) : (
-                <div onClick={() => loadUrl(a.path)} style={{ width: 120, height: 90, display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontSize: 11, color: C.textLight, cursor: "pointer" }}>Loading…</div>
+                <div style={{ width: 120, height: 90, display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontSize: 11, color: C.textLight }}>Loading…</div>
               )}
             </div>
           ))}
