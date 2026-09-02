@@ -1860,7 +1860,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
   const trend = months.map(m => {
     const inMonth = (dateStr) => { if (!dateStr) return false; const d = new Date(dateStr); return d.getMonth() === m.month && d.getFullYear() === m.year; };
     const opened = scoped.filter(c => inMonth(c.created_at)).length;
-    const resolved = scoped.filter(c => isClosedStatus(c.status) && inMonth(c.resolved_at)).length;
+    const resolved = scoped.filter(c => isClosedStatus(c.status) && inMonth(c.resolved_at || c.verified_at)).length;
     return { ...m, opened, resolved };
   });
   const trendMax = Math.max(1, ...trend.map(t => Math.max(t.opened, t.resolved)));
