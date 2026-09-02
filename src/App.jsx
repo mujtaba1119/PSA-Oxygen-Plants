@@ -2815,17 +2815,17 @@ function OverviewTab({ hospitals, complaints, siteNotes, shutdowns = [], notifEm
                 </div>
               </div>
               {expandedRow === h && (
-                <div className="fade-in" style={{ background: "#fafaf7", padding: "16px 24px", borderBottom: "1px solid #e5e5e0" }}>
-                  <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: "#8a9199", marginBottom: 10 }}>Open Tickets — {displayName(h)}</div>
+                <div className="fade-in" style={{ background: "linear-gradient(180deg, #f0fdfa, #e6f5f0)", padding: "16px 24px", borderBottom: "1px solid #cfeae2", borderLeft: "3px solid #0f766e" }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", color: "#0f766e", marginBottom: 10 }}>Open Tickets — {displayName(h)}</div>
                   {open.length > 0 ? open.map(c => (
-                    <div key={c.id} style={{ background: "#fff", borderRadius: 8, padding: "12px 16px", marginBottom: 8, border: "1px solid #e5e5e0" }}>
+                    <div key={c.id} style={{ background: "#fff", borderRadius: 8, padding: "12px 16px", marginBottom: 8, border: "1px solid #cfeae2", boxShadow: "0 1px 3px rgba(13,148,136,0.06)" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                         <span style={{ fontSize: 13, fontWeight: 600, color: "#b91c1c" }}>{c.title}</span>
                         <span style={{ fontSize: 11, color: "#8a9199" }}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</span>
                       </div>
                       <p style={{ fontSize: 12, color: "#5f6b7a", margin: 0, lineHeight: 1.6 }}>{cleanDescription(c.description)}</p>
                     </div>
-                  )) : <p style={{ fontSize: 12, color: "#8a9199" }}>No open complaints for this site.</p>}
+                  )) : <p style={{ fontSize: 12, color: "#5f8a80" }}>No open complaints for this site.</p>}
                   {onViewSite && (
                     <button onClick={(e) => { e.stopPropagation(); onViewSite(h); }} style={{ display: "inline-flex", alignItems: "center", gap: 7, marginTop: 6, fontSize: 12, fontWeight: 700, color: "#062825", background: "linear-gradient(135deg, #0d9488, #2dd4a8, #5eead4)", border: "none", borderRadius: 10, padding: "9px 18px", cursor: "pointer", letterSpacing: 0.3 }}>
                       View all tickets <span style={{ fontSize: 14 }}>→</span>
