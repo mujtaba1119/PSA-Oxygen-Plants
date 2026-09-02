@@ -282,13 +282,17 @@ function getEffectiveStatus(c) {
 function canAcknowledgeTicket(user, hospital, c) {
   if (c.status !== "Open" || isAcknowledged(c)) return false;
   if (user.role === "admin") return true;
-  return isProviderUser(user) && getProvider(hospital) === getCompanyName(user);
+  if (isProviderUser(user) && getProvider(hospital) === getCompanyName(user)) return true;
+  if (getCompanyName(user) === "Novair" && isProviderUser(user)) return true;
+  return false;
 }
 // Once acknowledged, the provider can keep working the ticket: log visits, add notes/uploads.
 function canWorkTicket(user, hospital, c) {
   if (c.status !== "Open" || !isAcknowledged(c)) return false;
   if (user.role === "admin") return true;
-  return isProviderUser(user) && getProvider(hospital) === getCompanyName(user);
+  if (isProviderUser(user) && getProvider(hospital) === getCompanyName(user)) return true;
+  if (getCompanyName(user) === "Novair" && isProviderUser(user)) return true;
+  return false;
 }
 // Kept for compatibility: visits can be logged once the ticket is acknowledged.
 function canLogVisitTicket(user, hospital, c) { return canWorkTicket(user, hospital, c); }
@@ -2875,6 +2879,22 @@ function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmi
   const [highlightId, setHighlightId] = useState(null);
   const [commentFiles, setCommentFiles] = useState([]);
   const commentFileRef = useRef(null);
+  const reportFileRef = useRef(null);
+  const [reportingCommentId, setReportingCommentId] = useState(null);
+  const [reportUploading, setReportUploading] = useState(false);
+  const handleUploadReport = async (commentId, files) => {
+    if (!files.length || reportUploading) return;
+    setReportUploading(true);
+    const uploaded = await uploadComplaintAttachments(complaintId, files);
+    const pathEntries = uploaded.map(u => `${u.name}|${u.path}`).join(",");
+    const cm = comments.find(x => x.id === commentId);
+    if (cm) {
+      const newContent = cm.content.replace("[visit_report]", "") + `\n[attached:${pathEntries}]`;
+      await updateCommentContent(commentId, newContent.trim());
+    }
+    setReportingCommentId(null); setReportUploading(false);
+    await loadComments();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -2971,11 +2991,21 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
                 const raw = c.content || "";
                 const am = raw.match(/\[attached:([^\]]+)\]/);
                 const fnames = am ? am[1].split(",").map(s => s.trim()).filter(Boolean) : [];
-                const txt = raw.replace(/\[attached:[^\]]+\]/, "").trim();
+                const hasReportTag = raw.includes("[visit_report]");
+                const txt = raw.replace(/\[attached:[^\]]+\]/g, "").replace(/\[visit_report\]/g, "").trim();
                 return (
                   <div style={{ margin: "4px 0 0" }}>
                     {txt && <p style={{ fontSize: 13, color: "#4a5568", lineHeight: 1.4, margin: 0 }}>{txt}</p>}
                     <CommentInlineAttachments fileNames={fnames} complaintId={complaintId} complaintAttachments={complaintAttachments} />
+                    {hasReportTag && (canComment || isAdmin) && (
+                      <div style={{ marginTop: 6 }}>
+                        <input ref={reportFileRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) handleUploadReport(c.id, Array.from(e.target.files)); e.target.value = ""; }} />
+                        <button onClick={() => { setReportingCommentId(c.id); reportFileRef.current?.click(); }} disabled={reportUploading} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, color: "#0f766e", background: "#e6f5f0", border: `1px solid ${C.tealLight}`, borderRadius: 8, padding: "6px 12px", cursor: reportUploading ? "wait" : "pointer" }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                          {reportUploading && reportingCommentId === c.id ? "Uploading…" : "Upload Report"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -3362,8 +3392,8 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                             <div style={{ width: "100%", height: 2, background: "#d7ded9", borderRadius: 2 }} />
                           </div>
                         )}
-                        {/* trailing "so far" segment while still open */}
-                        {i === stages.length - 1 && ongoing && (
+                        {/* trailing "so far" segment while still open — hide if last stage is a future date */}
+                        {i === stages.length - 1 && ongoing && new Date(m.date) <= new Date() && (
                           <div style={{ flex: 1, minWidth: 54, display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 3 }}>
                             <span style={{ fontSize: 10, fontWeight: 700, color: "#b45309", marginBottom: 3, whiteSpace: "nowrap" }}>{dur(m.date, new Date())} so far</span>
                             <div style={{ width: "100%", height: 2, borderRadius: 2, backgroundImage: "repeating-linear-gradient(90deg, #e0a86a 0 6px, transparent 6px 11px)" }} />
@@ -4533,7 +4563,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
   const totalComplaints = complaints.length; const totalOpen = complaints.filter(c => !isClosedStatus(c.status)).length;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
   const handleAssign = async (id, assignedTo) => { await assignComplaint(id, assignedTo, user.name); const c = complaints.find(x => x.id === id); if (c) notifyUsers("assigned", `Ticket Assigned: ${c.hospital}`, `${c.title} — assigned to ${assignedTo}`, c.hospital, id, "admin").catch(() => {}); await onRefresh(); };
-  const handleLogVisit = async (id, visitDate) => { await logVisit(id, visitDate, user.name); await onRefresh(); };
+  const handleLogVisit = async (id, visitDate) => { await logVisit(id, visitDate, user.name); const fmtD = new Date(visitDate).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }); const isFuture = new Date(visitDate) > new Date(); await insertComment(id, user.role === "admin" ? "" : user.name, user.role, isFuture ? `Visit scheduled for ${fmtD}.` : `Visit logged for ${fmtD}. [visit_report]`); await onRefresh(); };
   const handleMarkResolved = async (id, resolveDate) => { if (resolveDate) { await resolveComplaint(id, resolveDate, user.name); } else { await markResolved(id, user.name); } const c = complaints.find(x => x.id === id); if (c) { createNotification("amex", "resolved", `Ready for Verification: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Ready for Verification: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
   const handleVerify = async (id, verifyDate) => { await verifyComplaint(id, user.name); if (verifyDate) { await updateComplaintFields(id, { verified_at: new Date(verifyDate).toISOString() }); } const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
   const handleRejectVerify = async (id) => { await rejectVerification(id); await insertComment(id, "", "admin", "Verification rejected — ticket reopened."); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
@@ -4884,7 +4914,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
   const notifyTarget = (user.company || user.name || "").toLowerCase().replace(/[\s-]+/g, "");
   const handleAssign = async (id, assignedTo) => { await assignComplaint(id, assignedTo, user.name); const c = complaints.find(x => x.id === id); if (c) notifyUsers("assigned", `Ticket Assigned: ${c.hospital}`, `${c.title} — assigned to ${assignedTo}`, c.hospital, id, notifyTarget).catch(() => {}); await onRefresh(); };
-  const handleLogVisit = async (id, visitDate) => { await logVisit(id, visitDate, user.name); await onRefresh(); };
+  const handleLogVisit = async (id, visitDate) => { await logVisit(id, visitDate, user.name); const who = user.name === getCompanyName(user) ? user.name : `${user.name} — ${getCompanyName(user)}`; const fmtD = new Date(visitDate).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }); const isFuture = new Date(visitDate) > new Date(); await insertComment(id, who, user.role, isFuture ? `Visit scheduled for ${fmtD}.` : `Visit logged for ${fmtD}. [visit_report]`); await onRefresh(); };
   const handleMarkResolved = async (id) => { await markResolved(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification("amex", "resolved", `Ready for Verification: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Ready for Verification: ${c.hospital}`, c.title, c.hospital, id, notifyTarget).catch(() => {}); } await onRefresh(); };
   const handleVerify = async (id) => { await verifyComplaint(id, user.name); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, c.hospital, id, notifyTarget).catch(() => {}); } await onRefresh(); };
   const handleRejectVerify = async (id) => { await rejectVerification(id); await insertComment(id, user.name, "company", "Verification rejected — ticket reopened."); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, c.title, c.hospital, id, notifyTarget).catch(() => {}); } await onRefresh(); };
