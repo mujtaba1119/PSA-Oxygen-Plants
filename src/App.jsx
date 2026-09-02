@@ -2977,7 +2977,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
   const handleEdit = async (id) => { if (!editText.trim()) return; await updateCommentContent(id, editText.trim()); setEditingComment(null); setEditText(""); await loadComments(); };
   return (
     <div style={{ marginTop: 10 }}>
-      <input ref={commentFileRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xlsx,.xls" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) { setCommentFiles(prev => [...prev, ...Array.from(e.target.files)]); } e.target.value = ""; }} />
+      <input ref={commentFileRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xlsx,.xls" multiple style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden", pointerEvents: "none" }} onChange={e => { if (e.target.files && e.target.files.length) { setCommentFiles(prev => [...prev, ...Array.from(e.target.files)]); } e.target.value = ""; }} />
       <button style={styles.commentToggle} onClick={() => setExpanded(!expanded)}>
         {expanded ? "▾ Hide Comments" : "▸ Comments" + (count > 0 ? ` (${count})` : "")}
       </button>
@@ -3012,7 +3012,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
                     <CommentInlineAttachments fileNames={fnames} complaintId={complaintId} complaintAttachments={complaintAttachments} />
                     {hasReportTag && (canComment || isAdmin) && (
                       <div style={{ marginTop: 6 }}>
-                        <input ref={reportFileRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) handleUploadReport(c.id, Array.from(e.target.files)); e.target.value = ""; }} />
+                        <input ref={reportFileRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx" multiple style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden", pointerEvents: "none" }} onChange={e => { if (e.target.files && e.target.files.length) handleUploadReport(c.id, Array.from(e.target.files)); e.target.value = ""; }} />
                         <button onClick={() => { setReportingCommentId(c.id); reportFileRef.current?.click(); }} disabled={reportUploading} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, color: "#0f766e", background: "#e6f5f0", border: `1px solid ${C.tealLight}`, borderRadius: 8, padding: "6px 12px", cursor: reportUploading ? "wait" : "pointer" }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                           {reportUploading && reportingCommentId === c.id ? "Uploading…" : "Upload Report"}
