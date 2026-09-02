@@ -2889,7 +2889,7 @@ function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmi
   const [highlightId, setHighlightId] = useState(null);
   const [commentFiles, setCommentFiles] = useState([]);
   const [fileInputKey, setFileInputKey] = useState(0);
-  const commentFileRef = useRef(null);
+  const fileInputId = `cf-${complaintId}-${fileInputKey}`;
   const reportFileRef = useRef(null);
   const [reportingCommentId, setReportingCommentId] = useState(null);
   const [reportUploading, setReportUploading] = useState(false);
@@ -2978,7 +2978,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
   const handleEdit = async (id) => { if (!editText.trim()) return; await updateCommentContent(id, editText.trim()); setEditingComment(null); setEditText(""); await loadComments(); };
   return (
     <div style={{ marginTop: 10 }}>
-      <input key={fileInputKey} ref={commentFileRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xlsx,.xls" multiple style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden", pointerEvents: "none" }} onChange={e => { if (e.target.files && e.target.files.length) { setCommentFiles(prev => [...prev, ...Array.from(e.target.files)]); } e.target.value = ""; }} />
+      <input key={fileInputKey} id={fileInputId} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xlsx,.xls" multiple style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden", pointerEvents: "none" }} onChange={e => { if (e.target.files && e.target.files.length) { setCommentFiles(prev => [...prev, ...Array.from(e.target.files)]); } e.target.value = ""; }} />
       <button style={styles.commentToggle} onClick={() => setExpanded(!expanded)}>
         {expanded ? "▾ Hide Comments" : "▸ Comments" + (count > 0 ? ` (${count})` : "")}
       </button>
@@ -3040,9 +3040,9 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
               )}
               <div style={styles.commentInputRow}>
                 <input style={styles.commentInput} placeholder="Write a comment…" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && post()} />
-                <button type="button" style={{ background: "none", border: "none", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", borderRadius: 8, color: "#94a3a0", flexShrink: 0 }} onClick={() => { if (commentFileRef.current) commentFileRef.current.click(); }} title="Attach file">
+                <label htmlFor={fileInputId} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px", display: "flex", alignItems: "center", borderRadius: 8, color: "#94a3a0", flexShrink: 0 }} title="Attach file">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-                </button>
+                </label>
                 <button style={{ ...styles.commentSendBtn, background: ((!text.trim() && commentFiles.length === 0) || posting) ? "#9db8b4" : C.teal, cursor: ((!text.trim() && commentFiles.length === 0) || posting) ? "not-allowed" : "pointer", boxShadow: ((!text.trim() && commentFiles.length === 0) || posting) ? "none" : "0 3px 8px rgba(13,148,136,0.25)" }} onClick={post} disabled={(!text.trim() && commentFiles.length === 0) || posting}>{posting ? "…" : "Post"}</button>
               </div>
             </div>
