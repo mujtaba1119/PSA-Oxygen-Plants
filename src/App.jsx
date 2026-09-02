@@ -3158,20 +3158,21 @@ function AttachmentViewer({ attachments }) {
     if (url) setUrls(prev => ({ ...prev, [path]: url }));
   };
 
-  const handleExpand = () => {
-    if (!expanded) atts.forEach(a => loadUrl(a.path));
-    setExpanded(!expanded);
-  };
+  useEffect(() => {
+    if (expanded && atts.length > 0) {
+      atts.forEach(a => { if (a.path && !urls[a.path]) loadUrl(a.path); });
+    }
+  }, [expanded, atts.length]);
 
   return (
     <div style={{ marginTop: 8 }}>
-      <button onClick={handleExpand} style={{ fontSize: 12, fontWeight: 600, color: C.black, background: "none", border: "none", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" }}>
+      <button onClick={() => setExpanded(!expanded)} style={{ fontSize: 12, fontWeight: 600, color: C.black, background: "none", border: "none", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" }}>
         {expanded ? "▾ Hide Attachments" : `▸ Attachments (${atts.length})`}
       </button>
       {expanded && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
           {atts.map((a, i) => (
-            <div key={i} style={{ border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+            <div key={a.path || i} style={{ border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
               {urls[a.path] ? (
                 a.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
                   ? <a href={urls[a.path]} target="_blank" rel="noopener"><img src={urls[a.path]} alt={a.name} style={{ width: 120, height: 90, objectFit: "cover", display: "block" }} /></a>
@@ -3180,7 +3181,7 @@ function AttachmentViewer({ attachments }) {
                       <span style={{ fontSize: 9.5, fontWeight: 600, color: "#4a5568", textAlign: "center", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", wordBreak: "break-all", maxWidth: "100%" }}>{a.name}</span>
                     </a>
               ) : (
-                <div style={{ width: 120, height: 90, display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontSize: 11, color: C.textLight }}>Loading…</div>
+                <div onClick={() => loadUrl(a.path)} style={{ width: 120, height: 90, display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontSize: 11, color: C.textLight, cursor: "pointer" }}>Loading…</div>
               )}
             </div>
           ))}
