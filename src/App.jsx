@@ -2888,6 +2888,7 @@ function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmi
   const [count, setCount] = useState(0);
   const [highlightId, setHighlightId] = useState(null);
   const [commentFiles, setCommentFiles] = useState([]);
+  const [fileInputKey, setFileInputKey] = useState(0);
   const commentFileRef = useRef(null);
   const reportFileRef = useRef(null);
   const [reportingCommentId, setReportingCommentId] = useState(null);
@@ -2959,7 +2960,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
       }
     }
     await insertComment(complaintId, author, role, msgParts.join("\n"));
-    setText(""); setCommentFiles([]); setPosting(false); await loadComments();
+    setText(""); setCommentFiles([]); setFileInputKey(k => k + 1); setPosting(false); await loadComments();
     // Notify: if hospital comments, notify companies. If company comments, notify hospital + other companies.
     const userId = currentUser.id || currentUser.name?.toLowerCase().replace(/\s+/g, "");
     const companyKey = (currentUser.company || currentUser.name || "").toLowerCase().replace(/[\s-]+/g, "");
@@ -2977,7 +2978,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
   const handleEdit = async (id) => { if (!editText.trim()) return; await updateCommentContent(id, editText.trim()); setEditingComment(null); setEditText(""); await loadComments(); };
   return (
     <div style={{ marginTop: 10 }}>
-      <input ref={commentFileRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xlsx,.xls" multiple style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden", pointerEvents: "none" }} onChange={e => { if (e.target.files && e.target.files.length) { setCommentFiles(prev => [...prev, ...Array.from(e.target.files)]); } e.target.value = ""; }} />
+      <input key={fileInputKey} ref={commentFileRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xlsx,.xls" multiple style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden", pointerEvents: "none" }} onChange={e => { if (e.target.files && e.target.files.length) { setCommentFiles(prev => [...prev, ...Array.from(e.target.files)]); } e.target.value = ""; }} />
       <button style={styles.commentToggle} onClick={() => setExpanded(!expanded)}>
         {expanded ? "▾ Hide Comments" : "▸ Comments" + (count > 0 ? ` (${count})` : "")}
       </button>
@@ -4456,9 +4457,16 @@ function ActivityLog({ complaints, scopeProvider, currentUser, onViewSite, onRes
   // Build events
   const events = [];
   const within = (d) => d && new Date(d) >= monthAgo;
-  const ownName = currentUser ? (currentUser.name || "").toLowerCase().replace(/\s+/g, "") : "";
-  const ownCompany = currentUser ? (getCompanyName(currentUser) || "").toLowerCase().replace(/\s+/g, "") : "";
-  const isOwn = (actor) => { if (!actor || !currentUser) return false; const a = actor.toLowerCase().replace(/\s+/g, ""); return a === ownName || a === ownCompany || (ownName && a.includes(ownName)); };
+  const ownName = currentUser ? (currentUser.name || "").toLowerCase().trim() : "";
+  const ownId = currentUser ? (currentUser.id || "").toLowerCase().trim() : "";
+  const isOwn = (actor) => {
+    if (!actor || !currentUser || !ownName) return false;
+    const a = actor.toLowerCase().trim();
+    if (a === ownName || a === ownId) return true;
+    if (a.startsWith(ownName + " —") || a.startsWith(ownName + " -")) return true;
+    if (currentUser.role === "hospital" && a === ownName + " hospital") return true;
+    return false;
+  };
   inScope.forEach(c => {
     if (within(c.created_at)) events.push({ id: `${c.id}-open`, cid: c.id, type: "opened", date: c.created_at, hospital: c.hospital, actor: c.hospital, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> · New ticket raised for “<b>{c.title}</b>”</>, sub: "Opened" });
     if (within(c.acknowledged_at)) events.push({ id: `${c.id}-ack`, cid: c.id, type: "acknowledged", date: c.acknowledged_at, hospital: c.hospital, actor: c.acknowledged_by || getProvider(c.hospital), text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> · {c.acknowledged_by || getProvider(c.hospital)} acknowledged “<b>{c.title}</b>”</>, sub: "Acknowledged" });
