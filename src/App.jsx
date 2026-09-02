@@ -2812,46 +2812,29 @@ function OverviewTab({ hospitals, complaints, siteNotes, shutdowns = [], notifEm
     </div>
   );
 }
-function CommentAttachmentContent({ content, complaintId }) {
-  const [urls, setUrls] = useState({});
-  const attachMatch = (content || "").match(/\[attached:([^\]]+)\]/);
-  const fileNames = attachMatch ? attachMatch[1].split(",").map(s => s.trim()).filter(Boolean) : [];
-  const textContent = (content || "").replace(/\[attached:[^\]]+\]/, "").trim();
-  const fileKey = fileNames.join(",");
-
-  useEffect(() => {
-    if (!fileKey) return;
-    const names = fileKey.split(",");
-    names.forEach(name => {
+function CommentInlineAttachments({ fileNames, complaintId }) {
+  const [loadingFile, setLoadingFile] = useState(null);
+  if (!fileNames || fileNames.length === 0) return null;
+  const viewFile = async (name) => {
+    setLoadingFile(name);
+    try {
       const path = `complaints/${complaintId}/${name}`;
-      fetch(`/api/attachment?path=${encodeURIComponent(path)}`)
-        .then(r => r.json())
-        .then(data => { if (data.url) setUrls(prev => ({ ...prev, [name]: data.url })); })
-        .catch(() => {});
-    });
-  }, [complaintId, fileKey]);
-
+      const res = await fetch(`/api/attachment?path=${encodeURIComponent(path)}`);
+      const data = await res.json();
+      if (data.url) window.open(data.url, "_blank");
+    } catch (e) { console.error("Failed to load attachment:", e); }
+    setLoadingFile(null);
+  };
   return (
-    <div style={{ margin: "4px 0 0" }}>
-      {textContent && <p style={{ fontSize: 13, color: "#4a5568", lineHeight: 1.4, margin: 0 }}>{textContent}</p>}
-      {fileNames.length > 0 && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: textContent ? 6 : 0 }}>
-          {fileNames.map((name, i) => (
-            <div key={i} style={{ border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden", background: C.bg }}>
-              {urls[name] ? (
-                name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
-                  ? <a href={urls[name]} target="_blank" rel="noopener"><img src={urls[name]} alt={name} style={{ width: 100, height: 72, objectFit: "cover", display: "block" }} /></a>
-                  : <a href={urls[name]} target="_blank" rel="noopener" style={{ display: "flex", alignItems: "center", gap: 4, padding: "8px 10px", fontSize: 11, color: C.teal, textDecoration: "none", fontWeight: 600 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-                      <span style={{ maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
-                    </a>
-              ) : (
-                <div style={{ width: 100, height: 72, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: C.textLight }}>Loading…</div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 5 }}>
+      {fileNames.map((name, i) => (
+        <button key={i} onClick={() => viewFile(name)} disabled={loadingFile === name} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, color: C.teal, background: "#f0fdfa", padding: "4px 10px", borderRadius: 8, border: `1px solid ${C.tealLight}`, cursor: "pointer" }}>
+          {name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+            ? <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            : <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>}
+          <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{loadingFile === name ? "Opening…" : name}</span>
+        </button>
+      ))}
     </div>
   );
 }
@@ -2933,7 +2916,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
   const handleEdit = async (id) => { if (!editText.trim()) return; await updateCommentContent(id, editText.trim()); setEditingComment(null); setEditText(""); await loadComments(); };
   return (
     <div style={{ marginTop: 10 }}>
-      <input ref={commentFileRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) { setCommentFiles(prev => [...prev, ...Array.from(e.target.files)]); } e.target.value = ""; }} />
+      <input ref={commentFileRef} type="file" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) { setCommentFiles(prev => [...prev, ...Array.from(e.target.files)]); } e.target.value = ""; }} />
       <button style={styles.commentToggle} onClick={() => setExpanded(!expanded)}>
         {expanded ? "▾ Hide Comments" : "▸ Comments" + (count > 0 ? ` (${count})` : "")}
       </button>
@@ -2956,7 +2939,18 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
                   <button style={{ ...styles.pwSaveBtn, fontSize: 11 }} onClick={() => handleEdit(c.id)}>Save</button>
                   <button style={{ ...styles.pwCancelBtn, fontSize: 11 }} onClick={() => setEditingComment(null)}>✕</button>
                 </div>
-              ) : (c.content && c.content.includes("[attached:") ? <CommentAttachmentContent content={c.content} complaintId={complaintId} /> : <p style={{ fontSize: 13, color: "#4a5568", margin: "4px 0 0", lineHeight: 1.4 }}>{c.content}</p>)}
+              ) : (() => {
+                const raw = c.content || "";
+                const am = raw.match(/\[attached:([^\]]+)\]/);
+                const fnames = am ? am[1].split(",").map(s => s.trim()).filter(Boolean) : [];
+                const txt = raw.replace(/\[attached:[^\]]+\]/, "").trim();
+                return (
+                  <div style={{ margin: "4px 0 0" }}>
+                    {txt && <p style={{ fontSize: 13, color: "#4a5568", lineHeight: 1.4, margin: 0 }}>{txt}</p>}
+                    <CommentInlineAttachments fileNames={fnames} complaintId={complaintId} />
+                  </div>
+                );
+              })()}
             </div>
           ))}
           {(canComment || isAdmin) && (
