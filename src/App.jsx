@@ -394,17 +394,17 @@ const compressImageFile = (file) => new Promise((resolve) => {
 // Upload one or more files as attachments on a complaint (shared by submission forms + the
 // acknowledgement / work-notes panel).
 async function uploadComplaintAttachments(complaintId, fileList) {
-  const results = [];
-  for (const rawFile of fileList) {
+  const uploadOne = async (rawFile, idx) => {
     try {
       const file = await compressImageFile(rawFile);
-      const path = `complaints/${complaintId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const path = `complaints/${complaintId}/${Date.now()}_${idx}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
       const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type, upsert: false });
-      if (error) { console.error("Upload error:", rawFile.name, error.message); continue; }
-      results.push({ name: rawFile.name, path });
-    } catch (e) { console.error("Upload failed for", rawFile.name, e); }
-  }
-  return results;
+      if (error) { console.error("Upload error:", rawFile.name, error.message); return null; }
+      return { name: rawFile.name, path };
+    } catch (e) { console.error("Upload failed for", rawFile.name, e); return null; }
+  };
+  const results = await Promise.all(Array.from(fileList).map((f, i) => uploadOne(f, i)));
+  return results.filter(Boolean);
 }
 async function getAttachmentUrl(path) {
   try {
@@ -3624,14 +3624,14 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   });
 
   const doUpload = async (complaintId, fileList) => {
-    for (const rawFile of fileList) {
+    await Promise.all(Array.from(fileList).map(async (rawFile, i) => {
       try {
         const file = await compressImage(rawFile);
-        const path = `complaints/${complaintId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const path = `complaints/${complaintId}/${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
         const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type, upsert: false });
         if (error) console.error("Upload error:", error.message);
       } catch (e) { console.error("Upload failed:", e); }
-    }
+    }));
   };
 
   const submitComplaint = async () => {
@@ -4593,14 +4593,14 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
   });
 
   const adminDoUpload = async (complaintId, fileList) => {
-    for (const rawFile of fileList) {
+    await Promise.all(Array.from(fileList).map(async (rawFile, i) => {
       try {
         const file = await adminCompressImage(rawFile);
-        const path = `complaints/${complaintId}/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+        const path = `complaints/${complaintId}/${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
         const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type, upsert: false });
         if (error) console.error("Upload error:", error.message);
       } catch (e) { console.error("Upload failed:", e); }
-    }
+    }));
   };
 
   const submitAdminComplaint = async () => { if (!adminTitle.trim() || !adminDesc.trim() || adminSubmitting) return; setAdminSubmitting(true); const savedFiles = [...adminFiles]; const sev = adminSeverity || getDefaultSeverity(adminTitle.trim()); const encodedDesc = encodeSerials(adminDesc.trim(), adminSerials); const r = await insertComplaint(adminHospital, adminTitle.trim(), encodedDesc, adminDate || null, null, sev); if (r) { if (savedFiles.length > 0) await adminDoUpload(r.id, savedFiles); notifyUsers("new_complaint", `New Complaint: ${adminHospital}`, adminTitle.trim(), adminHospital, r.id, user.id).catch(() => {}); setAdminTitle(""); setAdminDesc(""); setAdminDate(""); setAdminFiles([]); setAdminSeverity(""); setAdminSerials([]); setAdminSuccess(true); setTimeout(() => setAdminSuccess(false), 2500); await onRefresh(); } setAdminSubmitting(false); };
