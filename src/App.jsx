@@ -2812,16 +2812,22 @@ function OverviewTab({ hospitals, complaints, siteNotes, shutdowns = [], notifEm
     </div>
   );
 }
-function CommentInlineAttachments({ fileNames, complaintId }) {
+function CommentInlineAttachments({ fileNames, complaintId, complaintAttachments }) {
   const [loadingFile, setLoadingFile] = useState(null);
   if (!fileNames || fileNames.length === 0) return null;
+  const atts = Array.isArray(complaintAttachments) ? complaintAttachments : [];
+  const findPath = (name) => {
+    const match = atts.find(a => a.name === name || (a.path && a.path.endsWith("/" + name)));
+    return match ? match.path : `complaints/${complaintId}/${name}`;
+  };
   const viewFile = async (name) => {
     setLoadingFile(name);
     try {
-      const path = `complaints/${complaintId}/${name}`;
+      const path = findPath(name);
       const res = await fetch(`/api/attachment?path=${encodeURIComponent(path)}`);
       const data = await res.json();
       if (data.url) window.open(data.url, "_blank");
+      else console.error("No URL returned for", path, data);
     } catch (e) { console.error("Failed to load attachment:", e); }
     setLoadingFile(null);
   };
@@ -2839,7 +2845,7 @@ function CommentInlineAttachments({ fileNames, complaintId }) {
   );
 }
 
-function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmin, highlightCommentText }) {
+function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmin, highlightCommentText, complaintAttachments }) {
   const [comments, setComments] = useState([]); const [text, setText] = useState(""); const [posting, setPosting] = useState(false);
   const [loaded, setLoaded] = useState(false); const [expanded, setExpanded] = useState(false);
   const [editingComment, setEditingComment] = useState(null); const [editText, setEditText] = useState("");
@@ -2947,7 +2953,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
                 return (
                   <div style={{ margin: "4px 0 0" }}>
                     {txt && <p style={{ fontSize: 13, color: "#4a5568", lineHeight: 1.4, margin: 0 }}>{txt}</p>}
-                    <CommentInlineAttachments fileNames={fnames} complaintId={complaintId} />
+                    <CommentInlineAttachments fileNames={fnames} complaintId={complaintId} complaintAttachments={complaintAttachments} />
                   </div>
                 );
               })()}
@@ -3479,7 +3485,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                 </div>
               );
             })()}
-            <CommentSection complaintId={c.id} hospital={c.hospital} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} highlightCommentText={highlightCommentText} />
+            <CommentSection complaintId={c.id} hospital={c.hospital} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} highlightCommentText={highlightCommentText} complaintAttachments={c.attachments} />
           </div>
           )}
         </>
