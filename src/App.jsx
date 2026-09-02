@@ -4757,6 +4757,18 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
     if (ok) { setPwSuccess(userId); setNewPw(""); setEditingUser(null); await onRefresh(); setTimeout(() => setPwSuccess(""), 2500); }
     else alert("Password update failed");
   };
+  // Master company account (Novair / Intexim): create it if it doesn't exist, else update password.
+  const handleMasterPassword = async (company, masterId, exists) => {
+    if (!newPw.trim() || saving) return;
+    if (newPw.trim().length < 8) { alert("Password must be at least 8 characters"); return; }
+    setSaving(true);
+    let ok;
+    if (exists) { ok = await updatePassword(masterId, newPw.trim()); }
+    else { ok = await createUser(masterId, company, "company", newPw.trim(), company, null, "manager"); }
+    setSaving(false);
+    if (ok) { setPwSuccess(masterId); setNewPw(""); setEditingUser(null); await onRefresh(); setTimeout(() => setPwSuccess(""), 2500); }
+    else alert("Failed to save master account");
+  };
   const handleAddEmail = async () => { if (!newEmail.trim() || emailSaving) return; setEmailSaving(true); await addEmail(emailGroup, newEmail.trim()); setNewEmail(""); setEmailSaving(false); await onRefresh(); };
   const handleAddEscEmail = async () => { if (!newEscEmail.trim() || escSaving) return; setEscSaving(true); await addEscalationEmail(newEscEmail.trim()); setNewEscEmail(""); setEscSaving(false); await onRefresh(); };
   const handleDeleteEscEmail = async (id) => { await deleteEscalationEmail(id); await onRefresh(); };
@@ -4969,14 +4981,33 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
           {["Amex", "Novair", "Intexim", "Z-Corps"].map(company => {
             const masterIds = { "Amex": "amex", "Novair": "novair", "Intexim": "intexim", "Z-Corps": "zcorps" };
             const masterId = masterIds[company];
+            const hasMaster = ["Novair", "Intexim"].includes(company);
+            const masterUser = hasMaster ? companyUsers.find(u => u.id === masterId) : null;
             const indivUsers = filteredCompanyUsers.filter(u => u.company === company && u.id !== masterId);
-            if (indivUsers.length === 0) return null;
+            if (indivUsers.length === 0 && !hasMaster) return null;
             return (
               <div key={company} style={{ marginBottom: 24 }}>
                 <div style={{ ...styles.groupHeader, borderBottom: `1px solid ${C.tealLight}`, marginBottom: 10, paddingBottom: 8 }}>
                   <h3 style={{ fontSize: 14, fontWeight: 600, margin: 0, letterSpacing: 0.5, textTransform: "uppercase" }}>{company} <span style={{ fontSize: 10, fontWeight: 400, color: C.textLight, letterSpacing: 1 }}>— COMPANY</span></h3>
-                  <span style={{ fontSize: 11, color: C.textLight }}>{indivUsers.length} account(s)</span>
+                  <span style={{ fontSize: 11, color: C.textLight }}>{indivUsers.length + (masterUser ? 1 : 0)} account(s)</span>
                 </div>
+                {hasMaster && (
+                  <div style={{ ...styles.pwCard, marginBottom: 4, background: "#f0fdfa", border: "1px solid #cfeae2" }}>
+                    <div style={styles.pwRow}>
+                      <div style={{ flex: 1 }}>
+                        <strong style={styles.pwName}>{company}</strong>
+                        <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, color: "#0f766e", background: "#ccfbf1", borderRadius: 8, padding: "2px 8px", marginLeft: 8 }}>Master</span>
+                        {!masterUser && <span style={{ fontSize: 11, color: C.textLight, marginLeft: 8, fontStyle: "italic" }}>not created yet — set a password to create</span>}
+                      </div>
+                      <div style={styles.pwRight}>
+                        {editingUser === masterId
+                          ? (<div style={styles.pwEditRow}><input style={styles.pwInput} type="password" placeholder="Password (min 8)" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handleMasterPassword(company, masterId, !!masterUser)} /><button style={styles.pwSaveBtn} onClick={() => handleMasterPassword(company, masterId, !!masterUser)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>)
+                          : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(masterId); setNewPw(""); }}>{masterUser ? "Password" : "Create"}</button>)}
+                      </div>
+                    </div>
+                    {pwSuccess === masterId && <p style={styles.successMsg}>{masterUser ? "Password updated." : "Master account created."}</p>}
+                  </div>
+                )}
                 {indivUsers.map(u => (
                   <div key={u.id} style={{ ...styles.pwCard, marginBottom: 4 }}>
                     <div style={styles.pwRow}>
