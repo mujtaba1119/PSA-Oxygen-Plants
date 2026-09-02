@@ -3394,13 +3394,13 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                   </label>
                   {ackFiles.length > 0 && <span style={{ fontSize: 12, color: C.textMid }}>{ackFiles.length} file{ackFiles.length === 1 ? "" : "s"} selected <button onClick={() => setAckFiles([])} style={{ border: "none", background: "none", color: "#c0392b", cursor: "pointer", fontWeight: 700 }}>✕</button></span>}
                 </div>
-                <div style={{ fontSize: 11.5, fontWeight: 600, color: C.textMid, marginTop: 12, marginBottom: 6 }}>Schedule a visit? <span style={{ fontWeight: 500, color: C.textLight }}>(optional)</span></div>
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: C.textMid, marginTop: 12, marginBottom: 6 }}>Log a visit? <span style={{ fontWeight: 500, color: C.textLight }}>(optional)</span></div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                  <button onClick={() => setAckMode(ackMode === "visit" ? null : "visit")} style={{ fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer", border: ackMode === "visit" ? "1.5px solid transparent" : `1.5px solid ${C.tealLight}`, background: ackMode === "visit" ? "linear-gradient(135deg, #0d9488, #0f766e)" : "#fff", color: ackMode === "visit" ? "#fff" : C.tealDark }}>{ackMode === "visit" ? "✓ Scheduling a visit" : "Schedule visit"}</button>
+                  <button onClick={() => setAckMode(ackMode === "visit" ? null : "visit")} style={{ fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer", border: ackMode === "visit" ? "1.5px solid transparent" : `1.5px solid ${C.tealLight}`, background: ackMode === "visit" ? "linear-gradient(135deg, #0d9488, #0f766e)" : "#fff", color: ackMode === "visit" ? "#fff" : C.tealDark }}>{ackMode === "visit" ? "✓ Logging a visit" : "Log visit"}</button>
                   {ackMode === "visit" && <input type="date" value={ackVisitDate} onChange={e => setAckVisitDate(e.target.value)} style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} />}
                 </div>
                 <div style={{ fontSize: 11, color: C.textLight, marginTop: 8 }}>
-                  {ackMode === "visit" ? "The ticket will move to Open · In Progress with this visit logged. You can add more visits and resolve later." : "The ticket will move to Open · In Progress. You can schedule visits and mark it resolved later."}
+                  {ackMode === "visit" ? "The ticket will move to Open · In Progress with this visit logged. You can add more visits and resolve later." : "The ticket will move to Open · In Progress. You can log visits and mark it resolved later."}
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                   <button style={{ ...styles.btnTealSmall, opacity: (ackMode === "visit" && !ackVisitDate) ? 0.5 : 1 }} onClick={handleAcknowledge} disabled={ackBusy || (ackMode === "visit" && !ackVisitDate)}>{ackBusy ? "…" : "✓ Acknowledge"}</button>
@@ -3440,7 +3440,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               {canLogVisit && (
                 <>
                   <input type="date" style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={visitDatePick} onChange={e => setVisitDatePick(e.target.value)} />
-                  <button style={styles.btnTealSmall} onClick={handleLogVisit} disabled={busy || !visitDatePick}>{busy ? "…" : hasVisits(c) ? "Schedule Another Visit" : "Schedule Visit"}</button>
+                  <button style={styles.btnTealSmall} onClick={handleLogVisit} disabled={busy || !visitDatePick}>{busy ? "…" : hasVisits(c) ? "Log Another Visit" : "Log Visit"}</button>
                 </>
               )}
               {canMarkResolved && (
