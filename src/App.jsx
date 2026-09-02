@@ -367,8 +367,8 @@ async function updateComplaintFields(id, fields) {
 }
 // Provider acknowledges an open ticket: records who/when. Requires the `acknowledged_by` and
 // `acknowledged_at` columns on the complaints table.
-async function acknowledgeComplaint(id, acknowledgedBy) {
-  return updateComplaintFields(id, { acknowledged_by: acknowledgedBy || null, acknowledged_at: new Date().toISOString() });
+async function acknowledgeComplaint(id, acknowledgedBy, ackDate) {
+  return updateComplaintFields(id, { acknowledged_by: acknowledgedBy || null, acknowledged_at: ackDate ? new Date(ackDate).toISOString() : new Date().toISOString() });
 }
 // Warranty decision (set after a visit). status: 'under_warranty' | 'not_under_warranty'.
 async function setWarrantyStatus(id, status, note, byWho) {
@@ -2977,7 +2977,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
 
   const post = async () => {
     if ((!text.trim() && commentFiles.length === 0) || posting) return; setPosting(true);
-    const author = currentUser.role === "admin" ? "" : currentUser.role === "hospital" ? currentUser.name + " Hospital" : (currentUser.name === getCompanyName(currentUser) ? currentUser.name : `${currentUser.name} — ${getCompanyName(currentUser)}`);
+    const author = currentUser.role === "admin" ? "Admin" : currentUser.role === "hospital" ? currentUser.name + " Hospital" : (currentUser.name === getCompanyName(currentUser) ? currentUser.name : `${currentUser.name} — ${getCompanyName(currentUser)}`);
     const role = currentUser.role;
     const msgParts = [];
     if (text.trim()) msgParts.push(text.trim());
@@ -3023,7 +3023,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
           {comments.map(c => (
             <div key={c.id} style={{ ...styles.commentItem, ...(highlightId === c.id ? { background: C.tealLight, borderRadius: 8, padding: "8px 10px", transition: "background 0.4s" } : { transition: "background 0.4s" }) }}>
               <div style={styles.commentHeader}>
-                <strong style={{ fontSize: 13, color: "#1a2332" }}>{c.author_role === "admin" ? "" : c.author}</strong>
+                <strong style={{ fontSize: 13, color: "#1a2332" }}>{c.author_role === "admin" ? "Admin" : c.author}</strong>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 11, color: "#718096" }}>{new Date(c.created_at).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" })}</span>
                   {isAdmin && <button style={{ fontSize: 11, color: "#0e7c6b", background: "none", border: "none", cursor: "pointer" }} onClick={() => { setEditingComment(c.id); setEditText(c.content); }}>Edit</button>}
@@ -3247,6 +3247,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const [ackFiles, setAckFiles] = useState([]);
   const [ackMode, setAckMode] = useState(null); // "remote" | "visit" — must be chosen explicitly
   const [ackVisitDate, setAckVisitDate] = useState("");
+  const [ackDate, setAckDate] = useState(""); // admin only: acknowledge on a past date
   const [ackBusy, setAckBusy] = useState(false);
   // Warranty decision panel
   const [warrOpen, setWarrOpen] = useState(false);
@@ -3305,13 +3306,13 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     if (ackBusy) return;
     if (ackMode === "visit" && !ackVisitDate) return;
     setAckBusy(true);
-    const who = currentUser.name;
-    await acknowledgeComplaint(c.id, who);
+    const who = isAdmin ? "Admin" : currentUser.name;
+    await acknowledgeComplaint(c.id, who, isAdmin && ackDate ? ackDate : null);
     const noteText = ackNote.trim();
     await insertComment(c.id, who, currentUser.role, noteText ? `Acknowledged — ${noteText}` : "Acknowledged the ticket.");
     if (ackFiles.length) await uploadComplaintAttachments(c.id, ackFiles);
     if (ackMode === "visit" && ackVisitDate) await onLogVisit(c.id, ackVisitDate);
-    setAckOpen(false); setAckNote(""); setAckFiles([]); setAckVisitDate(""); setAckMode(null);
+    setAckOpen(false); setAckNote(""); setAckFiles([]); setAckVisitDate(""); setAckDate(""); setAckMode(null);
     setAckBusy(false);
     await onRefresh();
   };
@@ -3484,6 +3485,13 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               <div style={{ marginTop: 14, border: `1px solid ${C.tealLight}`, borderRadius: 12, padding: 14, background: "#fbfefe" }}>
                 <div style={{ fontSize: 12.5, fontWeight: 700, color: C.tealDark, marginBottom: 10 }}>Acknowledge this ticket</div>
                 <textarea value={ackNote} onChange={e => setAckNote(e.target.value)} placeholder="Add a note (what you found, what you did / plan to do)…" rows={3} style={{ width: "100%", fontSize: 13, padding: "10px 12px", border: `1px solid ${C.tealLight}`, borderRadius: 8, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
+                {isAdmin && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, background: "#fffdf5", border: "1px solid #f0e6c0", borderRadius: 8, padding: "8px 12px", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: "#92700c" }}>Admin — acknowledge on date:</span>
+                    <input type="date" value={ackDate} onChange={e => setAckDate(e.target.value)} style={{ fontSize: 12, padding: "6px 10px", border: "1px solid #e5d9a8", borderRadius: 7 }} />
+                    <span style={{ fontSize: 10.5, color: "#a8935a" }}>{ackDate ? "" : "leave blank for today"}</span>
+                  </div>
+                )}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
                   <label style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", border: `1px dashed ${C.tealLight}`, borderRadius: 8 }}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -4587,6 +4595,7 @@ function ActivityLog({ complaints, scopeProvider, currentUser, onViewSite, onRes
   const isOwn = (actor) => {
     if (!actor || !currentUser || !ownName) return false;
     const a = actor.toLowerCase().trim();
+    if (currentUser.role === "admin" && a === "admin") return true;
     if (a === ownName || a === ownId) return true;
     if (a.startsWith(ownName + " —") || a.startsWith(ownName + " -")) return true;
     if (currentUser.role === "hospital" && a === ownName + " hospital") return true;
@@ -4606,7 +4615,7 @@ function ActivityLog({ complaints, scopeProvider, currentUser, onViewSite, onRes
     const c = cById[cm.complaint_id]; if (!c) return;
     const txt = (cm.content || "").replace(/^Acknowledged — /, "").replace(/^Acknowledged the ticket\.$/, "");
     if (!txt || /^Acknowledged/.test(cm.content || "") || /^Escalated/.test(cm.content || "")) return; // dedupe with dedicated events
-    events.push({ id: `cm-${cm.complaint_id}-${cm.created_at}`, cid: cm.complaint_id, type: "comment", date: cm.created_at, hospital: c.hospital, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> · {cm.author_role === "admin" ? "Admin" : cm.author} commented on “<b>{c.title}</b>”</>, sub: "Comment" });
+    events.push({ id: `cm-${cm.complaint_id}-${cm.created_at}`, cid: cm.complaint_id, type: "comment", date: cm.created_at, hospital: c.hospital, actor: cm.author_role === "admin" ? "Admin" : cm.author, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> · {cm.author_role === "admin" ? "Admin" : cm.author} commented on “<b>{c.title}</b>”</>, sub: "Comment" });
   });
 
   const typeMatch = (e) => typeFilter === "all" || (typeFilter === "visit" && e.type === "visit") || (typeFilter === "resolved" && e.type === "resolved") || (typeFilter === "escalation" && e.type === "escalation");
@@ -4670,7 +4679,7 @@ function ActivityLog({ complaints, scopeProvider, currentUser, onViewSite, onRes
           const showDay = dayLabel(e.date) !== lastDay; lastDay = dayLabel(e.date);
           return (
             <React.Fragment key={e.id}>
-              {showDay && <div style={{ fontSize: 10.5, fontWeight: 800, color: T.mute, textTransform: "uppercase", letterSpacing: "0.1em", padding: "14px 20px 8px", background: "#fafcfb", borderBottom: `1px solid ${T.line}`, borderTop: lastDay ? `1px solid ${T.line}` : "none" }}>{dayLabel(e.date)}</div>}
+              {showDay && <div style={{ fontSize: 10.5, fontWeight: 800, color: "#0f766e", textTransform: "uppercase", letterSpacing: "0.1em", padding: "10px 20px", background: "linear-gradient(90deg, #e6f5f0, #f0fdfa)", borderBottom: "1px solid #cfeae2", borderTop: lastDay ? "1px solid #cfeae2" : "none", borderLeft: "3px solid #0f766e" }}>{dayLabel(e.date)}</div>}
               <div onClick={() => onViewSite(e.hospital)} style={{ display: "flex", gap: 13, padding: "13px 20px", borderBottom: `1px solid #f3f7f6`, cursor: "pointer" }} onMouseEnter={ev => ev.currentTarget.style.background = T.teal50} onMouseLeave={ev => ev.currentTarget.style.background = "transparent"}>
                 <div style={{ width: 34, height: 34, borderRadius: 10, background: ic.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={ic.stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{ic.path}</svg>
@@ -4716,7 +4725,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
   const totalComplaints = complaints.length; const totalOpen = complaints.filter(c => !isClosedStatus(c.status)).length;
   const handleRefresh = async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); };
   const handleAssign = async (id, assignedTo) => { await assignComplaint(id, assignedTo, user.name); const c = complaints.find(x => x.id === id); if (c) notifyUsers("assigned", `Ticket Assigned: ${c.hospital}`, `${c.title} — assigned to ${assignedTo}`, c.hospital, id, "admin").catch(() => {}); await onRefresh(); };
-  const handleLogVisit = async (id, visitDate) => { await logVisit(id, visitDate, user.name); const fmtD = new Date(visitDate).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }); const isFuture = new Date(visitDate) > new Date(); await insertComment(id, user.role === "admin" ? "" : user.name, user.role, isFuture ? `Visit scheduled for ${fmtD}.` : `Visit logged for ${fmtD}. [visit_report]`); await onRefresh(); };
+  const handleLogVisit = async (id, visitDate) => { await logVisit(id, visitDate, user.name); const fmtD = new Date(visitDate).toLocaleDateString("en-PK", { day: "numeric", month: "short", year: "numeric" }); const isFuture = new Date(visitDate) > new Date(); await insertComment(id, "Admin", user.role, isFuture ? `Visit scheduled for ${fmtD}.` : `Visit logged for ${fmtD}. [visit_report]`); await onRefresh(); };
   const handleMarkResolved = async (id, resolveDate) => { if (resolveDate) { await resolveComplaint(id, resolveDate, user.name); } else { await markResolved(id, user.name); } const c = complaints.find(x => x.id === id); if (c) { createNotification("amex", "resolved", `Ready for Verification: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Ready for Verification: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
   const handleVerify = async (id, verifyDate) => { await verifyComplaint(id, user.name); if (verifyDate) { await updateComplaintFields(id, { verified_at: new Date(verifyDate).toISOString() }); } const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("resolved", `Issue Resolved & Verified: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
   const handleRejectVerify = async (id) => { await rejectVerification(id); await insertComment(id, "", "admin", "Verification rejected — ticket reopened."); const c = complaints.find(x => x.id === id); if (c) { createNotification(c.hospital.toLowerCase().replace(/\s+/g, ""), "rejected", `Resolution Rejected: ${c.hospital}`, c.title, id, c.hospital).catch(() => {}); notifyUsers("rejected", `Resolution Rejected: ${c.hospital}`, c.title, c.hospital, id, "admin").catch(() => {}); } await onRefresh(); };
