@@ -307,6 +307,14 @@ function canMarkResolvedTicket(user, hospital, c) {
 }
 // Only "Resolved" or "Verified" count as no-longer-open; "Open"/"In Progress" are open.
 function isClosedStatus(status) { return status === "Resolved" || status === "Verified"; }
+// Difference in whole calendar days between two dates (ignores time-of-day).
+// Sept 1 → Sept 2 = 1, regardless of the clock time on each day.
+function calendarDaysBetween(from, to) {
+  if (!from || !to) return null;
+  const a = new Date(from); a.setHours(0, 0, 0, 0);
+  const b = new Date(to); b.setHours(0, 0, 0, 0);
+  return Math.round((b - a) / (1000 * 60 * 60 * 24));
+}
 // Global ticket sort order: Open, then In Progress, then Resolved, then Verified —
 // irrespective of when each ticket was opened. Within the same status, most recent first.
 const STATUS_SORT_ORDER = { "Open": 0, "In Progress": 1, "Resolved": 2, "Verified": 3 };
@@ -1817,7 +1825,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
     const rate = total > 0 ? Math.round(closed / total * 100) : null;
     const downtime = provSites.reduce((sum, h) => sum + siteDowntimeDays(h, shutdowns), 0);
     const verified = provComplaints.filter(c => c.status === "Verified" && c.created_at && c.verified_at);
-    const avgRes = verified.length > 0 ? Math.round(verified.reduce((s, c) => s + (new Date(c.verified_at) - new Date(c.created_at)), 0) / verified.length / (1000 * 60 * 60 * 24) * 10) / 10 : null;
+    const avgRes = verified.length > 0 ? Math.round(verified.reduce((s, c) => s + calendarDaysBetween(c.created_at, c.verified_at), 0) / verified.length * 10) / 10 : null;
     return { prov, siteCount: provSites.length, open, closed, total, rate, downtime, avgRes };
   }).filter(r => r.siteCount > 0);
   const provColors = { Novair: "#0f766e", Intexim: "#7c5cbf", "Z-Corps": "#2f9e58" };
@@ -2541,7 +2549,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, shutdowns = [], onV
   // Average resolution time: opened → verified, over verified tickets only.
   const verifiedTix = scoped.filter(c => c.status === "Verified" && c.created_at && c.verified_at);
   const avgResolutionDays = verifiedTix.length > 0
-    ? Math.round(verifiedTix.reduce((sum, c) => sum + (new Date(c.verified_at) - new Date(c.created_at)), 0) / verifiedTix.length / (1000 * 60 * 60 * 24) * 10) / 10
+    ? Math.round(verifiedTix.reduce((sum, c) => sum + calendarDaysBetween(c.created_at, c.verified_at), 0) / verifiedTix.length * 10) / 10
     : null;
 
   if (isUndpCmu) {
@@ -3093,7 +3101,7 @@ function GroupedHospitalList({ groups, complaints, siteNotes, onSelect }) {
     const closed = cs.filter(c => isClosedStatus(c.status)).length;
     const rate = cs.length > 0 ? Math.round(closed / cs.length * 100) : null;
     const verified = cs.filter(c => c.status === "Verified" && c.created_at && c.verified_at);
-    const avgRes = verified.length > 0 ? Math.round(verified.reduce((s, c) => s + (new Date(c.verified_at) - new Date(c.created_at)), 0) / verified.length / (1000 * 60 * 60 * 24) * 10) / 10 : null;
+    const avgRes = verified.length > 0 ? Math.round(verified.reduce((s, c) => s + calendarDaysBetween(c.created_at, c.verified_at), 0) / verified.length * 10) / 10 : null;
     return { rate, avgRes };
   };
   return (
@@ -3348,9 +3356,9 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
               {isClosedStatus(c.status) && c.verified_at && c.created_at
-                ? (() => { const days = Math.round((new Date(c.verified_at) - new Date(c.created_at)) / (1000 * 60 * 60 * 24) * 10) / 10; return <span style={{ fontSize: 8.5, fontWeight: 700, padding: "2px 6px", borderRadius: 8, color: "#1a5276", background: "#d6eaf8", textTransform: "uppercase", letterSpacing: 0.3, flexShrink: 0, whiteSpace: "nowrap" }}>Resolved in {days}d</span>; })()
+                ? (() => { const days = calendarDaysBetween(c.created_at, c.verified_at); return <span style={{ fontSize: 8.5, fontWeight: 700, padding: "2px 6px", borderRadius: 8, color: "#1a5276", background: "#d6eaf8", textTransform: "uppercase", letterSpacing: 0.3, flexShrink: 0, whiteSpace: "nowrap" }}>Resolved in {days}d</span>; })()
                 : isClosedStatus(c.status) && c.resolved_at && c.created_at
-                  ? (() => { const days = Math.round((new Date(c.resolved_at) - new Date(c.created_at)) / (1000 * 60 * 60 * 24) * 10) / 10; return <span style={{ fontSize: 8.5, fontWeight: 700, padding: "2px 6px", borderRadius: 8, color: "#1a5276", background: "#d6eaf8", textTransform: "uppercase", letterSpacing: 0.3, flexShrink: 0, whiteSpace: "nowrap" }}>Resolved in {days}d</span>; })()
+                  ? (() => { const days = calendarDaysBetween(c.created_at, c.resolved_at); return <span style={{ fontSize: 8.5, fontWeight: 700, padding: "2px 6px", borderRadius: 8, color: "#1a5276", background: "#d6eaf8", textTransform: "uppercase", letterSpacing: 0.3, flexShrink: 0, whiteSpace: "nowrap" }}>Resolved in {days}d</span>; })()
                   : null}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
                 {isClosedStatus(c.status) ? <StatusBadge status={effStatus} /> : (() => {
@@ -3422,7 +3430,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
             <div style={{ marginTop: 12, background: "#fafbfb", border: "1px solid #eef1f0", borderRadius: 12, padding: "16px 18px" }}>
               {(() => {
                 const dur = (fromD, toD) => {
-                  const days = Math.max(0, Math.round((new Date(toD) - new Date(fromD)) / (1000 * 60 * 60 * 24)));
+                  const days = Math.max(0, calendarDaysBetween(fromD, toD));
                   return days === 0 ? "same day" : days === 1 ? "1 day" : `${days} days`;
                 };
                 // build ordered stages that have happened, each with a real date for spacing
@@ -3735,7 +3743,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   const closedMine = mine.filter(c => isClosedStatus(c.status)).length;
   const hospResRate = mine.length > 0 ? Math.round(closedMine / mine.length * 100) : null;
   const verifiedMine = mine.filter(c => c.status === "Verified" && c.verified_at && c.created_at);
-  const hospAvgRes = verifiedMine.length > 0 ? Math.round(verifiedMine.reduce((s, c) => s + (new Date(c.verified_at) - new Date(c.created_at)), 0) / verifiedMine.length / (1000 * 60 * 60 * 24) * 10) / 10 : null;
+  const hospAvgRes = verifiedMine.length > 0 ? Math.round(verifiedMine.reduce((s, c) => s + calendarDaysBetween(c.created_at, c.verified_at), 0) / verifiedMine.length * 10) / 10 : null;
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#f7f8fa", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <style>{`
