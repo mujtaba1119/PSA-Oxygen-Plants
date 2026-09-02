@@ -1129,8 +1129,8 @@ function GlobalAnimations() {
 
       /* subtle hover lift for dashboard cards, tiles and tables */
       .ox-lift { transition: transform 0.2s cubic-bezier(0.16,1,0.3,1), box-shadow 0.2s cubic-bezier(0.16,1,0.3,1); }
-      .ox-lift:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(15,76,71,0.16); }
-      @media (prefers-reduced-motion: reduce) { .ox-lift:hover { transform: none; } }
+      .ox-lift:hover { transform: translateY(-4px) !important; box-shadow: 0 12px 28px rgba(15,76,71,0.16) !important; z-index: 5; }
+      @media (prefers-reduced-motion: reduce) { .ox-lift:hover { transform: none !important; } }
 
       /* image gently zooms inside its frame when the parent card is hovered */
       .ox-imgzoom img { transition: transform 0.5s cubic-bezier(0.16,1,0.3,1); }
