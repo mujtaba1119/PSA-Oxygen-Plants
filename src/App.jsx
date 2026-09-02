@@ -3356,9 +3356,9 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
               {isClosedStatus(c.status) && c.verified_at && c.created_at
-                ? (() => { const days = calendarDaysBetween(c.created_at, c.verified_at); return <span style={{ fontSize: 8.5, fontWeight: 700, padding: "2px 6px", borderRadius: 8, color: "#1a5276", background: "#d6eaf8", textTransform: "uppercase", letterSpacing: 0.3, flexShrink: 0, whiteSpace: "nowrap" }}>Resolved in {days}d</span>; })()
+                ? (() => { const days = calendarDaysBetween(c.created_at, c.verified_at); return <span style={{ fontSize: 8.5, fontWeight: 700, padding: "2px 6px", borderRadius: 8, color: "#1a5276", background: "#d6eaf8", textTransform: "uppercase", letterSpacing: 0.3, flexShrink: 0, whiteSpace: "nowrap" }}>{days === 0 ? "Resolved same day" : `Resolved in ${days}d`}</span>; })()
                 : isClosedStatus(c.status) && c.resolved_at && c.created_at
-                  ? (() => { const days = calendarDaysBetween(c.created_at, c.resolved_at); return <span style={{ fontSize: 8.5, fontWeight: 700, padding: "2px 6px", borderRadius: 8, color: "#1a5276", background: "#d6eaf8", textTransform: "uppercase", letterSpacing: 0.3, flexShrink: 0, whiteSpace: "nowrap" }}>Resolved in {days}d</span>; })()
+                  ? (() => { const days = calendarDaysBetween(c.created_at, c.resolved_at); return <span style={{ fontSize: 8.5, fontWeight: 700, padding: "2px 6px", borderRadius: 8, color: "#1a5276", background: "#d6eaf8", textTransform: "uppercase", letterSpacing: 0.3, flexShrink: 0, whiteSpace: "nowrap" }}>{days === 0 ? "Resolved same day" : `Resolved in ${days}d`}</span>; })()
                   : null}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
                 {isClosedStatus(c.status) ? <StatusBadge status={effStatus} /> : (() => {
