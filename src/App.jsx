@@ -3463,8 +3463,14 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
             {canWarranty && !warrOpen && (
               <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: C.textMid }}>{c.warranty_status ? "Warranty decision:" : "Warranty coverage?"}</span>
-                <button onClick={() => { setWarrChoice("under_warranty"); setWarrNote(c.warranty_status === "under_warranty" ? (c.warranty_note || "") : ""); setWarrOpen(true); }} style={{ fontSize: 12, fontWeight: 700, padding: "7px 13px", borderRadius: 8, cursor: "pointer", border: c.warranty_status === "under_warranty" ? "1.5px solid #16a34a" : "1.5px solid #bbf7d0", background: c.warranty_status === "under_warranty" ? "#ecfdf5" : "#fff", color: "#166534" }}>{c.warranty_status === "under_warranty" ? "✓ Under Warranty" : "Under Warranty"}</button>
-                <button onClick={() => { setWarrChoice("not_under_warranty"); setWarrNote(c.warranty_status === "not_under_warranty" ? (c.warranty_note || "") : ""); setWarrOpen(true); }} style={{ fontSize: 12, fontWeight: 700, padding: "7px 13px", borderRadius: 8, cursor: "pointer", border: c.warranty_status === "not_under_warranty" ? "1.5px solid #dc2626" : "1.5px solid #fecaca", background: c.warranty_status === "not_under_warranty" ? "#fef2f2" : "#fff", color: "#b91c1c" }}>{c.warranty_status === "not_under_warranty" ? "✓ Not Under Warranty" : "Not Under Warranty"}</button>
+                {c.warranty_status === "under_warranty"
+                  ? <button disabled style={{ fontSize: 12, fontWeight: 700, padding: "7px 13px", borderRadius: 8, border: "1.5px solid #16a34a", background: "#ecfdf5", color: "#166534", cursor: "default" }}>✓ Under Warranty</button>
+                  : <>
+                      <button onClick={() => { setWarrChoice("under_warranty"); setWarrNote(""); setWarrOpen(true); }} style={{ fontSize: 12, fontWeight: 700, padding: "7px 13px", borderRadius: 8, cursor: "pointer", border: "1.5px solid #bbf7d0", background: "#fff", color: "#166534" }}>Under Warranty</button>
+                      {c.warranty_status !== "not_under_warranty" && <button onClick={() => { setWarrChoice("not_under_warranty"); setWarrNote(""); setWarrOpen(true); }} style={{ fontSize: 12, fontWeight: 700, padding: "7px 13px", borderRadius: 8, cursor: "pointer", border: "1.5px solid #fecaca", background: "#fff", color: "#b91c1c" }}>Not Under Warranty</button>}
+                      {c.warranty_status === "not_under_warranty" && <button disabled style={{ fontSize: 12, fontWeight: 700, padding: "7px 13px", borderRadius: 8, border: "1.5px solid #dc2626", background: "#fef2f2", color: "#b91c1c", cursor: "default" }}>✓ Not Under Warranty</button>}
+                    </>
+                }
               </div>
             )}
             {canWarranty && warrOpen && (
