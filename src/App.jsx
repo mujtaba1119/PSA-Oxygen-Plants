@@ -989,9 +989,6 @@ function PartnerFooter() {
         .leaflet-tile-container img.leaflet-tile { mix-blend-mode: plus-lighter; }
         .site-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 14px; overflow: hidden; box-shadow: none; background: transparent; border: none; }
         .site-popup .leaflet-popup-content { margin: 0; width: 316px !important; }
-        .site-popup-wide .leaflet-popup-content { margin: 0; width: 380px !important; }
-        .site-popup-wide .leaflet-popup-content-wrapper { padding: 0; border-radius: 14px; overflow: hidden; box-shadow: none; background: transparent; border: none; }
-        .site-popup-wide .leaflet-popup-tip { background: #fff; box-shadow: 0 2px 8px rgba(15,118,110,0.08); }
         .site-popup .leaflet-popup-tip { background: #fff; box-shadow: 0 2px 8px rgba(15,118,110,0.08); }
         /* make the leaflet attribution as small and unobtrusive as possible */
         .leaflet-control-attribution { font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important; background: rgba(255,255,255,0.55) !important; opacity: 0.65; }
@@ -1990,7 +1987,8 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
                 <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
                   <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
                   {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: T.teal500, weight: 1.5, fillColor: T.teal100, fillOpacity: 0.15 }} />}
-                  {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; const sc = s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#d97706" : "#16a34a"; const sd = s === "Shut Down" ? activeShutdown(h, shutdowns) : null; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={sd ? 404 : 340} maxWidth={sd ? 404 : 340} className={sd ? "site-popup site-popup-wide" : "site-popup"}><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "row", alignItems: "stretch", border: "1.5px solid #e2e8f0", borderRadius: 16, background: "#fff", boxShadow: "0 6px 20px rgba(15,118,110,0.14)", padding: 12, gap: 12 }}>
+                  {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; const sc = s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#d97706" : "#16a34a"; const sd = s === "Shut Down" ? activeShutdown(h, shutdowns) : null; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={340} maxWidth={340} className="site-popup"><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "column", border: "1.5px solid #e2e8f0", borderRadius: 16, background: "#fff", boxShadow: "0 6px 20px rgba(15,118,110,0.14)", padding: 12, gap: 10 }}>
+                    <div style={{ display: "flex", flexDirection: "row", alignItems: "stretch", gap: 12 }}>
                     {/* image column — fixed square, does not stretch */}
                     <div style={{ flexShrink: 0, width: 96, height: 96, alignSelf: "center", borderRadius: 12, overflow: "hidden", background: "linear-gradient(135deg, #0b3b38, #0f766e)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
                       {imgSrc ? (
@@ -2003,18 +2001,19 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
                       <div style={{ fontWeight: 800, fontSize: 13, color: "#0f172a", lineHeight: 1.25, letterSpacing: -0.2 }}>{fullHospitalName(h)}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: sc, flexShrink: 0 }} /><span style={{ fontSize: 11.5, fontWeight: 700, color: sc }}>{s}</span></div>
                       <div style={{ fontSize: 11.5, color: "#64748b" }}>Service Provider: <span style={{ fontWeight: 700, color: "#0f766e" }}>{getProvider(h)}</span></div>
-                      {sd && (
-                        <div style={{ background: `${shutdownReasonMeta(sd.reason).color}0f`, border: `1px solid ${shutdownReasonMeta(sd.reason).color}33`, borderRadius: 8, padding: "6px 9px" }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, color: shutdownReasonMeta(sd.reason).color, textTransform: "uppercase", letterSpacing: 0.3 }}>{sd.reason}</div>
-                          {sd.note && <div style={{ fontSize: 11, color: "#5a6b68", marginTop: 2, lineHeight: 1.35 }}>{sd.note}</div>}
-                        </div>
-                      )}
                       <div style={{ fontSize: 11.5, fontWeight: 600, color: sc, display: "flex", alignItems: "center", gap: 5 }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
                         {openCount > 0 ? `${openCount} open ticket${openCount > 1 ? "s" : ""}` : "No open tickets"}
                       </div>
                       <button onClick={() => onViewSite(h)} style={{ marginTop: 4, fontSize: 11, fontWeight: 700, color: "#fff", background: "linear-gradient(135deg, #0d9488, #0f766e)", border: "none", borderRadius: 9, padding: "8px 0", cursor: "pointer", width: "100%", letterSpacing: 0.2, boxShadow: "0 2px 8px rgba(13,148,136,0.25)" }}>View Ticket Data →</button>
                     </div>
+                    </div>
+                    {sd && (
+                      <div style={{ background: `${shutdownReasonMeta(sd.reason).color}0f`, border: `1px solid ${shutdownReasonMeta(sd.reason).color}33`, borderRadius: 10, padding: "8px 11px" }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: shutdownReasonMeta(sd.reason).color, textTransform: "uppercase", letterSpacing: 0.3 }}>{sd.reason}</div>
+                        {sd.note && <div style={{ fontSize: 11.5, color: "#5a6b68", marginTop: 3, lineHeight: 1.4 }}>{sd.note}</div>}
+                      </div>
+                    )}
                   </div></Popup><Tooltip direction="top" offset={[0, -10]}>{displayName(h)}</Tooltip></Marker>); })}
                 </MapContainer>
               </div>
@@ -2778,7 +2777,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, shutdowns = [], notifEm
                           <span style={{ width: 8, height: 8, borderRadius: "50%", background: m.dot, flexShrink: 0 }} />
                           {m.label}
                         </span>
-                        {sd && <span style={{ fontSize: 10, fontWeight: 700, color: shutdownReasonMeta(sd.reason).color, background: `${shutdownReasonMeta(sd.reason).color}14`, padding: "2px 7px", borderRadius: 6, whiteSpace: "nowrap" }}>{sd.reason}{shutdownReasonMeta(sd.reason).counts ? "" : " · not counted"}</span>}
+                        {sd && <span style={{ fontSize: 10, fontWeight: 700, color: shutdownReasonMeta(sd.reason).color, background: `${shutdownReasonMeta(sd.reason).color}14`, padding: "2px 7px", borderRadius: 6, whiteSpace: "nowrap" }}>{sd.reason}</span>}
                         {sd && sd.note && <span style={{ fontSize: 10.5, color: "#5a6b68", background: `${shutdownReasonMeta(sd.reason).color}0d`, border: `1px solid ${shutdownReasonMeta(sd.reason).color}26`, borderRadius: 6, padding: "4px 8px", maxWidth: 200, textAlign: "center", lineHeight: 1.3, fontWeight: 500 }}>{sd.note}</span>}
                         {dtDays > 0 && <span style={{ fontSize: 9.5, color: "#94a3b8" }}>Downtime: {dtDays}d</span>}
                       </div>
@@ -4244,12 +4243,12 @@ function EquipmentTab({ hospitals, complaints, siteNotes, shutdowns = [], isAdmi
                 <div style={{ width: 4, alignSelf: "stretch", borderRadius: 2, background: meta.color, flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 11.5, fontWeight: 700, color: meta.color, background: `${meta.color}14`, padding: "2px 8px", borderRadius: 6 }}>{s.reason}{meta.counts ? "" : " · not counted"}</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: meta.color, background: `${meta.color}14`, padding: "2px 8px", borderRadius: 6 }}>{s.reason}</span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: "#1a1d21" }}>{fmtSd(s.start_date)} → {s.end_date ? fmtSd(s.end_date) : "Ongoing"}</span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>· {days} day{days === 1 ? "" : "s"}</span>
                   </div>
                   {s.note && <div style={{ fontSize: 13, color: "#5a6b68", marginTop: 5, lineHeight: 1.4 }}>{s.note}</div>}
-                  {s.logged_by && <div style={{ fontSize: 10.5, color: "#b0b8bd", marginTop: 4 }}>Logged by {s.logged_by}</div>}
+
                 </div>
                 {isAdmin && (
                   <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
