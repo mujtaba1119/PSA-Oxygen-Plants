@@ -678,6 +678,24 @@ async function sendShutdownEmail(hospital) {
   const { error } = await supabase.rpc("send_shutdown_email", { hospital_name: hospital });
   return !error;
 }
+// Update an existing shutdown record (admin manual edit).
+async function updateShutdownRecord(id, fields) {
+  const { error } = await supabase.from("shutdowns").update(fields).eq("id", id);
+  if (error) console.error(error);
+  return !error;
+}
+// Delete a shutdown record.
+async function deleteShutdownRecord(id) {
+  const { error } = await supabase.from("shutdowns").delete().eq("id", id);
+  if (error) console.error(error);
+  return !error;
+}
+// Insert a shutdown record manually (admin) with explicit dates.
+async function insertShutdownRecord(hospital, startDate, endDate, reason, note, loggedBy) {
+  const { error } = await supabase.from("shutdowns").insert({ hospital, start_date: startDate, end_date: endDate || null, reason, note: note || null, logged_by: loggedBy || null });
+  if (error) console.error(error);
+  return !error;
+}
 
 /* ─── Notifications ─── */
 async function fetchNotifications(userId, companyName) {
@@ -970,7 +988,7 @@ function PartnerFooter() {
         /* Official Leaflet fix for Chromium tile gaps (Leaflet PR #8891, shipped in 1.9.4). */
         .leaflet-tile-container img.leaflet-tile { mix-blend-mode: plus-lighter; }
         .site-popup .leaflet-popup-content-wrapper { padding: 0; border-radius: 14px; overflow: hidden; box-shadow: none; background: transparent; border: none; }
-        .site-popup .leaflet-popup-content { margin: 0; width: 316px !important; }
+        .site-popup .leaflet-popup-content { margin: 0; width: auto !important; }
         .site-popup .leaflet-popup-tip { background: #fff; box-shadow: 0 2px 8px rgba(15,118,110,0.08); }
         /* make the leaflet attribution as small and unobtrusive as possible */
         .leaflet-control-attribution { font-size: 7px !important; line-height: 1.1 !important; padding: 0 3px !important; background: rgba(255,255,255,0.55) !important; opacity: 0.65; }
@@ -1969,7 +1987,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
                 <MapContainer center={[30.0, 70.0]} zoom={5} style={{ height: "100%", width: "100%" }} scrollWheelZoom={false}>
                   <TileLayer url="https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png" attribution='&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
                   {pkBoundary && <GeoJSON data={pkBoundary} style={{ color: T.teal500, weight: 1.5, fillColor: T.teal100, fillOpacity: 0.15 }} />}
-                  {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; const sc = s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#d97706" : "#16a34a"; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={340} maxWidth={340} className="site-popup"><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "row", alignItems: "stretch", border: "1.5px solid #e2e8f0", borderRadius: 16, background: "#fff", boxShadow: "0 6px 20px rgba(15,118,110,0.14)", padding: 12, gap: 12 }}>
+                  {hospitals.map(h => { const c = SITE_COORDS[h]; if (!c) return null; const s = getSiteDisplayStatus(h, complaints, siteNotes); const openCount = complaints.filter(x => hospitalMatches(x.hospital, h) && !isClosedStatus(x.status)).length; const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null; const sc = s === "Shut Down" ? "#dc2626" : s === "Non Functional" ? "#868e96" : s === "Functional" ? "#d97706" : "#16a34a"; const sd = s === "Shut Down" ? activeShutdown(h, shutdowns) : null; const popW = sd ? 400 : 340; return (<Marker key={h} position={c} icon={makePinIcon(pinColor(h))}><Popup minWidth={popW} maxWidth={popW} className="site-popup"><div style={{ fontFamily: "'DM Sans',sans-serif", margin: -1, display: "flex", flexDirection: "row", alignItems: "stretch", border: "1.5px solid #e2e8f0", borderRadius: 16, background: "#fff", boxShadow: "0 6px 20px rgba(15,118,110,0.14)", padding: 12, gap: 12 }}>
                     {/* image column — fixed square, does not stretch */}
                     <div style={{ flexShrink: 0, width: 96, height: 96, alignSelf: "center", borderRadius: 12, overflow: "hidden", background: "linear-gradient(135deg, #0b3b38, #0f766e)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
                       {imgSrc ? (
@@ -1982,6 +2000,12 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
                       <div style={{ fontWeight: 800, fontSize: 13, color: "#0f172a", lineHeight: 1.25, letterSpacing: -0.2 }}>{fullHospitalName(h)}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: sc, flexShrink: 0 }} /><span style={{ fontSize: 11.5, fontWeight: 700, color: sc }}>{s}</span></div>
                       <div style={{ fontSize: 11.5, color: "#64748b" }}>Service Provider: <span style={{ fontWeight: 700, color: "#0f766e" }}>{getProvider(h)}</span></div>
+                      {sd && (
+                        <div style={{ background: `${shutdownReasonMeta(sd.reason).color}0f`, border: `1px solid ${shutdownReasonMeta(sd.reason).color}33`, borderRadius: 8, padding: "6px 9px", marginTop: 1 }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: shutdownReasonMeta(sd.reason).color, textTransform: "uppercase", letterSpacing: 0.3 }}>{sd.reason}</div>
+                          {sd.note && <div style={{ fontSize: 11, color: "#5a6b68", marginTop: 2, lineHeight: 1.35 }}>{sd.note}</div>}
+                        </div>
+                      )}
                       <div style={{ fontSize: 11.5, fontWeight: 600, color: sc, display: "flex", alignItems: "center", gap: 5 }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
                         {openCount > 0 ? `${openCount} open ticket${openCount > 1 ? "s" : ""}` : "No open tickets"}
@@ -2752,7 +2776,7 @@ function OverviewTab({ hospitals, complaints, siteNotes, shutdowns = [], notifEm
                           {m.label}
                         </span>
                         {sd && <span style={{ fontSize: 10, fontWeight: 700, color: shutdownReasonMeta(sd.reason).color, background: `${shutdownReasonMeta(sd.reason).color}14`, padding: "2px 7px", borderRadius: 6, whiteSpace: "nowrap" }}>{sd.reason}{shutdownReasonMeta(sd.reason).counts ? "" : " · not counted"}</span>}
-                        {sd && sd.note && <span style={{ fontSize: 10, color: "#94a3b8", maxWidth: 150, textAlign: "center", lineHeight: 1.25 }}>{sd.note}</span>}
+                        {sd && sd.note && <span style={{ fontSize: 10.5, color: "#5a6b68", background: `${shutdownReasonMeta(sd.reason).color}0d`, border: `1px solid ${shutdownReasonMeta(sd.reason).color}26`, borderRadius: 6, padding: "4px 8px", maxWidth: 200, textAlign: "center", lineHeight: 1.3, fontWeight: 500 }}>{sd.note}</span>}
                         {dtDays > 0 && <span style={{ fontSize: 9.5, color: "#94a3b8" }}>Downtime: {dtDays}d</span>}
                       </div>
                     );
@@ -4125,7 +4149,7 @@ const EQUIP_CATEGORIES = [
 const EQUIP_GROUP_COLORS = { "Oxygen Generators": { border: "#0d9488", text: "#0f766e" }, "Air Compressors": { border: "#0d9488", text: "#0f766e" }, "Air Dryers": { border: "#0d9488", text: "#0f766e" }, "Other Equipments": { border: "#0d9488", text: "#0f766e" } };
 const EQUIP_ICONS = { oxyswing_a: "oxyswing", oxyswing_b: "oxyswing", comp1: "compressor", comp2: "compressor", comp3: "compressor", comp4: "compressor", dryer1: "dryer", dryer2: "dryer", dryer3: "dryer", dryer4: "dryer", hpox: "hpox", oxycheck: "oxycheck", css: "css", medgas: "medgas", generator: "generator" };
 
-function EquipmentTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) {
+function EquipmentTab({ hospitals, complaints, siteNotes, shutdowns = [], isAdmin, onRefresh }) {
   const [selectedSite, setSelectedSite] = useState(null);
   const [selectedEquip, setSelectedEquip] = useState(null); // { key, label, serial }
   const [search, setSearch] = useState("");
@@ -4136,6 +4160,10 @@ function EquipmentTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) 
   const [maintHours, setMaintHours] = useState("");
   const [maintSaving, setMaintSaving] = useState(false);
   const [maintStatus, setMaintStatus] = useState("OK");
+  const [editingSd, setEditingSd] = useState(null); // shutdown record id being edited
+  const [sdForm, setSdForm] = useState({ start_date: "", end_date: "", reason: "Equipment fault", note: "" });
+  const [sdBusy, setSdBusy] = useState(false);
+  const [addingSd, setAddingSd] = useState(false);
 
   // Read/write maintenance records from siteNotes JSON (keyed as _maint_{serial})
   const getNotesMap = (h) => { try { const raw = siteNotes.find(s => hospitalMatches(s.hospital, h))?.equipment_note || ""; const parsed = JSON.parse(raw); return typeof parsed === "object" && parsed !== null ? parsed : { _legacy: raw }; } catch { const raw = siteNotes.find(s => hospitalMatches(s.hospital, h))?.equipment_note || ""; return raw ? { _legacy: raw } : {}; } };
@@ -4303,6 +4331,75 @@ function EquipmentTab({ hospitals, complaints, siteNotes, isAdmin, onRefresh }) 
         <div style={{ marginBottom: 24 }}>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: 0, letterSpacing: "-0.01em" }}>{displayName(selectedSite)}</h2>
         </div>
+        {(() => {
+          const siteShutdowns = (shutdowns || []).filter(s => hospitalMatches(s.hospital, selectedSite)).sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+          const fmtSd = (d) => d ? new Date(d).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" }) : null;
+          const startEdit = (s) => { setEditingSd(s.id); setSdForm({ start_date: s.start_date || "", end_date: s.end_date || "", reason: s.reason || "Equipment fault", note: s.note || "" }); setAddingSd(false); };
+          const startAdd = () => { setAddingSd(true); setEditingSd(null); setSdForm({ start_date: new Date().toISOString().slice(0, 10), end_date: "", reason: "Equipment fault", note: "" }); };
+          const saveSd = async () => { if (!sdForm.start_date || sdBusy) return; setSdBusy(true); if (addingSd) { await insertShutdownRecord(selectedSite, sdForm.start_date, sdForm.end_date || null, sdForm.reason, sdForm.note, "admin"); } else { await updateShutdownRecord(editingSd, { start_date: sdForm.start_date, end_date: sdForm.end_date || null, reason: sdForm.reason, note: sdForm.note || null }); } setSdBusy(false); setEditingSd(null); setAddingSd(false); if (onRefresh) await onRefresh(); };
+          const delSd = async (id) => { if (!window.confirm("Delete this shutdown record permanently?")) return; setSdBusy(true); await deleteShutdownRecord(id); setSdBusy(false); if (onRefresh) await onRefresh(); };
+          return (
+            <div style={{ marginBottom: 32, background: "#fff", border: "1px solid #eef1f0", borderRadius: 14, padding: "18px 20px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: siteShutdowns.length > 0 || addingSd ? 14 : 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1d21", textTransform: "uppercase", letterSpacing: "0.06em", display: "flex", alignItems: "center", gap: 8 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c0392b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  Shutdown Records {siteShutdowns.length > 0 && <span style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8" }}>({siteShutdowns.length})</span>}
+                </div>
+                {isAdmin && !addingSd && <button onClick={startAdd} style={{ fontSize: 12, fontWeight: 700, color: "#0f766e", background: "#e6f5f0", border: "1px solid #cfeae2", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>+ Add Record</button>}
+              </div>
+              {addingSd && isAdmin && (
+                <div style={{ background: "#fafbfb", border: "1px solid #eef1f0", borderRadius: 10, padding: 14, marginBottom: 12 }}>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                    <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>Start Date</label><input type="date" value={sdForm.start_date} onChange={e => setSdForm(f => ({ ...f, start_date: e.target.value }))} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }} /></div>
+                    <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>End Date <span style={{ fontWeight: 400 }}>(blank = ongoing)</span></label><input type="date" value={sdForm.end_date} onChange={e => setSdForm(f => ({ ...f, end_date: e.target.value }))} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }} /></div>
+                    <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>Reason</label><select value={sdForm.reason} onChange={e => setSdForm(f => ({ ...f, reason: e.target.value }))} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }}>{SHUTDOWN_REASONS.map(r => <option key={r.key} value={r.key}>{r.key}</option>)}</select></div>
+                  </div>
+                  <textarea value={sdForm.note} onChange={e => setSdForm(f => ({ ...f, note: e.target.value }))} placeholder="Note (optional)" style={{ width: "100%", boxSizing: "border-box", fontSize: 12.5, padding: "8px 10px", border: "1px solid #e5e5e0", borderRadius: 7, minHeight: 50, resize: "vertical", fontFamily: "inherit", marginBottom: 10 }} />
+                  <div style={{ display: "flex", gap: 8 }}><button onClick={saveSd} disabled={sdBusy || !sdForm.start_date} style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: C.teal, border: "none", borderRadius: 7, padding: "7px 16px", cursor: "pointer" }}>{sdBusy ? "…" : "Save"}</button><button onClick={() => setAddingSd(false)} style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", background: "none", border: "none", cursor: "pointer" }}>Cancel</button></div>
+                </div>
+              )}
+              {siteShutdowns.length === 0 && !addingSd && <div style={{ fontSize: 12.5, color: "#94a3b8", marginTop: 10 }}>No shutdown records for this site.</div>}
+              {siteShutdowns.map(s => {
+                const meta = shutdownReasonMeta(s.reason);
+                const days = shutdownDays(s);
+                const isEditing = editingSd === s.id;
+                if (isEditing && isAdmin) {
+                  return (
+                    <div key={s.id} style={{ background: "#fafbfb", border: "1px solid #eef1f0", borderRadius: 10, padding: 14, marginBottom: 10 }}>
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+                        <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>Start Date</label><input type="date" value={sdForm.start_date} onChange={e => setSdForm(f => ({ ...f, start_date: e.target.value }))} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }} /></div>
+                        <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>End Date <span style={{ fontWeight: 400 }}>(blank = ongoing)</span></label><input type="date" value={sdForm.end_date} onChange={e => setSdForm(f => ({ ...f, end_date: e.target.value }))} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }} /></div>
+                        <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>Reason</label><select value={sdForm.reason} onChange={e => setSdForm(f => ({ ...f, reason: e.target.value }))} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }}>{SHUTDOWN_REASONS.map(r => <option key={r.key} value={r.key}>{r.key}</option>)}</select></div>
+                      </div>
+                      <textarea value={sdForm.note} onChange={e => setSdForm(f => ({ ...f, note: e.target.value }))} placeholder="Note (optional)" style={{ width: "100%", boxSizing: "border-box", fontSize: 12.5, padding: "8px 10px", border: "1px solid #e5e5e0", borderRadius: 7, minHeight: 50, resize: "vertical", fontFamily: "inherit", marginBottom: 10 }} />
+                      <div style={{ display: "flex", gap: 8 }}><button onClick={saveSd} disabled={sdBusy} style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: C.teal, border: "none", borderRadius: 7, padding: "7px 16px", cursor: "pointer" }}>{sdBusy ? "…" : "Save"}</button><button onClick={() => setEditingSd(null)} style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", background: "none", border: "none", cursor: "pointer" }}>Cancel</button></div>
+                    </div>
+                  );
+                }
+                return (
+                  <div key={s.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 0", borderBottom: `1px solid #f3f7f6` }}>
+                    <div style={{ width: 4, alignSelf: "stretch", borderRadius: 2, background: meta.color, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 700, color: meta.color, background: `${meta.color}14`, padding: "2px 8px", borderRadius: 6 }}>{s.reason}{meta.counts ? "" : " · not counted"}</span>
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: "#1a1d21" }}>{fmtSd(s.start_date)} → {s.end_date ? fmtSd(s.end_date) : "Ongoing"}</span>
+                        <span style={{ fontSize: 11.5, fontWeight: 600, color: "#94a3b8" }}>· {days}d</span>
+                      </div>
+                      {s.note && <div style={{ fontSize: 12.5, color: "#5a6b68", marginTop: 4, lineHeight: 1.4 }}>{s.note}</div>}
+                      {s.logged_by && <div style={{ fontSize: 10.5, color: "#b0b8bd", marginTop: 3 }}>Logged by {s.logged_by}</div>}
+                    </div>
+                    {isAdmin && (
+                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                        <button onClick={() => startEdit(s)} style={{ fontSize: 11, fontWeight: 600, color: "#0f766e", background: "none", border: "none", cursor: "pointer" }}>Edit</button>
+                        <button onClick={() => delSd(s.id)} style={{ fontSize: 11, fontWeight: 600, color: "#c0392b", background: "none", border: "none", cursor: "pointer" }}>Delete</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
         {(() => { let idx = 0; return EQUIP_CATEGORIES.map(cat => {
           const gc = EQUIP_GROUP_COLORS[cat.group];
           const catItems = cat.items.filter(item => equip[item.key]);
@@ -4770,7 +4867,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
           <div key={tab} className="scale-in">
           {tab === "dashboard" && <HomeTab hospitals={ALL_HOSPITALS} groups={GROUPS} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} user={user} />}
           {tab === "sites" && <OverviewTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} notifEmails={notifEmails} isAdmin={true} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
-          {tab === "equipment" && <EquipmentTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} isAdmin={true} onRefresh={onRefresh} />}
+          {tab === "equipment" && <EquipmentTab hospitals={ALL_HOSPITALS} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} isAdmin={true} onRefresh={onRefresh} />}
           {tab === "tickets" && !selected && (<>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
               <button style={styles.tabActionBtn} onClick={() => downloadCSV(complaints, "All Tickets Data")}>↓ Download Data</button>
@@ -5038,7 +5135,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
             ? <NovairDashboard complaints={complaints} siteNotes={siteNotes} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} userCompany={companyName} />
             : <HomeTab hospitals={myHospitals} groups={myGroups} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} user={user} />)}
           {tab === "sites" && <OverviewTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} notifEmails={[]} isAdmin={false} onRefresh={onRefresh} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
-          {tab === "equipment" && <EquipmentTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} isAdmin={false} onRefresh={onRefresh} />}
+          {tab === "equipment" && <EquipmentTab hospitals={myHospitals} complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} isAdmin={false} onRefresh={onRefresh} />}
           {tab === "tickets" && !selected && (<>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
               <button style={styles.tabActionBtn} onClick={() => downloadCSV(myComplaints, "All Tickets Data")}>↓ Download Data</button>
