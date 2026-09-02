@@ -3131,11 +3131,14 @@ function AttachmentViewer({ attachments }) {
       {expanded && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
           {atts.map((a, i) => (
-            <div key={i} style={{ border: `1px solid ${C.border}`, borderRadius: 4, overflow: "hidden" }}>
+            <div key={i} style={{ border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
               {urls[a.path] ? (
                 a.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
                   ? <a href={urls[a.path]} target="_blank" rel="noopener"><img src={urls[a.path]} alt={a.name} style={{ width: 120, height: 90, objectFit: "cover", display: "block" }} /></a>
-                  : <a href={urls[a.path]} target="_blank" rel="noopener" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 120, height: 90, background: C.bg, fontSize: 11, color: C.textMid, textDecoration: "none" }}>📄 {a.name}</a>
+                  : <a href={urls[a.path]} target="_blank" rel="noopener" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 120, height: 90, background: a.name.match(/\.pdf$/i) ? "#fef2f2" : "#f0f4ff", textDecoration: "none", gap: 6, padding: 8 }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={a.name.match(/\.pdf$/i) ? "#dc2626" : "#4f6df5"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      <span style={{ fontSize: 9.5, fontWeight: 600, color: "#4a5568", textAlign: "center", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", wordBreak: "break-all", maxWidth: "100%" }}>{a.name}</span>
+                    </a>
               ) : (
                 <div style={{ width: 120, height: 90, display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontSize: 11, color: C.textLight }}>Loading…</div>
               )}
