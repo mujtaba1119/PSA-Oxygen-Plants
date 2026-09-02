@@ -3144,16 +3144,18 @@ function GroupedHospitalList({ groups, complaints, siteNotes, onSelect }) {
               const numColor = isNonFunc ? "#e5e7eb" : "#5eead4";
               return (
                 <div key={h} onClick={() => onSelect(h)} style={{ background: "#fff", border: "1px solid #e8ecf0", borderRadius: 16, overflow: "hidden", cursor: "pointer", boxShadow: "0 1px 3px rgba(15,23,25,0.05)", transition: "all 0.2s" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 22px rgba(13,148,136,0.14)"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.borderColor = "#0d9488"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,25,0.05)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.borderColor = "#e8ecf0"; }}>
-                  <div style={{ background: headerBg, padding: "16px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div style={{ fontSize: 14.5, fontWeight: 700, color: "#fff" }}>{displayName(h)}</div>
-                    <div style={{ fontSize: 22, fontWeight: 800, color: numColor }}>{total}</div>
+                  <div style={{ background: headerBg, padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 14.5, fontWeight: 700, color: "#fff", lineHeight: 1.2 }}>{displayName(h)}</div>
+                      <div style={{ fontSize: 10.5, fontWeight: 600, color: "rgba(255,255,255,0.65)", marginTop: 3, letterSpacing: 0.2 }}>{p}</div>
+                    </div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: numColor, flexShrink: 0 }}>{total}</div>
                   </div>
-                  <div style={{ padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 11, color: "#8a9199" }}>{p}</span>
+                  <div style={{ padding: "14px 18px", display: "flex", justifyContent: "center", alignItems: "center" }}>
                     {open > 0
                       ? <span style={{ fontSize: 11, fontWeight: 600, color: "#b45309", background: "#fef3e2", padding: "3px 10px", borderRadius: 20 }}>{open} open</span>
                       : (isNonFunc || isShutDown)
-                        ? null
+                        ? <span style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8" }}>{status}</span>
                         : <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: "#16a34a", background: "#ecfdf5", padding: "3px 10px", borderRadius: 20 }}>
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                             Clear
@@ -3167,7 +3169,7 @@ function GroupedHospitalList({ groups, complaints, siteNotes, onSelect }) {
                       </div>
                       <div style={{ flex: 1, padding: "10px 18px", textAlign: "center" }}>
                         <div style={{ fontSize: 15, fontWeight: 800, color: st.avgRes == null ? "#c4c8cc" : "#1a1d21", lineHeight: 1 }}>{st.avgRes == null ? "—" : `${st.avgRes}d`}</div>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 4 }}>Avg Resolution</div>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em", marginTop: 4 }}>Avg Resolution Time</div>
                       </div>
                     </div>
                   ); })()}
