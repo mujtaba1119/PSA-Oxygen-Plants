@@ -2937,7 +2937,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
   const handleEdit = async (id) => { if (!editText.trim()) return; await updateCommentContent(id, editText.trim()); setEditingComment(null); setEditText(""); await loadComments(); };
   return (
     <div style={{ marginTop: 10 }}>
-      <input ref={commentFileRef} type="file" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) { setCommentFiles(prev => [...prev, ...Array.from(e.target.files)]); } e.target.value = ""; }} />
+      <input ref={commentFileRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xlsx,.xls" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) { setCommentFiles(prev => [...prev, ...Array.from(e.target.files)]); } e.target.value = ""; }} />
       <button style={styles.commentToggle} onClick={() => setExpanded(!expanded)}>
         {expanded ? "▾ Hide Comments" : "▸ Comments" + (count > 0 ? ` (${count})` : "")}
       </button>
