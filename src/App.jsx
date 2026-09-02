@@ -3951,6 +3951,12 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
               Sign Out
             </button>
             </div>
+            {user && user.role !== "hospital" && (
+              <div style={{ textAlign: "right", marginLeft: 4, minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: "#fff", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.name}</div>
+                <div style={{ fontSize: 9.5, fontWeight: 500, color: "rgba(255,255,255,0.55)", lineHeight: 1.2, marginTop: 1 }}>{user.role === "admin" ? "Administrator" : getCompanyName(user)}</div>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -4397,20 +4403,20 @@ function ActivityLog({ complaints, scopeProvider, currentUser, onViewSite, onRes
   const ownCompany = currentUser ? (getCompanyName(currentUser) || "").toLowerCase().replace(/\s+/g, "") : "";
   const isOwn = (actor) => { if (!actor || !currentUser) return false; const a = actor.toLowerCase().replace(/\s+/g, ""); return a === ownName || a === ownCompany || (ownName && a.includes(ownName)); };
   inScope.forEach(c => {
-    if (within(c.created_at)) events.push({ id: `${c.id}-open`, cid: c.id, type: "opened", date: c.created_at, hospital: c.hospital, actor: c.hospital, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> — new complaint: <b>{c.title}</b></>, sub: "Opened" });
-    if (within(c.acknowledged_at)) events.push({ id: `${c.id}-ack`, cid: c.id, type: "acknowledged", date: c.acknowledged_at, hospital: c.hospital, actor: c.acknowledged_by || getProvider(c.hospital), text: <><b>{c.acknowledged_by || getProvider(c.hospital)}</b> acknowledged <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b></>, sub: "Acknowledged" });
-    visitDates(c).forEach((v, i) => { if (within(v)) events.push({ id: `${c.id}-visit-${i}`, cid: c.id, type: "visit", date: v, hospital: c.hospital, text: <>Visit logged at <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b></>, sub: "Visit" }); });
-    if (within(c.warranty_at)) events.push({ id: `${c.id}-warr`, cid: c.id, type: "warranty", date: c.warranty_at, hospital: c.hospital, text: <><b>{c.warranty_by || "Someone"}</b> marked <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> as {c.warranty_status === "under_warranty" ? "Under Warranty" : "Not Under Warranty"}</>, sub: c.warranty_status === "under_warranty" ? "Warranty" : "Dispute" });
-    if (within(c.resolved_at)) events.push({ id: `${c.id}-res`, cid: c.id, type: "resolved", date: c.resolved_at, hospital: c.hospital, actor: c.resolved_by, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> marked resolved</>, sub: "Resolved" });
-    if (within(c.verified_at)) events.push({ id: `${c.id}-ver`, cid: c.id, type: "resolved", date: c.verified_at, hospital: c.hospital, actor: "Amex", text: <>Amex verified resolution at <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b></>, sub: "Verified" });
-    if (within(c.escalated_at)) events.push({ id: `${c.id}-esc`, cid: c.id, type: "escalation", date: c.escalated_at, hospital: c.hospital, actor: c.escalated_by, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> complaint escalated{c.escalated_by ? <> by <b>{c.escalated_by}</b></> : ""}</>, sub: "Escalation" });
+    if (within(c.created_at)) events.push({ id: `${c.id}-open`, cid: c.id, type: "opened", date: c.created_at, hospital: c.hospital, actor: c.hospital, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> · New ticket raised for “<b>{c.title}</b>”</>, sub: "Opened" });
+    if (within(c.acknowledged_at)) events.push({ id: `${c.id}-ack`, cid: c.id, type: "acknowledged", date: c.acknowledged_at, hospital: c.hospital, actor: c.acknowledged_by || getProvider(c.hospital), text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> · {c.acknowledged_by || getProvider(c.hospital)} acknowledged “<b>{c.title}</b>”</>, sub: "Acknowledged" });
+    visitDates(c).forEach((v, i) => { if (within(v)) events.push({ id: `${c.id}-visit-${i}`, cid: c.id, type: "visit", date: v, hospital: c.hospital, actor: getProvider(c.hospital), text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> · Visit logged for “<b>{c.title}</b>”</>, sub: "Visit" }); });
+    if (within(c.warranty_at)) events.push({ id: `${c.id}-warr`, cid: c.id, type: c.warranty_status === "under_warranty" ? "warranty" : "dispute", date: c.warranty_at, hospital: c.hospital, actor: c.warranty_by, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> · {c.warranty_by || "Someone"} marked “{c.warranty_status === "under_warranty" ? "Under Warranty" : "Not Under Warranty"}” for “<b>{c.title}</b>”</>, sub: c.warranty_status === "under_warranty" ? "Warranty" : "Dispute" });
+    if (within(c.resolved_at)) events.push({ id: `${c.id}-res`, cid: c.id, type: "resolved", date: c.resolved_at, hospital: c.hospital, actor: c.resolved_by, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> · Marked resolved for “<b>{c.title}</b>”</>, sub: "Resolved" });
+    if (within(c.verified_at)) events.push({ id: `${c.id}-ver`, cid: c.id, type: "resolved", date: c.verified_at, hospital: c.hospital, actor: "Amex", text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> · Amex verified resolution for “<b>{c.title}</b>”</>, sub: "Verified" });
+    if (within(c.escalated_at)) events.push({ id: `${c.id}-esc`, cid: c.id, type: "escalation", date: c.escalated_at, hospital: c.hospital, actor: c.escalated_by, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> · Hospital escalated “<b>{c.title}</b>”</>, sub: "Escalation" });
   });
   comments.forEach(cm => {
     if (!scopeIds.has(cm.complaint_id)) return;
     const c = cById[cm.complaint_id]; if (!c) return;
     const txt = (cm.content || "").replace(/^Acknowledged — /, "").replace(/^Acknowledged the ticket\.$/, "");
     if (!txt || /^Acknowledged/.test(cm.content || "") || /^Escalated/.test(cm.content || "")) return; // dedupe with dedicated events
-    events.push({ id: `cm-${cm.complaint_id}-${cm.created_at}`, cid: cm.complaint_id, type: "comment", date: cm.created_at, hospital: c.hospital, text: <><b>{cm.author_role === "admin" ? "Admin" : cm.author}</b> commented on <b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b>: “{txt.length > 80 ? txt.slice(0, 80) + "…" : txt}”</>, sub: "Comment" });
+    events.push({ id: `cm-${cm.complaint_id}-${cm.created_at}`, cid: cm.complaint_id, type: "comment", date: cm.created_at, hospital: c.hospital, text: <><b style={{ color: T.teal700 }}>{displayName(c.hospital)}</b> · {cm.author_role === "admin" ? "Admin" : cm.author} commented on “<b>{c.title}</b>”</>, sub: "Comment" });
   });
 
   const typeMatch = (e) => typeFilter === "all" || (typeFilter === "visit" && e.type === "visit") || (typeFilter === "resolved" && e.type === "resolved") || (typeFilter === "escalation" && e.type === "escalation");
@@ -4418,13 +4424,14 @@ function ActivityLog({ complaints, scopeProvider, currentUser, onViewSite, onRes
 
   const iconFor = (t) => {
     const map = {
-      opened: { bg: "#fdecec", stroke: "#c0392b", path: <><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></> },
-      acknowledged: { bg: "#f1edfa", stroke: "#7c5cbf", path: <polyline points="20 6 9 17 4 12"/> },
-      visit: { bg: "#fef6ec", stroke: "#b45309", path: <><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></> },
+      opened: { bg: "#eff6ff", stroke: "#3b82f6", path: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></> },
+      acknowledged: { bg: "#f3f0ff", stroke: "#7c3aed", path: <><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></> },
+      visit: { bg: "#fffbeb", stroke: "#d97706", path: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></> },
       comment: { bg: "#f0fdfa", stroke: "#0f766e", path: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/> },
-      warranty: { bg: "#ecfdf5", stroke: "#16a34a", path: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></> },
-      resolved: { bg: "#eef6ff", stroke: "#2563eb", path: <polyline points="20 6 9 17 4 12"/> },
-      escalation: { bg: "#fff7ed", stroke: "#c2410c", path: <><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></> },
+      warranty: { bg: "#ecfdf5", stroke: "#059669", path: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></> },
+      dispute: { bg: "#fff7ed", stroke: "#ea580c", path: <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v4"/><path d="M12 16h.01"/></> },
+      resolved: { bg: "#f0fdfa", stroke: "#0f766e", path: <><rect x="3" y="3" width="18" height="18" rx="2"/><path d="m9 12 2 2 4-4"/></> },
+      escalation: { bg: "#fef2f2", stroke: "#dc2626", path: <><polyline points="17 11 12 6 7 11"/><polyline points="17 18 12 13 7 18"/></> },
     };
     return map[t] || map.comment;
   };
@@ -4451,26 +4458,24 @@ function ActivityLog({ complaints, scopeProvider, currentUser, onViewSite, onRes
         <div style={{ fontSize: 22, fontWeight: 800, color: T.ink, letterSpacing: "-0.3px" }}>Activity Log</div>
         {onReset && <button onClick={onReset} style={{ fontSize: 11.5, fontWeight: 700, color: "#c0392b", background: "#fdecec", border: "1px solid #f5c6c0", borderRadius: 8, padding: "7px 13px", cursor: "pointer" }}>Reset Activity Log</button>}
       </div>
-      <div style={{ fontSize: 13, color: T.slate, marginBottom: 18 }}>Recent activity across tickets — last 30 days. {scopeProvider ? "Your sites." : "All sites."}</div>
+      <div style={{ fontSize: 13, color: T.slate, marginBottom: 18 }}>Recent activity across tickets — last 30 days.</div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 18, alignItems: "center" }}>
         {canScope && (
-          <select value={siteFilter} onChange={e => setSiteFilter(e.target.value)} style={{ fontSize: 12.5, fontWeight: 600, padding: "8px 12px", borderRadius: 10, border: `1.5px solid ${T.line}`, background: "#fff", color: T.ink, cursor: "pointer", outline: "none" }}>
-            <option value="all">All sites</option>
-            <optgroup label="By service provider">
-              <option value="Novair">Novair</option>
-              <option value="Intexim">Intexim</option>
-              <option value="Z-Corps">Z-Corps</option>
-            </optgroup>
-          </select>
+          <div style={{ display: "flex", gap: 6 }}>
+            {[{ k: "all", l: "All Sites", c: "linear-gradient(135deg, #0b3b38, #0f766e)" }, { k: "Novair", l: "Novair", c: "#0f766e" }, { k: "Intexim", l: "Intexim", c: "#7c5cbf" }, { k: "Z-Corps", l: "Z-Corps", c: "#2f9e58" }].map(s => (
+              <button key={s.k} onClick={() => setSiteFilter(s.k)} style={{ fontSize: 12, fontWeight: 700, padding: "8px 16px", borderRadius: 10, cursor: "pointer", border: siteFilter === s.k ? "1.5px solid transparent" : `1.5px solid ${T.line}`, background: siteFilter === s.k ? s.c : "#fff", color: siteFilter === s.k ? "#fff" : T.slate, transition: "all 0.15s" }}>{s.l}</button>
+            ))}
+          </div>
         )}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: canScope ? "auto" : 0 }}>
+        {canScope && <div style={{ width: 1, height: 28, background: T.line, margin: "0 4px", flexShrink: 0 }} />}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginLeft: canScope ? 0 : 0 }}>
           {chips.map(ch => (
             <button key={ch.k} onClick={() => setTypeFilter(ch.k)} style={{ fontSize: 11.5, fontWeight: 700, padding: "7px 13px", borderRadius: 20, cursor: "pointer", border: typeFilter === ch.k ? "1.5px solid transparent" : `1.5px solid ${T.line}`, background: typeFilter === ch.k ? "linear-gradient(135deg, #0d9488, #0f766e)" : "#fff", color: typeFilter === ch.k ? "#fff" : T.slate }}>{ch.l}</button>
           ))}
         </div>
       </div>
       <div style={{ background: "#fff", borderRadius: 16, border: `1px solid ${T.line}`, boxShadow: "0 1px 2px rgba(15,76,71,0.04)", overflow: "hidden" }}>
-        {feed.length === 0 ? <div style={{ padding: "40px 20px", textAlign: "center", color: T.mute, fontSize: 13 }}>No activity in the selected filter.</div> : feed.map(e => {
+        {feed.length === 0 ? <div style={{ padding: "40px 20px", textAlign: "center", color: T.mute, fontSize: 13 }}>No activity.</div> : feed.map(e => {
           const ic = iconFor(e.type);
           const showDay = dayLabel(e.date) !== lastDay; lastDay = dayLabel(e.date);
           return (
