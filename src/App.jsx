@@ -3255,6 +3255,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const [ackMode, setAckMode] = useState(null); // "remote" | "visit" — must be chosen explicitly
   const [ackVisitDate, setAckVisitDate] = useState("");
   const [ackDate, setAckDate] = useState(""); // admin only: acknowledge on a past date
+  const [ackAs, setAckAs] = useState(""); // admin only: acknowledge on behalf of a provider
   const [ackBusy, setAckBusy] = useState(false);
   // Warranty decision panel
   const [warrOpen, setWarrOpen] = useState(false);
@@ -3313,13 +3314,13 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     if (ackBusy) return;
     if (ackMode === "visit" && !ackVisitDate) return;
     setAckBusy(true);
-    const who = isAdmin ? "Admin" : currentUser.name;
+    const who = isAdmin ? (ackAs || "Admin") : currentUser.name;
     await acknowledgeComplaint(c.id, who, isAdmin && ackDate ? ackDate : null);
     const noteText = ackNote.trim();
     await insertComment(c.id, who, currentUser.role, noteText ? `Acknowledged — ${noteText}` : "Acknowledged the ticket.");
     if (ackFiles.length) await uploadComplaintAttachments(c.id, ackFiles);
     if (ackMode === "visit" && ackVisitDate) await onLogVisit(c.id, ackVisitDate);
-    setAckOpen(false); setAckNote(""); setAckFiles([]); setAckVisitDate(""); setAckDate(""); setAckMode(null);
+    setAckOpen(false); setAckNote(""); setAckFiles([]); setAckVisitDate(""); setAckDate(""); setAckAs(""); setAckMode(null);
     setAckBusy(false);
     await onRefresh();
   };
@@ -3494,9 +3495,16 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                 <textarea value={ackNote} onChange={e => setAckNote(e.target.value)} placeholder="Add a note (what you found, what you did / plan to do)…" rows={3} style={{ width: "100%", fontSize: 13, padding: "10px 12px", border: `1px solid ${C.tealLight}`, borderRadius: 8, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
                 {isAdmin && (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, background: "#fffdf5", border: "1px solid #f0e6c0", borderRadius: 8, padding: "8px 12px", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 11.5, fontWeight: 700, color: "#92700c" }}>Admin — acknowledge on date:</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: "#92700c" }}>Admin — acknowledge as:</span>
+                    <select value={ackAs} onChange={e => setAckAs(e.target.value)} style={{ fontSize: 12, padding: "6px 10px", border: "1px solid #e5d9a8", borderRadius: 7, background: "#fff" }}>
+                      <option value="">Admin</option>
+                      <option value="Novair">Novair</option>
+                      <option value="Intexim">Intexim</option>
+                      <option value="Z-Corps">Z-Corps</option>
+                    </select>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: "#92700c" }}>on date:</span>
                     <input type="date" value={ackDate} onChange={e => setAckDate(e.target.value)} style={{ fontSize: 12, padding: "6px 10px", border: "1px solid #e5d9a8", borderRadius: 7 }} />
-                    <span style={{ fontSize: 10.5, color: "#a8935a" }}>{ackDate ? "" : "leave blank for today"}</span>
+                    <span style={{ fontSize: 10.5, color: "#a8935a" }}>{ackDate ? "" : "blank = today"}</span>
                   </div>
                 )}
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
