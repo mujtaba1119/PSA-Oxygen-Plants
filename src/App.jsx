@@ -3311,6 +3311,25 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     await onRefresh();
   };
 
+  // Report upload — available once a ticket is acknowledged, to any Novair/Intexim/Z-Corps/Amex
+  // account or admin. Uploads the file(s), then posts a comment so the file shows both with the
+  // comment and in the ticket's attachments.
+  const canUploadTicketReport = isAcknowledged(c) && (isAdmin || ["Novair", "Intexim", "Z-Corps", "Amex"].includes(getCompanyName(currentUser)));
+  const ticketReportRef = useRef(null);
+  const [ticketReportBusy, setTicketReportBusy] = useState(false);
+  const handleUploadTicketReport = async (files) => {
+    if (!files.length || ticketReportBusy) return;
+    setTicketReportBusy(true);
+    const uploaded = await uploadComplaintAttachments(c.id, files);
+    if (uploaded.length) {
+      const author = currentUser.role === "admin" ? "Admin" : currentUser.role === "hospital" ? currentUser.name + " Hospital" : (currentUser.name === getCompanyName(currentUser) ? currentUser.name : `${currentUser.name} — ${getCompanyName(currentUser)}`);
+      const pathEntries = uploaded.map(u => `${u.name}|${u.path}`).join(",");
+      await insertComment(c.id, author, currentUser.role, `${author} uploaded a report\n[attached:${pathEntries}]`);
+    }
+    setTicketReportBusy(false);
+    await onRefresh();
+  };
+
   // Auto-expand when this card is focused from a notification
   useEffect(() => { if (cardHighlight || (highlightCommentText && highlightCommentText.trim())) setExpanded(true); }, [cardHighlight, highlightCommentText]);
 
@@ -3607,6 +3626,15 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                     </select>
                   )}
                   <button style={styles.btnTealSmall} onClick={handleLogVisit} disabled={busy || !visitDatePick}>{busy ? "…" : hasVisits(c) ? "Log Another Visit" : "Log Visit"}</button>
+                </>
+              )}
+              {canUploadTicketReport && (
+                <>
+                  <input ref={ticketReportRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) handleUploadTicketReport(Array.from(e.target.files)); e.target.value = ""; }} />
+                  <button style={{ ...styles.btnTealSmall, background: "#fff", color: C.tealDark, border: `1px solid ${C.tealLight}`, boxShadow: "none", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => ticketReportRef.current?.click()} disabled={ticketReportBusy}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    {ticketReportBusy ? "Uploading…" : "Upload Report"}
+                  </button>
                 </>
               )}
               {canMarkResolved && (
