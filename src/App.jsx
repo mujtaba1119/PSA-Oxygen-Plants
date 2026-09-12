@@ -4513,17 +4513,308 @@ function CorrectiveMaintenanceRecordPage({ site, complaints, onBack }) {
   );
 }
 
-function AnalyticsPage() {
+/* ─── Analytics helpers & shared chart primitives ─── */
+const AN_T = { ink: "#0f172a", slate: "#475569", mute: "#94a3b8", line: "#e8ecf0", teal: "#0f766e", teal2: "#0d9488", teal3: "#2dd4a8", card: "#ffffff" };
+const PROVIDER_COLORS = { Novair: "#0f766e", Intexim: "#7c5cbf", "Z-Corps": "#2f9e58" };
+const anCard = { background: AN_T.card, borderRadius: 16, border: `1px solid ${AN_T.line}`, boxShadow: "0 1px 3px rgba(15,23,42,0.05)", padding: "20px 22px" };
+const anTitle = { fontSize: 14, fontWeight: 800, color: AN_T.ink, letterSpacing: "-0.01em", margin: "0 0 2px" };
+const anSub = { fontSize: 11, color: AN_T.mute, margin: "0 0 16px" };
+
+function AnalyticsPage({ complaints = [], shutdowns = [] }) {
+  const [range, setRange] = useState("12mo"); // 30d | 90d | 12mo | all
+  const [provider, setProvider] = useState("all");
+  const [severity, setSeverity] = useState("all");
+
+  const fmtDay = (d) => d ? new Date(d).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" }) : "—";
+  const sevOf = (c) => c.severity || getDefaultSeverity(c.title);
+
+  // ── Apply the global filters ──
+  const now = new Date();
+  const rangeStart = React.useMemo(() => {
+    if (range === "all") return null;
+    const d = new Date(now);
+    if (range === "30d") d.setDate(d.getDate() - 30);
+    else if (range === "90d") d.setDate(d.getDate() - 90);
+    else d.setMonth(d.getMonth() - 12);
+    return d;
+  }, [range]);
+
+  const filtered = React.useMemo(() => (complaints || []).filter(c => {
+    if (provider !== "all" && getProvider(c.hospital) !== provider) return false;
+    if (severity !== "all" && sevOf(c) !== severity) return false;
+    if (rangeStart && c.created_at && new Date(c.created_at) < rangeStart) return false;
+    return true;
+  }), [complaints, provider, severity, rangeStart]);
+
+  const verified = filtered.filter(c => c.status === "Verified" && c.created_at && c.verified_at);
+  const closed = filtered.filter(c => isClosedStatus(c.status));
+
+  // ── KPI values ──
+  const total = filtered.length;
+  const resolutionRate = total > 0 ? Math.round(closed.length / total * 100) : null;
+  const avgResolution = verified.length > 0 ? Math.round(verified.reduce((s, c) => s + calendarDaysBetween(c.created_at, c.verified_at), 0) / verified.length * 10) / 10 : null;
+  const ackd = filtered.filter(c => c.created_at && c.acknowledged_at);
+  const avgResponse = ackd.length > 0 ? Math.round(ackd.reduce((s, c) => s + calendarDaysBetween(c.created_at, c.acknowledged_at), 0) / ackd.length * 10) / 10 : null;
+
+  // ── Chart 1: lifecycle timing (avg days per stage, over verified tickets) ──
+  const stageAvg = React.useMemo(() => {
+    const acc = { response: [], dispatch: [], repair: [], verify: [] };
+    verified.forEach(c => {
+      if (c.acknowledged_at) acc.response.push(calendarDaysBetween(c.created_at, c.acknowledged_at));
+      const vd = visitDates(c).map(d => new Date(d)).filter(d => !isNaN(d)).sort((a, b) => a - b);
+      if (c.acknowledged_at && vd.length) acc.dispatch.push(Math.max(0, calendarDaysBetween(c.acknowledged_at, vd[0])));
+      if (vd.length && c.resolved_at) acc.repair.push(Math.max(0, calendarDaysBetween(vd[0], c.resolved_at)));
+      if (c.resolved_at && c.verified_at) acc.verify.push(Math.max(0, calendarDaysBetween(c.resolved_at, c.verified_at)));
+    });
+    const mean = (arr) => arr.length ? Math.round(arr.reduce((s, v) => s + (v || 0), 0) / arr.length * 10) / 10 : 0;
+    return { response: mean(acc.response), dispatch: mean(acc.dispatch), repair: mean(acc.repair), verify: mean(acc.verify) };
+  }, [verified]);
+  const stageDefs = [
+    { key: "response", label: "Response", desc: "Open → Acknowledged", color: "#0ea5e9" },
+    { key: "dispatch", label: "Dispatch", desc: "Acknowledged → First visit", color: "#f59e0b" },
+    { key: "repair", label: "Repair", desc: "First visit → Resolved", color: "#0f766e" },
+    { key: "verify", label: "Verify", desc: "Resolved → Verified", color: "#7c5cbf" },
+  ];
+  const stageTotal = stageDefs.reduce((s, d) => s + stageAvg[d.key], 0);
+
+  // ── Chart 2 & 6: monthly opened/resolved + resolution-time trend ──
+  const months = React.useMemo(() => {
+    const n = range === "30d" ? 1 : range === "90d" ? 3 : 12;
+    const arr = [];
+    for (let i = n - 1; i >= 0; i--) { const d = new Date(now.getFullYear(), now.getMonth() - i, 1); arr.push({ label: d.toLocaleString("en-US", { month: "short" }), year: d.getFullYear(), month: d.getMonth() }); }
+    return arr;
+  }, [range]);
+  const trend = React.useMemo(() => months.map(m => {
+    const inMonth = (ds) => { if (!ds) return false; const d = new Date(ds); return d.getMonth() === m.month && d.getFullYear() === m.year; };
+    const opened = filtered.filter(c => inMonth(c.created_at)).length;
+    const resolvedList = filtered.filter(c => isClosedStatus(c.status) && inMonth(c.resolved_at || c.verified_at));
+    const vIn = filtered.filter(c => c.status === "Verified" && c.created_at && c.verified_at && inMonth(c.verified_at));
+    const avgRes = vIn.length ? Math.round(vIn.reduce((s, c) => s + calendarDaysBetween(c.created_at, c.verified_at), 0) / vIn.length * 10) / 10 : 0;
+    return { ...m, opened, resolved: resolvedList.length, avgRes };
+  }), [months, filtered]);
+  const trendMax = Math.max(1, ...trend.map(t => Math.max(t.opened, t.resolved)));
+  const resTrendMax = Math.max(1, ...trend.map(t => t.avgRes));
+
+  // ── Chart 3: provider comparison ──
+  const providerRows = React.useMemo(() => ["Novair", "Intexim", "Z-Corps"].map(prov => {
+    const pc = filtered.filter(c => getProvider(c.hospital) === prov);
+    const pClosed = pc.filter(c => isClosedStatus(c.status)).length;
+    const pv = pc.filter(c => c.status === "Verified" && c.created_at && c.verified_at);
+    const pAck = pc.filter(c => c.created_at && c.acknowledged_at);
+    return {
+      prov, total: pc.length,
+      rate: pc.length ? Math.round(pClosed / pc.length * 100) : 0,
+      avgRes: pv.length ? Math.round(pv.reduce((s, c) => s + calendarDaysBetween(c.created_at, c.verified_at), 0) / pv.length * 10) / 10 : 0,
+      avgResp: pAck.length ? Math.round(pAck.reduce((s, c) => s + calendarDaysBetween(c.created_at, c.acknowledged_at), 0) / pAck.length * 10) / 10 : 0,
+      disputes: pc.filter(c => c.warranty_status === "not_under_warranty").length,
+      escalations: pc.filter(c => c.escalated_at).length,
+    };
+  }).filter(r => r.total > 0), [filtered]);
+
+  // ── Chart 4: equipment failure analysis ──
+  const equipRows = React.useMemo(() => {
+    const counts = {};
+    filtered.forEach(c => { extractSerials(c.description).forEach(sn => { const t = equipTypeForSerial(sn) || "Unspecified"; counts[t] = (counts[t] || 0) + 1; }); });
+    return Object.entries(counts).map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count);
+  }, [filtered]);
+  const equipMax = Math.max(1, ...equipRows.map(r => r.count));
+
+  // ── Chart 5: downtime by cause (shutdowns filtered by provider + range) ──
+  const downtimeByCause = React.useMemo(() => {
+    const acc = {};
+    (shutdowns || []).forEach(s => {
+      if (provider !== "all" && getProvider(s.hospital) !== provider) return;
+      if (rangeStart && s.start_date && new Date(s.start_date) < rangeStart) return;
+      const meta = shutdownReasonMeta(s.reason);
+      acc[s.reason] = acc[s.reason] || { reason: s.reason, days: 0, color: meta.color };
+      acc[s.reason].days += shutdownDays(s);
+    });
+    return Object.values(acc).filter(x => x.days > 0).sort((a, b) => b.days - a.days);
+  }, [shutdowns, provider, rangeStart]);
+  const downtimeTotal = downtimeByCause.reduce((s, x) => s + x.days, 0);
+
+  // Donut geometry
+  const donut = React.useMemo(() => {
+    let offset = 0; const R = 52, C0 = 2 * Math.PI * R;
+    return downtimeByCause.map(seg => { const frac = downtimeTotal ? seg.days / downtimeTotal : 0; const dash = frac * C0; const el = { ...seg, dasharray: `${dash} ${C0 - dash}`, dashoffset: -offset * C0, frac }; offset += frac; return el; });
+  }, [downtimeByCause, downtimeTotal]);
+
+  const filterBtn = (active) => ({ fontSize: 12, fontWeight: 700, padding: "7px 13px", borderRadius: 8, cursor: "pointer", border: active ? "1.5px solid transparent" : `1.5px solid ${AN_T.line}`, background: active ? "linear-gradient(135deg, #0d9488, #0f766e)" : "#fff", color: active ? "#fff" : AN_T.slate, transition: "all 0.15s" });
+  const kpis = [
+    { label: "Total Tickets", value: total, suffix: "", color: "#0f766e" },
+    { label: "Avg Resolution Time", value: avgResolution == null ? "—" : avgResolution, suffix: avgResolution == null ? "" : "d", color: "#0369a1" },
+    { label: "Resolution Rate", value: resolutionRate == null ? "—" : resolutionRate, suffix: resolutionRate == null ? "" : "%", color: "#2f9e58" },
+    { label: "Avg Response Time", value: avgResponse == null ? "—" : avgResponse, suffix: avgResponse == null ? "" : "d", color: "#d9822b" },
+  ];
+
   return (
-    <div style={{ textAlign: "center", padding: "80px 24px" }}>
-      <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.15 }}>
-        <SidebarIcon name="analytics" size={64} />
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ marginBottom: 18 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: AN_T.ink, margin: 0, letterSpacing: "-0.01em" }}>Analytics &amp; Insights</h2>
+        <div style={{ fontSize: 12, color: AN_T.mute, marginTop: 3 }}>Program performance across all sites and providers</div>
       </div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, color: C.black, margin: "0 0 8px" }}>Analytics & Insights</h2>
-      <p style={{ fontSize: 14, color: C.textLight, maxWidth: 400, margin: "0 auto", lineHeight: 1.6 }}>
-        Data visualization and analysis.
-      </p>
-      <div style={{ marginTop: 24, padding: "14px 24px", background: C.tealBg, border: `1px solid ${C.tealLight}`, display: "inline-block", fontSize: 12, fontWeight: 600, color: C.tealDark, letterSpacing: 0.5 }}>COMING SOON</div>
+
+      {/* ── Global filter bar ── */}
+      <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center", padding: "14px 18px", background: "#fff", border: `1px solid ${AN_T.line}`, borderRadius: 14, marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: AN_T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>Period</span>
+          {[["30d", "30 days"], ["90d", "90 days"], ["12mo", "12 months"], ["all", "All time"]].map(([k, l]) => <button key={k} onClick={() => setRange(k)} style={filterBtn(range === k)}>{l}</button>)}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: AN_T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>Provider</span>
+          {[["all", "All"], ["Novair", "Novair"], ["Intexim", "Intexim"], ["Z-Corps", "Z-Corps"]].map(([k, l]) => <button key={k} onClick={() => setProvider(k)} style={filterBtn(provider === k)}>{l}</button>)}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: AN_T.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>Severity</span>
+          {[["all", "All"], ["Critical", "Critical"], ["High", "High"], ["Low", "Low"]].map(([k, l]) => <button key={k} onClick={() => setSeverity(k)} style={filterBtn(severity === k)}>{l}</button>)}
+        </div>
+      </div>
+
+      {/* ── KPI cards ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 20 }}>
+        {kpis.map((k, i) => (
+          <div key={i} style={{ ...anCard, padding: "20px 22px" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: AN_T.mute, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>{k.label}</div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: AN_T.ink, letterSpacing: "-0.03em", lineHeight: 1 }}>{k.value}<span style={{ fontSize: 16, fontWeight: 600, color: k.color, marginLeft: 3 }}>{k.suffix}</span></div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Charts grid ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 16 }}>
+
+        {/* Chart 1: Lifecycle timing */}
+        <div style={anCard}>
+          <h3 style={anTitle}>Ticket Lifecycle Timing</h3>
+          <p style={anSub}>Average days spent in each stage (verified tickets)</p>
+          {stageTotal === 0 ? <div style={{ padding: "30px 0", textAlign: "center", color: AN_T.mute, fontSize: 13 }}>Not enough data.</div> : (
+            <>
+              <div style={{ display: "flex", height: 30, borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
+                {stageDefs.map(s => stageAvg[s.key] > 0 && <div key={s.key} title={`${s.label}: ${stageAvg[s.key]}d`} style={{ width: `${stageAvg[s.key] / stageTotal * 100}%`, background: s.color }} />)}
+              </div>
+              {stageDefs.map(s => (
+                <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: s.color, flexShrink: 0 }} />
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: AN_T.ink, width: 74 }}>{s.label}</span>
+                  <span style={{ fontSize: 11, color: AN_T.mute, flex: 1 }}>{s.desc}</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: s.color }}>{stageAvg[s.key]}d</span>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+
+        {/* Chart 2: Opened vs Resolved */}
+        <div style={anCard}>
+          <h3 style={anTitle}>Tickets Opened vs Resolved</h3>
+          <p style={anSub}>Monthly volume over the selected period</p>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 170, paddingTop: 10 }}>
+            {trend.map((m, i) => (
+              <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, height: "100%", justifyContent: "flex-end" }}>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: "100%", width: "100%", justifyContent: "center" }}>
+                  <div title={`Opened: ${m.opened}`} style={{ width: "42%", maxWidth: 16, height: `${m.opened / trendMax * 100}%`, background: "#d9822b", borderRadius: "3px 3px 0 0", minHeight: m.opened ? 2 : 0 }} />
+                  <div title={`Resolved: ${m.resolved}`} style={{ width: "42%", maxWidth: 16, height: `${m.resolved / trendMax * 100}%`, background: "#0f766e", borderRadius: "3px 3px 0 0", minHeight: m.resolved ? 2 : 0 }} />
+                </div>
+                <span style={{ fontSize: 9.5, color: AN_T.mute, fontWeight: 600 }}>{m.label}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 12 }}>
+            <span style={{ fontSize: 11, color: AN_T.slate, display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 9, height: 9, borderRadius: 2, background: "#d9822b" }} />Opened</span>
+            <span style={{ fontSize: 11, color: AN_T.slate, display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 9, height: 9, borderRadius: 2, background: "#0f766e" }} />Resolved</span>
+          </div>
+        </div>
+
+        {/* Chart 3: Provider comparison */}
+        <div style={anCard}>
+          <h3 style={anTitle}>Provider Comparison</h3>
+          <p style={anSub}>Key metrics side by side</p>
+          {providerRows.length === 0 ? <div style={{ padding: "30px 0", textAlign: "center", color: AN_T.mute, fontSize: 13 }}>No data.</div> : (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr>
+                {["Provider", "Tickets", "Rate", "Avg Res", "Avg Resp", "Disputes", "Escal."].map((h, i) => <th key={h} style={{ fontSize: 9.5, fontWeight: 700, color: AN_T.mute, textTransform: "uppercase", letterSpacing: "0.04em", padding: "8px 6px", textAlign: i === 0 ? "left" : "center", borderBottom: `1px solid ${AN_T.line}` }}>{h}</th>)}
+              </tr></thead>
+              <tbody>{providerRows.map(r => (
+                <tr key={r.prov}>
+                  <td style={{ padding: "11px 6px", fontSize: 12.5, fontWeight: 700, color: PROVIDER_COLORS[r.prov] || AN_T.ink }}>{r.prov}</td>
+                  <td style={{ padding: "11px 6px", fontSize: 12.5, textAlign: "center", color: AN_T.slate }}>{r.total}</td>
+                  <td style={{ padding: "11px 6px", fontSize: 12.5, textAlign: "center", fontWeight: 700, color: AN_T.teal }}>{r.rate}%</td>
+                  <td style={{ padding: "11px 6px", fontSize: 12.5, textAlign: "center", color: AN_T.slate }}>{r.avgRes || "—"}{r.avgRes ? "d" : ""}</td>
+                  <td style={{ padding: "11px 6px", fontSize: 12.5, textAlign: "center", color: AN_T.slate }}>{r.avgResp || "—"}{r.avgResp ? "d" : ""}</td>
+                  <td style={{ padding: "11px 6px", fontSize: 12.5, textAlign: "center", fontWeight: 700, color: r.disputes ? "#b91c1c" : AN_T.mute }}>{r.disputes || "—"}</td>
+                  <td style={{ padding: "11px 6px", fontSize: 12.5, textAlign: "center", fontWeight: 700, color: r.escalations ? "#c2410c" : AN_T.mute }}>{r.escalations || "—"}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          )}
+        </div>
+
+        {/* Chart 4: Equipment failure analysis */}
+        <div style={anCard}>
+          <h3 style={anTitle}>Equipment Failure Analysis</h3>
+          <p style={anSub}>Tickets by equipment type</p>
+          {equipRows.length === 0 ? <div style={{ padding: "30px 0", textAlign: "center", color: AN_T.mute, fontSize: 13 }}>No equipment-tagged tickets.</div> : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {equipRows.map(r => (
+                <div key={r.type} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 12, color: AN_T.slate, width: 130, flexShrink: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.type}</span>
+                  <div style={{ flex: 1, height: 18, background: "#f1f5f4", borderRadius: 5, overflow: "hidden" }}>
+                    <div style={{ width: `${r.count / equipMax * 100}%`, height: "100%", background: "linear-gradient(90deg, #0d9488, #2dd4a8)", borderRadius: 5 }} />
+                  </div>
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: AN_T.ink, width: 24, textAlign: "right" }}>{r.count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Chart 5: Downtime by cause */}
+        <div style={anCard}>
+          <h3 style={anTitle}>Downtime by Cause</h3>
+          <p style={anSub}>Total shutdown days · {downtimeTotal}d</p>
+          {downtimeTotal === 0 ? <div style={{ padding: "30px 0", textAlign: "center", color: AN_T.mute, fontSize: 13 }}>No downtime in this period.</div> : (
+            <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+              <svg width="130" height="130" viewBox="0 0 130 130">
+                <g transform="rotate(-90 65 65)">
+                  {donut.map((seg, i) => <circle key={i} cx="65" cy="65" r="52" fill="none" stroke={seg.color} strokeWidth="20" strokeDasharray={seg.dasharray} strokeDashoffset={seg.dashoffset} />)}
+                </g>
+                <text x="65" y="61" textAnchor="middle" style={{ fontSize: 22, fontWeight: 800, fill: AN_T.ink }}>{downtimeTotal}</text>
+                <text x="65" y="78" textAnchor="middle" style={{ fontSize: 10, fontWeight: 600, fill: AN_T.mute }}>days</text>
+              </svg>
+              <div style={{ flex: 1, minWidth: 140, display: "flex", flexDirection: "column", gap: 8 }}>
+                {downtimeByCause.map(seg => (
+                  <div key={seg.reason} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: 3, background: seg.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: AN_T.slate, flex: 1 }}>{seg.reason}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: AN_T.ink }}>{seg.days}d</span>
+                    <span style={{ fontSize: 10.5, color: AN_T.mute, width: 34, textAlign: "right" }}>{Math.round(seg.days / downtimeTotal * 100)}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Chart 6: Resolution-time trend */}
+        <div style={anCard}>
+          <h3 style={anTitle}>Resolution Time Trend</h3>
+          <p style={anSub}>Avg days to verify, by month</p>
+          {trend.every(t => t.avgRes === 0) ? <div style={{ padding: "30px 0", textAlign: "center", color: AN_T.mute, fontSize: 13 }}>Not enough verified tickets.</div> : (
+            <svg width="100%" height="170" viewBox="0 0 320 170" preserveAspectRatio="none">
+              {[0, 0.25, 0.5, 0.75, 1].map((g, i) => <line key={i} x1="0" y1={20 + g * 120} x2="320" y2={20 + g * 120} stroke={AN_T.line} strokeWidth="1" />)}
+              {(() => {
+                const pts = trend.map((t, i) => { const x = trend.length > 1 ? (i / (trend.length - 1)) * 300 + 10 : 160; const y = 20 + (1 - t.avgRes / resTrendMax) * 120; return { x, y, t }; });
+                const path = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+                return <>
+                  <path d={path} fill="none" stroke="#0f766e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  {pts.map((p, i) => <g key={i}><circle cx={p.x} cy={p.y} r="3.5" fill="#0f766e" /><text x={p.x} y="162" textAnchor="middle" style={{ fontSize: 8.5, fill: AN_T.mute, fontWeight: 600 }}>{p.t.label}</text></g>)}
+                </>;
+              })()}
+            </svg>
+          )}
+        </div>
+
+      </div>
     </div>
   );
 }
@@ -4548,6 +4839,20 @@ const EQUIP_CATEGORIES = [
 ];
 const EQUIP_GROUP_COLORS = { "Oxygen Generators": { border: "#0d9488", text: "#0f766e" }, "Air Compressors": { border: "#0d9488", text: "#0f766e" }, "Air Dryers": { border: "#0d9488", text: "#0f766e" }, "Other Equipments": { border: "#0d9488", text: "#0f766e" } };
 const EQUIP_ICONS = { oxyswing_a: "oxyswing", oxyswing_b: "oxyswing", comp1: "compressor", comp2: "compressor", comp3: "compressor", comp4: "compressor", dryer1: "dryer", dryer2: "dryer", dryer3: "dryer", dryer4: "dryer", hpox: "hpox", oxycheck: "oxycheck", css: "css", medgas: "medgas", generator: "generator" };
+// Equipment type label per equipment key (top-level, for analytics).
+const EQUIP_TYPE_LABEL = { oxyswing_a: "Oxygen Generator", oxyswing_b: "Oxygen Generator", comp1: "Air Compressor", comp2: "Air Compressor", comp3: "Air Compressor", comp4: "Air Compressor", dryer1: "Air Dryer", dryer2: "Air Dryer", dryer3: "Air Dryer", dryer4: "Air Dryer", hpox: "HPOX Booster", oxycheck: "Oxygen Analyzer", css: "CSS Panel", medgas: "Medical Gas Panel", generator: "Diesel Generator" };
+// Resolve an equipment serial to its type label by scanning EQUIPMENT_DATA once.
+let _serialTypeCache = null;
+function equipTypeForSerial(serial) {
+  if (!serial) return null;
+  if (!_serialTypeCache) {
+    _serialTypeCache = {};
+    Object.values(EQUIPMENT_DATA).forEach(site => {
+      Object.entries(site).forEach(([key, sn]) => { if (sn) _serialTypeCache[String(sn)] = EQUIP_TYPE_LABEL[key] || "Equipment"; });
+    });
+  }
+  return _serialTypeCache[String(serial)] || null;
+}
 
 function EquipmentTab({ hospitals, complaints, siteNotes, shutdowns = [], isAdmin, onRefresh }) {
   const [selectedSite, setSelectedSite] = useState(null);
@@ -5351,7 +5656,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
           )}
           {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={null} currentUser={user} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} onReset={async () => { if (window.confirm("Reset the activity log? This clears all comment history that feeds the log. Ticket data (dates, statuses) is not affected. This cannot be undone.")) { await dbWrite({ action: "reset_all_comments" }); alert("Activity log reset."); await onRefresh(); } }} />}
           {tab === "maintenance" && <MaintenanceTab hospitals={ALL_HOSPITALS} siteNotes={siteNotes} complaints={complaints} isAdmin={true} onRefresh={onRefresh} />}
-          {tab === "analytics" && <AnalyticsPage />}
+          {tab === "analytics" && <AnalyticsPage complaints={complaints} shutdowns={shutdowns} />}
           {tab === "users" && (<>
           {/* Add User Form */}
           <div style={styles.formSection}>
@@ -5592,7 +5897,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
           {tab === "tickets" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onAssign={handleAssign} onLogVisit={handleLogVisit} onMarkResolved={handleMarkResolved} onVerify={handleVerify} onRejectVerify={handleRejectVerify} onDelete={() => {}} onRefresh={onRefresh} staffOptions={staffOptions} focusInfo={pendingFocus} />)}
           {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={["Intexim","Z-Corps"].includes(companyName) ? companyName : null} currentUser={user} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "maintenance" && <MaintenanceTab hospitals={myHospitals} siteNotes={siteNotes} complaints={complaints} isAdmin={false} onRefresh={onRefresh} />}
-          {tab === "analytics" && <AnalyticsPage />}
+          {tab === "analytics" && <AnalyticsPage complaints={complaints} shutdowns={shutdowns} />}
           </div>
         </main>
         <PartnerFooter />
