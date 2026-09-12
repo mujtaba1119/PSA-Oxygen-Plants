@@ -4211,7 +4211,7 @@ function MaintenanceTab({ hospitals = ALL_HOSPITALS, siteNotes = [], isAdmin, on
     return (
       <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
         <button onClick={() => setSection(null)} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: "0 0 3px", letterSpacing: "-0.01em" }}>Corrective Maintenance</h2>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: "0 0 3px", letterSpacing: "-0.01em" }}>Corrective Maintenance Record</h2>
         <div style={{ fontSize: 12, color: "#8a9199", marginBottom: 24 }}>{displayName(selectedSite)}</div>
         <div style={{ textAlign: "center", padding: "60px 24px", background: "#fff", border: "1px solid #eef1f0", borderRadius: 14, color: "#94a3b8", fontSize: 14 }}>Corrective maintenance page — coming soon.</div>
       </div>
@@ -4222,9 +4222,9 @@ function MaintenanceTab({ hospitals = ALL_HOSPITALS, siteNotes = [], isAdmin, on
   if (selectedSite) {
     const imgSrc = SITE_CODES[selectedSite] ? `/sites/${SITE_CODES[selectedSite]}.jpg` : null;
     const tiles = [
-      { key: "record", title: "Maintenance Record", desc: "Scheduled maintenance visits, equipment status and reports.",
+      { key: "record", title: "Preventive Maintenance Record", desc: "Scheduled maintenance visits, equipment status and reports.",
         icon: <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2h6a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v0a2 2 0 0 1 2-2z"/><path d="M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"/><path d="M9 12l2 2 4-4"/></svg> },
-      { key: "corrective", title: "Corrective Maintenance", desc: "Fault-driven repairs and corrective actions.",
+      { key: "corrective", title: "Corrective Maintenance Record", desc: "Non Warranty repairs and corrective actions.",
         icon: <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg> },
     ];
     return (
@@ -4349,15 +4349,15 @@ function MaintenanceRecordPage({ site, visits, isAdmin, onBack, onSave, onRefres
     setUploadingIdx(null);
   };
 
-  const thStyle = { fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, padding: "13px 14px", textAlign: "left", whiteSpace: "nowrap" };
-  const tdStyle = { fontSize: 12.5, color: "#374151", padding: "14px 14px", verticalAlign: "top", borderBottom: "1px solid transparent", borderImage: "linear-gradient(90deg, #0b3b38, #0f766e, #0b3b38) 1" };
+  const thStyle = { fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, padding: "13px 14px", textAlign: "center", whiteSpace: "nowrap" };
+  const tdStyle = { fontSize: 12.5, color: "#374151", padding: "14px 14px", verticalAlign: "middle", textAlign: "center", whiteSpace: "nowrap", borderBottom: "1px solid transparent", borderImage: "linear-gradient(90deg, #0b3b38, #0f766e, #0b3b38) 1" };
 
   return (
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", minHeight: "75vh" }}>
       <button onClick={onBack} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: 0, letterSpacing: "-0.01em" }}>Maintenance Record</h2>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: 0, letterSpacing: "-0.01em" }}>Preventive Maintenance Record</h2>
           <div style={{ fontSize: 12, color: "#8a9199", marginTop: 3 }}>{displayName(site)} · {visits.length} visit{visits.length === 1 ? "" : "s"}</div>
         </div>
         {isAdmin && !adding && <button onClick={() => setAdding(true)} style={{ fontSize: 12.5, fontWeight: 700, color: "#0f766e", background: "#e6f5f0", border: "1px solid #cfeae2", borderRadius: 9, padding: "9px 16px", cursor: "pointer" }}>+ Add Maintenance Visit</button>}
@@ -4404,27 +4404,30 @@ function MaintenanceRecordPage({ site, visits, isAdmin, onBack, onSave, onRefres
             {visits.length === 0 && (
               <tr><td colSpan={isAdmin ? 5 : 4} style={{ fontSize: 13, color: "#94a3b8", padding: "36px 0", textAlign: "center" }}>No maintenance visits recorded for this site.</td></tr>
             )}
-            {visits.map((v, i) => (
+            {visits.map((v, i) => {
+              const hasFiles = (v.files || []).length > 0;
+              return (
               <tr key={i}>
                 <td style={{ ...tdStyle, fontWeight: 700, color: "#0f766e" }}>Visit {i + 1}</td>
-                <td style={{ ...tdStyle, fontWeight: 600, color: "#1a1d21", whiteSpace: "nowrap" }}>{visitDatesLabel(v)}</td>
-                <td style={{ ...tdStyle, minWidth: 220 }}>{v.statusNotes || <span style={{ color: "#b8c0c0" }}>—</span>}</td>
+                <td style={{ ...tdStyle, fontWeight: 600, color: "#1a1d21" }}>{visitDatesLabel(v)}</td>
+                <td style={tdStyle}>{v.statusNotes || <span style={{ color: "#b8c0c0" }}>—</span>}</td>
                 <td style={tdStyle}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
                     {(v.files || []).map((f, fi) => <MaintRecordFile key={fi} file={f} />)}
-                    {isAdmin && (
+                    {isAdmin && !hasFiles && (
                       <label style={{ fontSize: 11, fontWeight: 700, color: "#0f766e", cursor: uploadingIdx === i ? "wait" : "pointer", display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", border: `1px dashed ${C.tealLight}`, borderRadius: 8 }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                         {uploadingIdx === i ? "Uploading…" : "Upload report"}
                         <input type="file" accept="image/*,application/pdf,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) handleAppendFiles(i, Array.from(e.target.files)); e.target.value = ""; }} />
                       </label>
                     )}
-                    {!isAdmin && (!v.files || v.files.length === 0) && <span style={{ color: "#b8c0c0" }}>—</span>}
+                    {!isAdmin && !hasFiles && <span style={{ color: "#b8c0c0" }}>—</span>}
                   </div>
                 </td>
-                {isAdmin && <td style={{ ...tdStyle, textAlign: "right" }}><button onClick={() => handleDelete(i)} disabled={busy} style={{ fontSize: 11.5, fontWeight: 600, color: "#c0392b", background: "none", border: "none", cursor: "pointer" }}>Delete</button></td>}
+                {isAdmin && <td style={tdStyle}><button onClick={() => handleDelete(i)} disabled={busy} style={{ fontSize: 11.5, fontWeight: 600, color: "#c0392b", background: "none", border: "none", cursor: "pointer" }}>Delete</button></td>}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -4597,7 +4600,20 @@ function EquipmentTab({ hospitals, complaints, siteNotes, shutdowns = [], isAdmi
       runningHours: r.runningHours || "", resolved: r.status !== "Not OK",
       statusText: r.status || "OK", isTicket: false, _idx: i
     }));
-    const allRows = [...ticketRows, ...maintRows].sort((a, b) => new Date(b.date) - new Date(a.date));
+    // Site-level preventive maintenance visits (from the Maintenance tab) — shown in EVERY
+    // equipment's history for this site.
+    let preventiveVisits = [];
+    try { preventiveVisits = JSON.parse(getNotesMap(selectedSite)._maintrec || "[]"); } catch { preventiveVisits = []; }
+    const preventiveRows = preventiveVisits.map((v, i) => {
+      const start = v.startDate || v.date;
+      const dateLabel = (v.startDate && v.endDate && v.endDate !== v.startDate) ? `${fmt(v.startDate)} → ${fmt(v.endDate)}` : fmt(start);
+      return {
+        type: "Preventive Maintenance", date: start, description: v.statusNotes || "—",
+        runningHours: "", resolved: true, statusText: "Completed", isTicket: false,
+        _idx: `pm-${i}`, dateLabel
+      };
+    });
+    const allRows = [...ticketRows, ...maintRows, ...preventiveRows].sort((a, b) => new Date(b.date) - new Date(a.date));
     const thStyle = { fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, padding: "13px 14px", textAlign: "center", whiteSpace: "nowrap" };
     const tdStyle = { fontSize: 12.5, color: "#374151", padding: "13px 14px", verticalAlign: "top", borderBottom: "1px solid transparent", borderImage: "linear-gradient(90deg, #0b3b38, #0f766e, #0b3b38) 1" };
     return (
@@ -4678,13 +4694,14 @@ function EquipmentTab({ hospitals, complaints, siteNotes, shutdowns = [], isAdmi
                 // Activity pill color: Ticket = green if resolved, orange if not; maintenance = teal/purple
                 const actColor = row.type === "Ticket"
                   ? (row.resolved ? { color: "#16a34a", bg: "#ecfdf5" } : { color: "#b45309", bg: "#fef3e2" })
+                  : row.type === "Preventive Maintenance" ? { color: "#0369a1", bg: "#e0f2fe" }
                   : row.type === "Warranty Maintenance" ? { color: "#0f766e", bg: "#e6f5f0" } : { color: "#6d28d9", bg: "#f3f0ff" };
                 const stOk = row.resolved;
                 return (
                   <tr key={row.isTicket ? row._c.id : `m-${row._idx}`}>
                     <td style={{ ...tdStyle, textAlign: "center", color: "#b0b5ba", fontWeight: 600 }}>{allRows.length - i}</td>
                     <td style={{ ...tdStyle, textAlign: "left" }}><span style={{ fontSize: 11, fontWeight: 700, color: actColor.color, background: actColor.bg, padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap" }}>{row.type}</span></td>
-                    <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap" }}>{fmt(row.date)}</td>
+                    <td style={{ ...tdStyle, textAlign: "center", whiteSpace: "nowrap" }}>{row.dateLabel || fmt(row.date)}</td>
                     <td style={{ ...tdStyle, textAlign: "left", color: "#374151", lineHeight: 1.5 }}>{row.description || "—"}</td>
                     <td style={{ ...tdStyle, textAlign: "center", fontFamily: "'DM Mono', ui-monospace, monospace", fontWeight: 600 }}>{row.runningHours || "—"}</td>
                     <td style={{ ...tdStyle, textAlign: "center" }}><span style={{ fontSize: 11, fontWeight: 700, color: stOk ? "#16a34a" : (row.isTicket ? "#b45309" : "#dc2626"), background: stOk ? "#ecfdf5" : (row.isTicket ? "#fef3e2" : "#fef2f2"), padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap" }}>{row.statusText}</span></td>
