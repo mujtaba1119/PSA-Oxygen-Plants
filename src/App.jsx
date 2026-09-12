@@ -3311,10 +3311,16 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     await onRefresh();
   };
 
-  // Report upload — available once a ticket is acknowledged, to any Novair/Intexim/Z-Corps/Amex
-  // account or admin. Uploads the file(s), then posts a comment so the file shows both with the
-  // comment and in the ticket's attachments.
-  const canUploadTicketReport = isAcknowledged(c) && (isAdmin || ["Novair", "Intexim", "Z-Corps", "Amex"].includes(getCompanyName(currentUser)));
+  // Report upload — once a ticket is acknowledged. On a normal (non-disputed) ticket, any
+  // Novair/Intexim/Z-Corps/Amex account or admin can upload a report. On a DISPUTED ticket
+  // (Not Under Warranty), the button becomes "Upload CMS Report" and is restricted to Novair
+  // (the Novair account or a Novair manager) or admin, and stays visible after the dispute opens.
+  const isDisputeTicket = c.warranty_status === "not_under_warranty";
+  const isNovairOnly = isAdmin || (getCompanyName(currentUser) === "Novair" && (currentUser.name === "Novair" || isManagerUser(currentUser)));
+  const canUploadTicketReport = isAcknowledged(c) && (isDisputeTicket
+    ? isNovairOnly
+    : (isAdmin || ["Novair", "Intexim", "Z-Corps", "Amex"].includes(getCompanyName(currentUser))));
+  const reportButtonLabel = isDisputeTicket ? "Upload CMS Report" : "Upload Report";
   const ticketReportRef = useRef(null);
   const [ticketReportBusy, setTicketReportBusy] = useState(false);
   const handleUploadTicketReport = async (files) => {
@@ -3324,7 +3330,20 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     if (uploaded.length) {
       const author = currentUser.role === "admin" ? "Admin" : currentUser.role === "hospital" ? currentUser.name + " Hospital" : (currentUser.name === getCompanyName(currentUser) ? currentUser.name : `${currentUser.name} — ${getCompanyName(currentUser)}`);
       const pathEntries = uploaded.map(u => `${u.name}|${u.path}`).join(",");
-      await insertComment(c.id, author, currentUser.role, `${author} uploaded a report\n[attached:${pathEntries}]`);
+      const label = isDisputeTicket ? "uploaded a CMS report" : "uploaded a report";
+      await insertComment(c.id, author, currentUser.role, `${author} ${label}\n[attached:${pathEntries}]`);
+      // On disputes, stamp the just-uploaded attachments as CMS reports with an upload date so
+      // the Corrective Maintenance Record table can show the report + when it was uploaded.
+      if (isDisputeTicket) {
+        try {
+          const uploadedPaths = uploaded.map(u => u.path);
+          const nowIso = new Date().toISOString();
+          const { data: existing } = await supabase.from("complaints").select("attachments").eq("id", c.id).single();
+          const current = Array.isArray(existing?.attachments) ? existing.attachments : [];
+          const stamped = current.map(a => (a && uploadedPaths.includes(a.path)) ? { ...a, cms: true, uploaded_at: a.uploaded_at || nowIso } : a);
+          await updateComplaintFields(c.id, { attachments: stamped });
+        } catch (e) { console.error("Failed to stamp CMS report:", e); }
+      }
     }
     setTicketReportBusy(false);
     await onRefresh();
@@ -3633,7 +3652,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                   <input ref={ticketReportRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) handleUploadTicketReport(Array.from(e.target.files)); e.target.value = ""; }} />
                   <button style={{ ...styles.btnTealSmall, background: "#fff", color: C.tealDark, border: `1px solid ${C.tealLight}`, boxShadow: "none", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => ticketReportRef.current?.click()} disabled={ticketReportBusy}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    {ticketReportBusy ? "Uploading…" : "Upload Report"}
+                    {ticketReportBusy ? "Uploading…" : reportButtonLabel}
                   </button>
                 </>
               )}
@@ -4191,7 +4210,7 @@ function MaintRecordFile({ file }) {
   );
 }
 
-function MaintenanceTab({ hospitals = ALL_HOSPITALS, siteNotes = [], isAdmin, onRefresh }) {
+function MaintenanceTab({ hospitals = ALL_HOSPITALS, siteNotes = [], complaints = [], isAdmin, onRefresh }) {
   const [selectedSite, setSelectedSite] = useState(null);
   const [section, setSection] = useState(null); // "record" | "corrective"
   const [search, setSearch] = useState("");
@@ -4206,16 +4225,9 @@ function MaintenanceTab({ hospitals = ALL_HOSPITALS, siteNotes = [], isAdmin, on
     return <MaintenanceRecordPage site={selectedSite} visits={getMaintVisits(selectedSite)} isAdmin={isAdmin} onBack={() => setSection(null)} onSave={saveMaintVisits} onRefresh={onRefresh} />;
   }
 
-  // ── Corrective Maintenance page (shell — design TBD) ──
+  // ── Corrective Maintenance Record page (auto-filled from disputed tickets) ──
   if (selectedSite && section === "corrective") {
-    return (
-      <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
-        <button onClick={() => setSection(null)} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: "0 0 3px", letterSpacing: "-0.01em" }}>Corrective Maintenance Record</h2>
-        <div style={{ fontSize: 12, color: "#8a9199", marginBottom: 24 }}>{displayName(selectedSite)}</div>
-        <div style={{ textAlign: "center", padding: "60px 24px", background: "#fff", border: "1px solid #eef1f0", borderRadius: 14, color: "#94a3b8", fontSize: 14 }}>Corrective maintenance page — coming soon.</div>
-      </div>
-    );
+    return <CorrectiveMaintenanceRecordPage site={selectedSite} complaints={complaints} onBack={() => setSection(null)} />;
   }
 
   // ── Level 2: two icon tiles ──
@@ -4428,6 +4440,72 @@ function MaintenanceRecordPage({ site, visits, isAdmin, onBack, onSave, onRefres
               </tr>
               );
             })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// Corrective Maintenance Record page — auto-filled (read-only) from disputed tickets
+// (warranty_status = not_under_warranty) for this site. One row per equipment serial.
+function CorrectiveMaintenanceRecordPage({ site, complaints, onBack }) {
+  const fmt = (d) => d ? new Date(d).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" }) : "—";
+  const disputed = (complaints || []).filter(c => hospitalMatches(c.hospital, site) && c.warranty_status === "not_under_warranty");
+  // One row per serial on each disputed ticket.
+  const rows = [];
+  disputed.forEach(c => {
+    const serials = extractSerials(c.description);
+    const visits = visitDates(c).slice().sort((a, b) => new Date(a) - new Date(b));
+    const cmsFiles = (Array.isArray(c.attachments) ? c.attachments : []).filter(a => a && a.cms);
+    const rowSerials = serials.length ? serials : ["—"];
+    rowSerials.forEach(sn => rows.push({ id: `${c.id}-${sn}`, serial: sn, openDate: c.created_at, visits, cmsFiles }));
+  });
+  rows.sort((a, b) => new Date(b.openDate) - new Date(a.openDate));
+
+  const thStyle = { fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, padding: "13px 14px", textAlign: "center", whiteSpace: "nowrap" };
+  const tdStyle = { fontSize: 12.5, color: "#374151", padding: "14px 14px", verticalAlign: "middle", textAlign: "center", whiteSpace: "nowrap", borderBottom: "1px solid transparent", borderImage: "linear-gradient(90deg, #0b3b38, #0f766e, #0b3b38) 1" };
+
+  return (
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", minHeight: "75vh" }}>
+      <button onClick={onBack} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
+      <div style={{ marginBottom: 20 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: 0, letterSpacing: "-0.01em" }}>Corrective Maintenance Record</h2>
+        <div style={{ fontSize: 12, color: "#8a9199", marginTop: 3 }}>{displayName(site)} · {rows.length} entr{rows.length === 1 ? "y" : "ies"} · auto-filled from disputed tickets</div>
+      </div>
+      <div style={{ borderRadius: 14, overflow: "hidden", border: "1px solid #eef1f0" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ background: "linear-gradient(90deg, #0b3b38, #0f766e)" }}>
+              <th style={thStyle}>Serial Number</th>
+              <th style={thStyle}>Ticket Open</th>
+              <th style={thStyle}>Visit Dates</th>
+              <th style={thStyle}>CMS Report</th>
+            </tr>
+          </thead>
+          <tbody style={{ background: "#fff" }}>
+            {rows.length === 0 && (
+              <tr><td colSpan={4} style={{ fontSize: 13, color: "#94a3b8", padding: "36px 0", textAlign: "center" }}>No corrective maintenance records — no disputed tickets for this site.</td></tr>
+            )}
+            {rows.map(r => (
+              <tr key={r.id}>
+                <td style={{ ...tdStyle, fontWeight: 700, color: "#0f766e", fontFamily: "'DM Mono', ui-monospace, monospace" }}>{r.serial}</td>
+                <td style={{ ...tdStyle, fontWeight: 600, color: "#1a1d21" }}>{fmt(r.openDate)}</td>
+                <td style={tdStyle}>{r.visits.length ? r.visits.map(fmt).join(", ") : <span style={{ color: "#b8c0c0" }}>—</span>}</td>
+                <td style={tdStyle}>
+                  {r.cmsFiles.length ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
+                      {r.cmsFiles.map((f, fi) => (
+                        <div key={fi} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                          <MaintRecordFile file={f} />
+                          <span style={{ fontSize: 10.5, color: "#94a3a0" }}>Uploaded {fmt(f.uploaded_at)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <span style={{ color: "#b8c0c0" }}>Pending</span>}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
@@ -5272,7 +5350,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
             </section>
           )}
           {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={null} currentUser={user} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} onReset={async () => { if (window.confirm("Reset the activity log? This clears all comment history that feeds the log. Ticket data (dates, statuses) is not affected. This cannot be undone.")) { await dbWrite({ action: "reset_all_comments" }); alert("Activity log reset."); await onRefresh(); } }} />}
-          {tab === "maintenance" && <MaintenanceTab hospitals={ALL_HOSPITALS} siteNotes={siteNotes} isAdmin={true} onRefresh={onRefresh} />}
+          {tab === "maintenance" && <MaintenanceTab hospitals={ALL_HOSPITALS} siteNotes={siteNotes} complaints={complaints} isAdmin={true} onRefresh={onRefresh} />}
           {tab === "analytics" && <AnalyticsPage />}
           {tab === "users" && (<>
           {/* Add User Form */}
@@ -5513,7 +5591,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
           </>)}
           {tab === "tickets" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onAssign={handleAssign} onLogVisit={handleLogVisit} onMarkResolved={handleMarkResolved} onVerify={handleVerify} onRejectVerify={handleRejectVerify} onDelete={() => {}} onRefresh={onRefresh} staffOptions={staffOptions} focusInfo={pendingFocus} />)}
           {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={["Intexim","Z-Corps"].includes(companyName) ? companyName : null} currentUser={user} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
-          {tab === "maintenance" && <MaintenanceTab hospitals={myHospitals} siteNotes={siteNotes} isAdmin={false} onRefresh={onRefresh} />}
+          {tab === "maintenance" && <MaintenanceTab hospitals={myHospitals} siteNotes={siteNotes} complaints={complaints} isAdmin={false} onRefresh={onRefresh} />}
           {tab === "analytics" && <AnalyticsPage />}
           </div>
         </main>
