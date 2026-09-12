@@ -1948,7 +1948,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
         <div className="ox-lift" style={{ background: "#fff", borderRadius: 16, border: "1px solid #e7edec", boxShadow: "0 1px 2px rgba(15,76,71,0.04)", padding: "18px 22px", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", top: 0, left: 20, right: 20, height: 3, borderRadius: "0 0 3px 3px", background: "linear-gradient(90deg, #0f766e, #2dd4a8)" }} />
           <div style={{ fontSize: 10.5, fontWeight: 700, color: "#94a3a0", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>Network Uptime</div>
-          <div style={{ fontSize: 30, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>{uptimePct == null ? "—" : uptimePct}<span style={{ fontSize: 15, fontWeight: 500, color: "#94a3a0" }}>%</span></div>
+          <div style={{ fontSize: 30, fontWeight: 800, color: "#0f172a", letterSpacing: "-0.03em", lineHeight: 1 }}>{uptimePct == null ? "—" : uptimePct.toFixed(2)}<span style={{ fontSize: 15, fontWeight: 500, color: "#94a3a0" }}>%</span></div>
           {uptimePct != null && <div style={{ height: 6, borderRadius: 4, background: "#eef4f2", overflow: "hidden", marginTop: 12 }}><div style={{ height: "100%", borderRadius: 4, width: `${uptimePct}%`, background: "linear-gradient(90deg, #0d9488, #5eead4)" }} /></div>}
         </div>
         {/* Total Downtime */}
@@ -2553,7 +2553,7 @@ function HomeTab({ hospitals, groups, complaints, siteNotes, shutdowns = [], onV
   const allDates = [...scoped.map(c => c.created_at), ...(shutdowns || []).map(s => s.start_date)].filter(Boolean).map(d => new Date(d));
   const earliestDate = allDates.length > 0 ? new Date(Math.min(...allDates)) : null;
   const operationDays = earliestDate ? Math.max(1, calendarDaysBetween(earliestDate, new Date())) : 365;
-  const uptimePct = hospitals.length > 0 ? Math.max(0, Math.min(100, Math.round((1 - totalDowntimeDays / (hospitals.length * operationDays)) * 1000) / 10)) : null;
+  const uptimePct = hospitals.length > 0 ? Math.max(0, Math.min(100, Math.round((1 - totalDowntimeDays / (hospitals.length * operationDays)) * 10000) / 100)) : null;
 
   // Average resolution time: opened → verified, over verified tickets only.
   const verifiedTix = scoped.filter(c => c.status === "Verified" && c.created_at && c.verified_at);
