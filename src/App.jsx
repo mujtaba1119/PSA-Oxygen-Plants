@@ -374,14 +374,13 @@ async function acknowledgeComplaint(id, acknowledgedBy, ackDate) {
 async function setWarrantyStatus(id, status, note, byWho) {
   return updateComplaintFields(id, { warranty_status: status, warranty_note: note || null, warranty_by: byWho || null, warranty_at: new Date().toISOString() });
 }
-// Provider (of the site), manufacturer (Novair), or admin can set the warranty decision, once a
-// visit has been logged.
+// Only the Novair account or a Novair manager, or admin, can set the warranty decision,
+// once a visit has been logged.
 function canSetWarranty(user, hospital, c) {
   if (!hasVisits(c)) return false;
   if (user.role === "admin") return true;
-  if (!isProviderUser(user)) return false;
-  const company = getCompanyName(user);
-  return company === "Novair" || getProvider(hospital) === company; // manufacturer or the site's provider
+  if (getCompanyName(user) !== "Novair") return false;
+  return user.name === "Novair" || isManagerUser(user); // Novair account or Novair manager
 }
 // Downscale large images before upload (shared). Always resolves — never hangs.
 const compressImageFile = (file) => new Promise((resolve) => {
@@ -1852,7 +1851,8 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
     const downtime = provSites.reduce((sum, h) => sum + siteDowntimeDays(h, shutdowns), 0);
     const verified = provComplaints.filter(c => c.status === "Verified" && c.created_at && c.verified_at);
     const avgRes = verified.length > 0 ? Math.round(verified.reduce((s, c) => s + calendarDaysBetween(c.created_at, c.verified_at), 0) / verified.length * 10) / 10 : null;
-    return { prov, siteCount: provSites.length, open, closed, total, rate, downtime, avgRes };
+    const disputed = provComplaints.filter(c => c.warranty_status === "not_under_warranty").length;
+    return { prov, siteCount: provSites.length, open, closed, total, rate, downtime, avgRes, disputed };
   }).filter(r => r.siteCount > 0);
   const provColors = { Novair: "#0f766e", Intexim: "#7c5cbf", "Z-Corps": "#2f9e58" };
 
@@ -2075,7 +2075,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                {["Provider", "Sites", "Open", "Closed", "Downtime", "Avg Resolution Time", "Resolution Rate"].map((th, i) => (
+                {["Provider", "Sites", "Open", "Closed", "Disputed", "Downtime", "Avg Resolution Time", "Resolution Rate"].map((th, i) => (
                   <th key={th} style={{ fontSize: 9, fontWeight: 700, color: T.mute, textTransform: "uppercase", letterSpacing: "0.06em", padding: "14px 12px 10px", textAlign: i === 0 ? "left" : "center", borderBottom: `1px solid ${T.line}` }}>{th}</th>
                 ))}
               </tr>
@@ -2089,6 +2089,7 @@ function UndpCmuDashboard({ hospitals, groups, complaints, siteNotes, onViewSite
                   <td style={{ padding: "16px 12px", textAlign: "center", fontSize: 13, fontWeight: 600, color: T.slate }}>{r.siteCount}</td>
                   <td style={{ padding: "16px 12px", textAlign: "center", fontSize: 13, fontWeight: 700, color: r.open > 0 ? "#d9822b" : T.mute }}>{r.open}</td>
                   <td style={{ padding: "16px 12px", textAlign: "center", fontSize: 13, fontWeight: 700, color: T.slate }}>{r.closed}</td>
+                  <td style={{ padding: "16px 12px", textAlign: "center", fontSize: 13, fontWeight: 700, color: r.disputed > 0 ? "#b91c1c" : T.mute }}>{r.disputed > 0 ? r.disputed : "—"}</td>
                   <td style={{ padding: "16px 12px", textAlign: "center", fontSize: 13, fontWeight: 700, color: r.downtime > 0 ? "#b45309" : T.mute }}>{r.downtime > 0 ? `${r.downtime}d` : "—"}</td>
                   <td style={{ padding: "16px 12px", textAlign: "center", fontSize: 13, fontWeight: 700, color: T.slate }}>{r.avgRes == null ? "—" : `${r.avgRes}d`}</td>
                   <td style={{ padding: "16px 18px 16px 12px", textAlign: "center", fontSize: 15, fontWeight: 800, color: r.rate === null ? T.mute : T.teal600 || T.teal500, letterSpacing: "-0.02em" }}>{r.rate === null ? "—" : `${r.rate}%`}</td>
@@ -3266,6 +3267,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const [warrChoice, setWarrChoice] = useState(null); // 'under_warranty' | 'not_under_warranty'
   const [warrNote, setWarrNote] = useState("");
   const [warrAs, setWarrAs] = useState(""); // admin only: set warranty on behalf of a provider
+  const [warrFiles, setWarrFiles] = useState([]);
   const [warrBusy, setWarrBusy] = useState(false);
   const [equipOpen, setEquipOpen] = useState(false);
   const [equipPicks, setEquipPicks] = useState(() => extractSerials(complaint.description));
@@ -3289,7 +3291,8 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     setWarrBusy(true);
     const by = isAdmin ? (warrAs || "Admin") : currentUser.name;
     await setWarrantyStatus(c.id, warrChoice, warrNote.trim(), by);
-    setWarrOpen(false); setWarrChoice(null); setWarrNote(""); setWarrAs(""); setWarrBusy(false);
+    if (warrFiles.length) await uploadComplaintAttachments(c.id, warrFiles);
+    setWarrOpen(false); setWarrChoice(null); setWarrNote(""); setWarrAs(""); setWarrFiles([]); setWarrBusy(false);
     await onRefresh();
   };
 
@@ -3566,6 +3569,14 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               <div style={{ marginTop: 14, border: `1px solid ${warrChoice === "not_under_warranty" ? "#fecaca" : "#bbf7d0"}`, borderRadius: 12, padding: 14, background: warrChoice === "not_under_warranty" ? "#fef5f5" : "#f5fdf9" }}>
                 <div style={{ fontSize: 12.5, fontWeight: 700, color: warrChoice === "not_under_warranty" ? "#b91c1c" : "#166534", marginBottom: 8 }}>{warrChoice === "not_under_warranty" ? "Mark as Not Under Warranty (raises a dispute)" : "Mark as Under Warranty"}</div>
                 <textarea value={warrNote} onChange={e => setWarrNote(e.target.value)} placeholder={warrChoice === "not_under_warranty" ? "Reason it's not covered (optional but recommended)…" : "Note (optional)…"} rows={2} style={{ width: "100%", fontSize: 13, padding: "10px 12px", border: "1px solid #e5e7eb", borderRadius: 8, fontFamily: "inherit", resize: "vertical", boxSizing: "border-box" }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", border: `1px dashed ${C.tealLight}`, borderRadius: 8 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Upload photos / report
+                    <input type="file" accept="image/*,application/pdf" multiple style={{ display: "none" }} onChange={e => setWarrFiles(prev => [...prev, ...Array.from(e.target.files)])} />
+                  </label>
+                  {warrFiles.length > 0 && <span style={{ fontSize: 12, color: C.textMid }}>{warrFiles.length} file{warrFiles.length === 1 ? "" : "s"} selected <button onClick={() => setWarrFiles([])} style={{ border: "none", background: "none", color: "#c0392b", cursor: "pointer", fontWeight: 700 }}>✕</button></span>}
+                </div>
                 {isAdmin && (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, background: "#fffdf5", border: "1px solid #f0e6c0", borderRadius: 8, padding: "8px 12px", flexWrap: "wrap" }}>
                     <span style={{ fontSize: 11.5, fontWeight: 700, color: "#92700c" }}>Admin — set as:</span>
@@ -3579,7 +3590,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                 )}
                 <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                   <button onClick={handleSetWarranty} disabled={warrBusy} style={{ fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer", border: "none", color: "#fff", background: warrChoice === "not_under_warranty" ? "linear-gradient(135deg, #dc2626, #ef5350)" : "linear-gradient(135deg, #0d9488, #0f766e)" }}>{warrBusy ? "…" : "Confirm"}</button>
-                  <button onClick={() => { setWarrOpen(false); setWarrChoice(null); }} disabled={warrBusy} style={{ fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer", background: "#fff", border: `1px solid ${C.borderLight}`, color: C.textMid }}>Cancel</button>
+                  <button onClick={() => { setWarrOpen(false); setWarrChoice(null); setWarrFiles([]); }} disabled={warrBusy} style={{ fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer", background: "#fff", border: `1px solid ${C.borderLight}`, color: C.textMid }}>Cancel</button>
                 </div>
               </div>
             )}
