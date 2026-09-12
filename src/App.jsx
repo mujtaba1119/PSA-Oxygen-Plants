@@ -4163,18 +4163,271 @@ function TopBar({ title, subtitle, user, onRefresh, onLogout, refreshing, childr
   );
 }
 
-/* ─── Placeholder pages for Maintenance and Analytics ─── */
-function MaintenancePage() {
+/* ─── Maintenance tab — site grid → (Maintenance Record | Corrective Maintenance) → page ─── */
+// A single maintenance-record file (with download/view) for the record table.
+function MaintRecordFile({ file }) {
+  const [loading, setLoading] = useState(false);
+  const isImage = (file.name || "").match(/\.(jpg|jpeg|png|gif|webp)$/i);
+  const isPdf = (file.name || "").match(/\.pdf$/i);
+  const viewFile = async () => {
+    setLoading(true);
+    const w = window.open("", "_blank");
+    const url = await getAttachmentUrl(file.path);
+    if (url) w.location.href = url; else { w.close(); console.error("No URL for", file.path); }
+    setLoading(false);
+  };
   return (
-    <div style={{ textAlign: "center", padding: "80px 24px" }}>
-      <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.15 }}>
-        <SidebarIcon name="maintenance" size={64} />
+    <button onClick={viewFile} disabled={loading} style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 500, color: "#1a2332", background: "#f8fffe", padding: "6px 10px", borderRadius: 9, border: `1px solid ${C.tealLight}`, cursor: loading ? "wait" : "pointer", textAlign: "left", maxWidth: "100%" }} onMouseEnter={e => { if (!loading) e.currentTarget.style.background = "#e6f5f0"; }} onMouseLeave={e => { e.currentTarget.style.background = "#f8fffe"; }}>
+      <span style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, background: isImage ? "#e6f5f0" : isPdf ? "#fef2f2" : "#f0f4ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {isImage
+          ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.teal} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          : isPdf
+            ? <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            : <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4f6df5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>}
+      </span>
+      <span style={{ minWidth: 0, wordBreak: "break-all" }}>{loading ? "Opening…" : (file.name || "File")}</span>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+    </button>
+  );
+}
+
+function MaintenanceTab({ hospitals = ALL_HOSPITALS, siteNotes = [], isAdmin, onRefresh }) {
+  const [selectedSite, setSelectedSite] = useState(null);
+  const [section, setSection] = useState(null); // "record" | "corrective"
+  const [search, setSearch] = useState("");
+
+  // Records live in the siteNotes JSON map under the _maintrec key (array of visit objects).
+  const getNotesMap = (h) => { try { const raw = siteNotes.find(s => hospitalMatches(s.hospital, h))?.equipment_note || ""; const parsed = JSON.parse(raw); return typeof parsed === "object" && parsed !== null ? parsed : { _legacy: raw }; } catch { const raw = siteNotes.find(s => hospitalMatches(s.hospital, h))?.equipment_note || ""; return raw ? { _legacy: raw } : {}; } };
+  const getMaintVisits = (h) => { const m = getNotesMap(h); try { return JSON.parse(m._maintrec || "[]"); } catch { return []; } };
+  const saveMaintVisits = async (h, visits) => { const m = getNotesMap(h); m._maintrec = JSON.stringify(visits); await updateSiteNote(h, JSON.stringify(m)); };
+
+  // ── Maintenance Record page ──
+  if (selectedSite && section === "record") {
+    return <MaintenanceRecordPage site={selectedSite} visits={getMaintVisits(selectedSite)} isAdmin={isAdmin} onBack={() => setSection(null)} onSave={saveMaintVisits} onRefresh={onRefresh} />;
+  }
+
+  // ── Corrective Maintenance page (shell — design TBD) ──
+  if (selectedSite && section === "corrective") {
+    return (
+      <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+        <button onClick={() => setSection(null)} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: "0 0 3px", letterSpacing: "-0.01em" }}>Corrective Maintenance</h2>
+        <div style={{ fontSize: 12, color: "#8a9199", marginBottom: 24 }}>{displayName(selectedSite)}</div>
+        <div style={{ textAlign: "center", padding: "60px 24px", background: "#fff", border: "1px solid #eef1f0", borderRadius: 14, color: "#94a3b8", fontSize: 14 }}>Corrective maintenance page — coming soon.</div>
       </div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, color: C.black, margin: "0 0 8px" }}>Maintenance Records</h2>
-      <p style={{ fontSize: 14, color: C.textLight, maxWidth: 400, margin: "0 auto", lineHeight: 1.6 }}>
-        Preventive and corrective maintenance records for each site will be managed here.
-      </p>
-      <div style={{ marginTop: 24, padding: "14px 24px", background: C.tealBg, border: `1px solid ${C.tealLight}`, display: "inline-block", fontSize: 12, fontWeight: 600, color: C.tealDark, letterSpacing: 0.5 }}>COMING SOON</div>
+    );
+  }
+
+  // ── Level 2: two icon tiles ──
+  if (selectedSite) {
+    const imgSrc = SITE_CODES[selectedSite] ? `/sites/${SITE_CODES[selectedSite]}.jpg` : null;
+    const tiles = [
+      { key: "record", title: "Maintenance Record", desc: "Scheduled maintenance visits, equipment status and reports.",
+        icon: <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2h6a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v0a2 2 0 0 1 2-2z"/><path d="M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"/><path d="M9 12l2 2 4-4"/></svg> },
+      { key: "corrective", title: "Corrective Maintenance", desc: "Fault-driven repairs and corrective actions.",
+        icon: <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg> },
+    ];
+    return (
+      <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+        <button onClick={() => setSelectedSite(null)} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
+        {/* Site header */}
+        <div style={{ display: "flex", alignItems: "center", gap: 18, marginBottom: 24, padding: "18px 22px", background: "linear-gradient(135deg, #f0fdfa, #f7fdfb)", border: "1px solid #d5f0ea", borderRadius: 16 }}>
+          <div style={{ width: 72, height: 72, borderRadius: 12, overflow: "hidden", flexShrink: 0, background: "linear-gradient(135deg, #0b3b38, #0f766e)" }}>
+            <img src={imgSrc} alt={displayName(selectedSite)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} onError={e => { e.target.style.display = "none"; }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>{displayName(selectedSite)}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#0f766e", marginTop: 3 }}>Maintenance Record</div>
+          </div>
+        </div>
+        {/* Two tiles */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 18 }}>
+          {tiles.map(t => (
+            <div key={t.key} onClick={() => setSection(t.key)} style={{ background: "#fff", borderRadius: 16, border: "1px solid #e8ecf0", boxShadow: "0 1px 3px rgba(15,23,25,0.05)", padding: "28px 24px", cursor: "pointer", transition: "all 0.28s cubic-bezier(0.16,1,0.3,1)" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 12px 32px rgba(15,118,110,0.16)"; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.borderColor = "#0d9488"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,25,0.05)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.borderColor = "#e8ecf0"; }}>
+              <div style={{ width: 62, height: 62, borderRadius: 14, background: "linear-gradient(135deg, #f0fdfa, #e6f5f0)", border: "1px solid #d5f0ea", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>{t.icon}</div>
+              <div style={{ fontSize: 17, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em", marginBottom: 6 }}>{t.title}</div>
+              <div style={{ fontSize: 12.5, color: "#8a9199", lineHeight: 1.5 }}>{t.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Level 1: site grid ──
+  const filtered = search.trim() ? ALL_HOSPITALS.filter(h => (h.toLowerCase().includes(search.toLowerCase()) || displayName(h).toLowerCase().includes(search.toLowerCase())) && hospitals.includes(h)) : ALL_HOSPITALS.filter(h => hospitals.includes(h));
+  return (
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22 }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>Maintenance Record</div>
+        <input style={{ padding: "8px 14px", fontSize: 13, border: `1.5px solid ${C.tealLight}`, borderRadius: 10, outline: "none", width: 220, background: "#fff", color: "#111" }} placeholder="Search sites..." value={search} onChange={e => setSearch(e.target.value)} onFocus={e => e.target.style.borderColor = C.teal} onBlur={e => e.target.style.borderColor = C.tealLight} />
+      </div>
+      <div className="ox-stagger" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
+        {Object.entries(GROUPS).map(([provider, sites]) => sites.filter(s => filtered.includes(s)).map(h => {
+          const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null;
+          return (
+            <div key={h} onClick={() => { setSelectedSite(h); setSection(null); }} className="ox-imgzoom" style={{ background: "#fff", borderRadius: 16, overflow: "hidden", cursor: "pointer", transition: "all 0.28s cubic-bezier(0.16,1,0.3,1)", border: "1px solid #e8ecf0", boxShadow: "0 1px 3px rgba(15,23,25,0.05)" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 12px 32px rgba(15,118,110,0.16)"; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.borderColor = "#0d9488"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,25,0.05)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.borderColor = "#e8ecf0"; }}>
+              <div style={{ position: "relative", width: "100%", aspectRatio: "4 / 3", background: "linear-gradient(135deg, #0b3b38, #0f766e)", overflow: "hidden" }}>
+                <img src={imgSrc} alt={displayName(h)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
+                <div style={{ display: "none", position: "absolute", inset: 0, alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #0b3b38, #0f766e)" }}>
+                  <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="rgba(94,234,212,0.55)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
+                </div>
+              </div>
+              <div style={{ padding: "14px 16px", textAlign: "center" }}>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: "#1a1d21", letterSpacing: "-0.01em" }}>{displayName(h)}</div>
+              </div>
+            </div>
+          );
+        }))}
+      </div>
+    </div>
+  );
+}
+
+// Maintenance Record page — table of maintenance visits (multi-day dates, equipment status
+// notes, report upload + downloadable files). Same dark-teal header table styling as the
+// equipment history page.
+function MaintenanceRecordPage({ site, visits, isAdmin, onBack, onSave, onRefresh }) {
+  const [adding, setAdding] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [statusNotes, setStatusNotes] = useState("");
+  const [files, setFiles] = useState([]);
+  const [uploadingIdx, setUploadingIdx] = useState(null);
+
+  const fmt = (d) => d ? new Date(d).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" }) : "—";
+  const visitDatesLabel = (v) => {
+    if (v.startDate && v.endDate && v.endDate !== v.startDate) return `${fmt(v.startDate)} → ${fmt(v.endDate)}`;
+    return fmt(v.startDate || v.date);
+  };
+
+  const uploadFiles = async (fileList) => {
+    const arr = Array.from(fileList || []);
+    const results = (await Promise.all(arr.map(async (rawFile, i) => {
+      try {
+        const file = await compressImageFile(rawFile);
+        const rand = Math.random().toString(36).slice(2, 8);
+        const safeName = (rawFile.name || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
+        const path = `maintenance/${SITE_CODES[site] || site}/${Date.now()}_${i}_${rand}_${safeName}`;
+        const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: true });
+        if (error) { console.error("Upload error:", error.message); return null; }
+        return { name: rawFile.name, path };
+      } catch (e) { console.error("Upload failed:", e); return null; }
+    }))).filter(Boolean);
+    return results;
+  };
+
+  const handleAdd = async () => {
+    if (!startDate || busy) return;
+    setBusy(true);
+    let uploaded = [];
+    if (files.length) uploaded = await uploadFiles(files);
+    const newVisit = { startDate, endDate: endDate || startDate, statusNotes: statusNotes.trim(), files: uploaded };
+    await onSave(site, [...visits, newVisit]);
+    setStartDate(""); setEndDate(""); setStatusNotes(""); setFiles([]); setAdding(false); setBusy(false);
+    if (onRefresh) await onRefresh();
+  };
+
+  const handleDelete = async (idx) => {
+    if (!window.confirm("Delete this maintenance visit record permanently?")) return;
+    setBusy(true);
+    await onSave(site, visits.filter((_, i) => i !== idx));
+    setBusy(false);
+    if (onRefresh) await onRefresh();
+  };
+
+  // Append files to an existing visit.
+  const handleAppendFiles = async (idx, fileList) => {
+    setUploadingIdx(idx);
+    const uploaded = await uploadFiles(fileList);
+    if (uploaded.length) {
+      const next = visits.map((v, i) => i === idx ? { ...v, files: [...(v.files || []), ...uploaded] } : v);
+      await onSave(site, next);
+      if (onRefresh) await onRefresh();
+    }
+    setUploadingIdx(null);
+  };
+
+  const thStyle = { fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.85)", textTransform: "uppercase", letterSpacing: 0.8, padding: "13px 14px", textAlign: "left", whiteSpace: "nowrap" };
+  const tdStyle = { fontSize: 12.5, color: "#374151", padding: "14px 14px", verticalAlign: "top", borderBottom: "1px solid transparent", borderImage: "linear-gradient(90deg, #0b3b38, #0f766e, #0b3b38) 1" };
+
+  return (
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", minHeight: "75vh" }}>
+      <button onClick={onBack} style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, background: "none", border: "none", cursor: "pointer", padding: "0 0 16px", letterSpacing: 0.5, textTransform: "uppercase" }}>&larr; Back</button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: 0, letterSpacing: "-0.01em" }}>Maintenance Record</h2>
+          <div style={{ fontSize: 12, color: "#8a9199", marginTop: 3 }}>{displayName(site)} · {visits.length} visit{visits.length === 1 ? "" : "s"}</div>
+        </div>
+        {isAdmin && !adding && <button onClick={() => setAdding(true)} style={{ fontSize: 12.5, fontWeight: 700, color: "#0f766e", background: "#e6f5f0", border: "1px solid #cfeae2", borderRadius: 9, padding: "9px 16px", cursor: "pointer" }}>+ Add Maintenance Visit</button>}
+      </div>
+
+      {/* Add form (admin) */}
+      {adding && isAdmin && (
+        <div style={{ background: "#fafbfb", border: "1px solid #eef1f0", borderRadius: 12, padding: 16, marginBottom: 18 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#1a1d21", marginBottom: 12 }}>Log Maintenance Visit</div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+            <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>Visit Start Date</label><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }} /></div>
+            <div><label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>Visit End Date <span style={{ fontWeight: 400 }}>(blank = single day)</span></label><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ fontSize: 12.5, padding: "7px 10px", border: "1px solid #e5e5e0", borderRadius: 7 }} /></div>
+          </div>
+          <label style={{ fontSize: 10.5, fontWeight: 600, color: "#94a3b8", display: "block", marginBottom: 3 }}>Equipment Status Notes</label>
+          <textarea value={statusNotes} onChange={e => setStatusNotes(e.target.value)} placeholder="Equipment status, observations, work done…" style={{ width: "100%", boxSizing: "border-box", fontSize: 12.5, padding: "8px 10px", border: "1px solid #e5e5e0", borderRadius: 7, minHeight: 64, resize: "vertical", fontFamily: "inherit", marginBottom: 12 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+            <label style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", border: `1px dashed ${C.tealLight}`, borderRadius: 8 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload visit report
+              <input type="file" accept="image/*,application/pdf,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={e => setFiles(prev => [...prev, ...Array.from(e.target.files)])} />
+            </label>
+            {files.length > 0 && <span style={{ fontSize: 12, color: C.textMid }}>{files.length} file{files.length === 1 ? "" : "s"} selected <button onClick={() => setFiles([])} style={{ border: "none", background: "none", color: "#c0392b", cursor: "pointer", fontWeight: 700 }}>✕</button></span>}
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={handleAdd} disabled={busy || !startDate} style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: C.teal, border: "none", borderRadius: 7, padding: "8px 18px", cursor: "pointer", opacity: (busy || !startDate) ? 0.5 : 1 }}>{busy ? "Saving…" : "Save Visit"}</button>
+            <button onClick={() => { setAdding(false); setFiles([]); }} disabled={busy} style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", background: "none", border: "none", cursor: "pointer" }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Records table */}
+      <div style={{ borderRadius: 14, overflow: "hidden", border: "1px solid #eef1f0" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ background: "linear-gradient(90deg, #0b3b38, #0f766e)" }}>
+              <th style={{ ...thStyle, width: 60 }}>#</th>
+              <th style={thStyle}>Visit Date(s)</th>
+              <th style={thStyle}>Equipment Status Notes</th>
+              <th style={thStyle}>Report</th>
+              {isAdmin && <th style={{ ...thStyle, width: 80 }}></th>}
+            </tr>
+          </thead>
+          <tbody style={{ background: "#fff" }}>
+            {visits.length === 0 && (
+              <tr><td colSpan={isAdmin ? 5 : 4} style={{ fontSize: 13, color: "#94a3b8", padding: "36px 0", textAlign: "center" }}>No maintenance visits recorded for this site.</td></tr>
+            )}
+            {visits.map((v, i) => (
+              <tr key={i}>
+                <td style={{ ...tdStyle, fontWeight: 700, color: "#0f766e" }}>Visit {i + 1}</td>
+                <td style={{ ...tdStyle, fontWeight: 600, color: "#1a1d21", whiteSpace: "nowrap" }}>{visitDatesLabel(v)}</td>
+                <td style={{ ...tdStyle, minWidth: 220 }}>{v.statusNotes || <span style={{ color: "#b8c0c0" }}>—</span>}</td>
+                <td style={tdStyle}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+                    {(v.files || []).map((f, fi) => <MaintRecordFile key={fi} file={f} />)}
+                    {isAdmin && (
+                      <label style={{ fontSize: 11, fontWeight: 700, color: "#0f766e", cursor: uploadingIdx === i ? "wait" : "pointer", display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", border: `1px dashed ${C.tealLight}`, borderRadius: 8 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        {uploadingIdx === i ? "Uploading…" : "Upload report"}
+                        <input type="file" accept="image/*,application/pdf,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) handleAppendFiles(i, Array.from(e.target.files)); e.target.value = ""; }} />
+                      </label>
+                    )}
+                    {!isAdmin && (!v.files || v.files.length === 0) && <span style={{ color: "#b8c0c0" }}>—</span>}
+                  </div>
+                </td>
+                {isAdmin && <td style={{ ...tdStyle, textAlign: "right" }}><button onClick={() => handleDelete(i)} disabled={busy} style={{ fontSize: 11.5, fontWeight: 600, color: "#c0392b", background: "none", border: "none", cursor: "pointer" }}>Delete</button></td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -5002,7 +5255,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
             </section>
           )}
           {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={null} currentUser={user} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} onReset={async () => { if (window.confirm("Reset the activity log? This clears all comment history that feeds the log. Ticket data (dates, statuses) is not affected. This cannot be undone.")) { await dbWrite({ action: "reset_all_comments" }); alert("Activity log reset."); await onRefresh(); } }} />}
-          {tab === "maintenance" && <MaintenancePage />}
+          {tab === "maintenance" && <MaintenanceTab hospitals={ALL_HOSPITALS} siteNotes={siteNotes} isAdmin={true} onRefresh={onRefresh} />}
           {tab === "analytics" && <AnalyticsPage />}
           {tab === "users" && (<>
           {/* Add User Form */}
@@ -5243,7 +5496,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
           </>)}
           {tab === "tickets" && selected && (<ComplaintListView hospital={selected} complaints={complaints} currentUser={user} canComment={canCommentOnHospital(selected)} isAdmin={false} onBack={() => setSelected(null)} onAssign={handleAssign} onLogVisit={handleLogVisit} onMarkResolved={handleMarkResolved} onVerify={handleVerify} onRejectVerify={handleRejectVerify} onDelete={() => {}} onRefresh={onRefresh} staffOptions={staffOptions} focusInfo={pendingFocus} />)}
           {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={["Intexim","Z-Corps"].includes(companyName) ? companyName : null} currentUser={user} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
-          {tab === "maintenance" && <MaintenancePage />}
+          {tab === "maintenance" && <MaintenanceTab hospitals={myHospitals} siteNotes={siteNotes} isAdmin={false} onRefresh={onRefresh} />}
           {tab === "analytics" && <AnalyticsPage />}
           </div>
         </main>
