@@ -579,8 +579,10 @@ async function fetchComments(complaintId) {
   if (error) { console.error(error); return []; }
   return data;
 }
-async function insertComment(complaintId, author, authorRole, content) {
-  const data = await dbWrite({ action: "insert_comment", complaint_id: complaintId, author, author_role: authorRole, content });
+async function insertComment(complaintId, author, authorRole, content, commentDate) {
+  const payload = { action: "insert_comment", complaint_id: complaintId, author, author_role: authorRole, content };
+  if (commentDate) payload.created_at = new Date(commentDate).toISOString();
+  const data = await dbWrite(payload);
   if (data.error || !data.comment) { console.error(data.error); return null; }
   return data.comment;
 }
@@ -3370,18 +3372,22 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
         : (currentUser.name === getCompanyName(currentUser) ? currentUser.name : `${currentUser.name} — ${getCompanyName(currentUser)}`);
       const pathEntries = uploaded.map(u => `${u.name}|${u.path}`).join(",");
       const label = isDisputeTicket ? "uploaded a CMS report" : "uploaded a report";
-      await insertComment(c.id, author, adminAsNovair ? "company" : currentUser.role, `${author} ${label}\n[attached:${pathEntries}]`);
+      const backdateIso = (isAdmin && cmsBackdate) ? new Date(cmsBackdate).toISOString() : null;
+      await insertComment(c.id, author, adminAsNovair ? "company" : currentUser.role, `${author} ${label}\n[attached:${pathEntries}]`, backdateIso);
       // On disputes, stamp the just-uploaded attachments as CMS reports with an upload date so
       // the Corrective Maintenance Record table can show the report + when it was uploaded.
-      // Admins may set a past date via the date picker.
+      // Admins may set a past date via the date picker; that date also becomes the dispute date
+      // so the ticket timeline's "Disputed" marker lands on it.
       if (isDisputeTicket) {
         try {
           const uploadedPaths = uploaded.map(u => u.path);
-          const stampIso = (isAdmin && cmsBackdate) ? new Date(cmsBackdate).toISOString() : new Date().toISOString();
+          const stampIso = backdateIso || new Date().toISOString();
           const { data: existing } = await supabase.from("complaints").select("attachments").eq("id", c.id).single();
           const current = Array.isArray(existing?.attachments) ? existing.attachments : [];
           const stamped = current.map(a => (a && uploadedPaths.includes(a.path)) ? { ...a, cms: true, uploaded_at: stampIso } : a);
-          await updateComplaintFields(c.id, { attachments: stamped });
+          const fields = { attachments: stamped };
+          if (backdateIso) fields.warranty_at = backdateIso; // align dispute marker to the entered date
+          await updateComplaintFields(c.id, fields);
         } catch (e) { console.error("Failed to stamp CMS report:", e); }
       }
     }
@@ -3538,8 +3544,10 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                 stages.push({ label: "Opened", date: c.created_at, color: "#0f766e" });
                 if (c.acknowledged_at) stages.push({ label: "Acknowledged", date: c.acknowledged_at, color: "#5b3a9c" });
                 visitDates(c).sort((a, b) => new Date(a) - new Date(b)).forEach((d, vi, arr) => stages.push({ label: arr.length > 1 ? `Visit ${vi + 1}` : "Visit", date: d, color: "#b45309", visitDate: d }));
+                if (c.warranty_status === "not_under_warranty" && c.warranty_at) stages.push({ label: "Disputed", date: c.warranty_at, color: "#c0392b" });
                 if ((c.status === "Resolved" || c.status === "Verified") && c.resolved_at) stages.push({ label: "Resolved", date: c.resolved_at, color: "#16a34a" });
                 if (c.status === "Verified" && c.verified_at) stages.push({ label: "Verified", date: c.verified_at, color: "#16a34a" });
+                stages.sort((a, b) => new Date(a.date) - new Date(b.date)); // chronological order
                 const ongoing = !isClosedStatus(c.status); // still open → trailing "so far" segment
                 return (
                   <div style={{ display: "flex", alignItems: "flex-start", flexWrap: "wrap", rowGap: 14 }}>
@@ -4757,7 +4765,7 @@ function AnalyticsPage({ complaints = [], shutdowns = [] }) {
         {/* Chart 1: Lifecycle timing */}
         <div style={anCard}>
           <h3 style={anTitle}>Ticket Lifecycle Timing</h3>
-          <p style={anSub}>Average days spent in each stage (verified tickets)</p>
+          <p style={anSub}>Average days spent in each stage</p>
           {stageTotal === 0 ? <div style={{ padding: "30px 0", textAlign: "center", color: AN_T.mute, fontSize: 13 }}>Not enough data.</div> : (
             <>
               <div style={{ display: "flex", height: 30, borderRadius: 8, overflow: "hidden", marginBottom: 14 }}>
@@ -4768,7 +4776,7 @@ function AnalyticsPage({ complaints = [], shutdowns = [] }) {
                   <span style={{ width: 10, height: 10, borderRadius: 3, background: s.color, flexShrink: 0 }} />
                   <span style={{ fontSize: 12.5, fontWeight: 700, color: AN_T.ink, width: 74 }}>{s.label}</span>
                   <span style={{ fontSize: 11, color: AN_T.mute, flex: 1 }}>{s.desc}</span>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: s.color }}>{stageAvg[s.key]}d</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: s.color }}>{stageAvg[s.key] === 0 ? "same day" : `${stageAvg[s.key]}d`}</span>
                 </div>
               ))}
             </>
@@ -4798,7 +4806,7 @@ function AnalyticsPage({ complaints = [], shutdowns = [] }) {
 
         {/* Chart 3: Provider comparison */}
         <div style={anCard}>
-          <h3 style={anTitle}>Provider Comparison</h3>
+          <h3 style={anTitle}>Service Provider Comparison</h3>
           <p style={anSub}>Key metrics side by side</p>
           {providerRows.length === 0 ? <div style={{ padding: "30px 0", textAlign: "center", color: AN_T.mute, fontSize: 13 }}>No data.</div> : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -4868,8 +4876,7 @@ function AnalyticsPage({ complaints = [], shutdowns = [] }) {
 
         {/* Chart 6: Resolution-time trend */}
         <div style={anCard}>
-          <h3 style={anTitle}>Resolution Time Trend</h3>
-          <p style={anSub}>Avg days to verify, by month</p>
+          <h3 style={{ ...anTitle, marginBottom: 16 }}>Resolution Time Trend</h3>
           {trend.every(t => t.avgRes === 0) ? <div style={{ padding: "30px 0", textAlign: "center", color: AN_T.mute, fontSize: 13 }}>Not enough verified tickets.</div> : (
             <svg width="100%" height="170" viewBox="0 0 320 170" preserveAspectRatio="none">
               {[0, 0.25, 0.5, 0.75, 1].map((g, i) => <line key={i} x1="0" y1={20 + g * 120} x2="320" y2={20 + g * 120} stroke={AN_T.line} strokeWidth="1" />)}
