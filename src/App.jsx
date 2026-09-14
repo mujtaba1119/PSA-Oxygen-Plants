@@ -3198,7 +3198,6 @@ function AttachmentViewer({ attachments }) {
   const [expanded, setExpanded] = useState(false);
   const atts = Array.isArray(attachments) ? attachments : [];
   const attPaths = atts.map(a => a.path).join(",");
-  if (atts.length === 0) return null;
 
   useEffect(() => {
     if (!expanded || atts.length === 0) return;
@@ -3216,6 +3215,11 @@ function AttachmentViewer({ attachments }) {
     return () => { cancelled = true; };
   }, [expanded, attPaths]);
 
+  // Early return AFTER all hooks are declared (moving this above the hooks caused a
+  // "rendered more hooks than previous render" crash when attachments went from empty to
+  // non-empty, e.g. right after uploading a CMS report on a dispute).
+  if (atts.length === 0) return null;
+
   return (
     <div style={{ marginTop: 8 }}>
       <button onClick={() => setExpanded(!expanded)} style={{ fontSize: 12, fontWeight: 600, color: C.black, background: "none", border: "none", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" }}>
@@ -3226,11 +3230,11 @@ function AttachmentViewer({ attachments }) {
           {atts.map((a, i) => (
             <div key={a.path || i} style={{ border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
               {urls[a.path] ? (
-                a.name.match(/\.(jpg|jpeg|png|gif|webp)$/i)
+                (a.name || "").match(/\.(jpg|jpeg|png|gif|webp)$/i)
                   ? <a href={urls[a.path]} target="_blank" rel="noopener"><img src={urls[a.path]} alt={a.name} style={{ width: 120, height: 90, objectFit: "cover", display: "block" }} /></a>
-                  : <a href={urls[a.path]} target="_blank" rel="noopener" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 120, height: 90, background: a.name.match(/\.pdf$/i) ? "#fef2f2" : "#f0f4ff", textDecoration: "none", gap: 6, padding: 8 }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={a.name.match(/\.pdf$/i) ? "#dc2626" : "#4f6df5"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                      <span style={{ fontSize: 9.5, fontWeight: 600, color: "#4a5568", textAlign: "center", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", wordBreak: "break-all", maxWidth: "100%" }}>{a.name}</span>
+                  : <a href={urls[a.path]} target="_blank" rel="noopener" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 120, height: 90, background: (a.name || "").match(/\.pdf$/i) ? "#fef2f2" : "#f0f4ff", textDecoration: "none", gap: 6, padding: 8 }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={(a.name || "").match(/\.pdf$/i) ? "#dc2626" : "#4f6df5"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                      <span style={{ fontSize: 9.5, fontWeight: 600, color: "#4a5568", textAlign: "center", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", wordBreak: "break-all", maxWidth: "100%" }}>{a.name || "File"}</span>
                     </a>
               ) : (
                 <div style={{ width: 120, height: 90, display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontSize: 11, color: C.textLight }}>Loading…</div>
@@ -4307,6 +4311,16 @@ function MaintenanceRecordPage({ site, visits, isAdmin, onBack, onSave, onRefres
   const [statusNotes, setStatusNotes] = useState("");
   const [files, setFiles] = useState([]);
   const [uploadingIdx, setUploadingIdx] = useState(null);
+  const [editIdx, setEditIdx] = useState(null);   // admin: index of visit whose notes are being edited
+  const [editText, setEditText] = useState("");
+
+  const handleSaveNote = async (idx) => {
+    setBusy(true);
+    const next = visits.map((v, i) => i === idx ? { ...v, statusNotes: editText.trim() } : v);
+    await onSave(site, next);
+    setEditIdx(null); setEditText(""); setBusy(false);
+    if (onRefresh) await onRefresh();
+  };
 
   const fmt = (d) => d ? new Date(d).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "numeric" }) : "—";
   const visitDatesLabel = (v) => {
@@ -4422,7 +4436,26 @@ function MaintenanceRecordPage({ site, visits, isAdmin, onBack, onSave, onRefres
               <tr key={i}>
                 <td style={{ ...tdStyle, fontWeight: 700, color: "#0f766e" }}>Visit {i + 1}</td>
                 <td style={{ ...tdStyle, fontWeight: 600, color: "#1a1d21" }}>{visitDatesLabel(v)}</td>
-                <td style={tdStyle}>{v.statusNotes || <span style={{ color: "#b8c0c0" }}>—</span>}</td>
+                <td style={tdStyle}>
+                  {isAdmin && editIdx === i ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center", whiteSpace: "normal" }}>
+                      <textarea value={editText} onChange={e => setEditText(e.target.value)} rows={3} style={{ width: "100%", minWidth: 200, boxSizing: "border-box", fontSize: 12.5, padding: "8px 10px", border: "1px solid #e5e5e0", borderRadius: 7, resize: "vertical", fontFamily: "inherit", textAlign: "left" }} />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={() => handleSaveNote(i)} disabled={busy} style={{ fontSize: 11, fontWeight: 700, color: "#fff", background: C.teal, border: "none", borderRadius: 7, padding: "6px 14px", cursor: "pointer", opacity: busy ? 0.5 : 1 }}>{busy ? "Saving…" : "Save"}</button>
+                        <button onClick={() => { setEditIdx(null); setEditText(""); }} disabled={busy} style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8", background: "none", border: "none", cursor: "pointer" }}>Cancel</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
+                      <span>{v.statusNotes || <span style={{ color: "#b8c0c0" }}>—</span>}</span>
+                      {isAdmin && (
+                        <button onClick={() => { setEditIdx(i); setEditText(v.statusNotes || ""); }} title="Edit notes" style={{ background: "none", border: "none", cursor: "pointer", padding: 2, lineHeight: 0, flexShrink: 0 }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </td>
                 <td style={tdStyle}>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center" }}>
                     {(v.files || []).map((f, fi) => <MaintRecordFile key={fi} file={f} />)}
