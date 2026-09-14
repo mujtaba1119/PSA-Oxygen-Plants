@@ -454,6 +454,19 @@ async function getAttachmentUrl(path) {
   } catch {}
   return null;
 }
+// Admin: remove a single attachment (by path) from a complaint's attachments array, and best-effort
+// delete the underlying storage object. Re-reads the latest array before writing to avoid clobbering.
+async function deleteComplaintAttachment(complaintId, path) {
+  try {
+    const { data: existing } = await supabase.from("complaints").select("attachments").eq("id", complaintId).single();
+    const current = Array.isArray(existing?.attachments) ? existing.attachments : [];
+    const next = current.filter(a => a && a.path !== path);
+    const { error: updErr } = await supabase.from("complaints").update({ attachments: next }).eq("id", complaintId);
+    if (updErr) await updateComplaintFields(complaintId, { attachments: next });
+    try { await supabase.storage.from("attachments").remove([path]); } catch {}
+    return true;
+  } catch (e) { console.error("Failed to delete attachment:", e); return false; }
+}
 async function requestResolution(id, requestedBy) {
   const data = await dbWrite({ action: "request_resolution", id, requested_by: requestedBy });
   return !data.error;
@@ -3193,9 +3206,10 @@ function GroupedHospitalList({ groups, complaints, siteNotes, onSelect }) {
 }
 
 /* ─── Attachment Viewer ─── */
-function AttachmentViewer({ attachments }) {
+function AttachmentViewer({ attachments, isAdmin, complaintId, onRefresh }) {
   const [urls, setUrls] = useState({});
   const [expanded, setExpanded] = useState(false);
+  const [deleting, setDeleting] = useState(null);
   const atts = Array.isArray(attachments) ? attachments : [];
   const attPaths = atts.map(a => a.path).join(",");
 
@@ -3220,6 +3234,15 @@ function AttachmentViewer({ attachments }) {
   // non-empty, e.g. right after uploading a CMS report on a dispute).
   if (atts.length === 0) return null;
 
+  const handleDelete = async (a) => {
+    if (!a.path || deleting) return;
+    if (!window.confirm(`Delete "${a.name || "this file"}" permanently?`)) return;
+    setDeleting(a.path);
+    await deleteComplaintAttachment(complaintId, a.path);
+    setDeleting(null);
+    if (onRefresh) await onRefresh();
+  };
+
   return (
     <div style={{ marginTop: 8 }}>
       <button onClick={() => setExpanded(!expanded)} style={{ fontSize: 12, fontWeight: 600, color: C.black, background: "none", border: "none", cursor: "pointer", letterSpacing: 0.5, textTransform: "uppercase" }}>
@@ -3228,7 +3251,13 @@ function AttachmentViewer({ attachments }) {
       {expanded && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
           {atts.map((a, i) => (
-            <div key={a.path || i} style={{ border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+            <div key={a.path || i} style={{ position: "relative", border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+              {a.cms && <span style={{ position: "absolute", top: 4, left: 4, zIndex: 2, fontSize: 8.5, fontWeight: 800, color: "#fff", background: "#0f766e", padding: "2px 6px", borderRadius: 5, letterSpacing: 0.4 }}>CMS</span>}
+              {isAdmin && (
+                <button onClick={() => handleDelete(a)} disabled={deleting === a.path} title="Delete attachment" style={{ position: "absolute", top: 4, right: 4, zIndex: 2, width: 20, height: 20, borderRadius: "50%", border: "none", background: "rgba(192,57,43,0.92)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, lineHeight: 1, padding: 0 }}>
+                  {deleting === a.path ? "…" : "✕"}
+                </button>
+              )}
               {urls[a.path] ? (
                 (a.name || "").match(/\.(jpg|jpeg|png|gif|webp)$/i)
                   ? <a href={urls[a.path]} target="_blank" rel="noopener"><img src={urls[a.path]} alt={a.name} style={{ width: 120, height: 90, objectFit: "cover", display: "block" }} /></a>
@@ -3327,28 +3356,36 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const reportButtonLabel = isDisputeTicket ? "Upload CMS Report" : "Upload Report";
   const ticketReportRef = useRef(null);
   const [ticketReportBusy, setTicketReportBusy] = useState(false);
+  const [cmsBackdate, setCmsBackdate] = useState(""); // admin only: upload CMS report as a past date
   const handleUploadTicketReport = async (files) => {
     if (!files.length || ticketReportBusy) return;
     setTicketReportBusy(true);
     const uploaded = await uploadComplaintAttachments(c.id, files);
     if (uploaded.length) {
-      const author = currentUser.role === "admin" ? "Admin" : currentUser.role === "hospital" ? currentUser.name + " Hospital" : (currentUser.name === getCompanyName(currentUser) ? currentUser.name : `${currentUser.name} — ${getCompanyName(currentUser)}`);
+      // Admin uploading a CMS report on a dispute does so "as Novair".
+      const adminAsNovair = isAdmin && isDisputeTicket;
+      const author = adminAsNovair ? "Novair"
+        : currentUser.role === "admin" ? "Admin"
+        : currentUser.role === "hospital" ? currentUser.name + " Hospital"
+        : (currentUser.name === getCompanyName(currentUser) ? currentUser.name : `${currentUser.name} — ${getCompanyName(currentUser)}`);
       const pathEntries = uploaded.map(u => `${u.name}|${u.path}`).join(",");
       const label = isDisputeTicket ? "uploaded a CMS report" : "uploaded a report";
-      await insertComment(c.id, author, currentUser.role, `${author} ${label}\n[attached:${pathEntries}]`);
+      await insertComment(c.id, author, adminAsNovair ? "company" : currentUser.role, `${author} ${label}\n[attached:${pathEntries}]`);
       // On disputes, stamp the just-uploaded attachments as CMS reports with an upload date so
       // the Corrective Maintenance Record table can show the report + when it was uploaded.
+      // Admins may set a past date via the date picker.
       if (isDisputeTicket) {
         try {
           const uploadedPaths = uploaded.map(u => u.path);
-          const nowIso = new Date().toISOString();
+          const stampIso = (isAdmin && cmsBackdate) ? new Date(cmsBackdate).toISOString() : new Date().toISOString();
           const { data: existing } = await supabase.from("complaints").select("attachments").eq("id", c.id).single();
           const current = Array.isArray(existing?.attachments) ? existing.attachments : [];
-          const stamped = current.map(a => (a && uploadedPaths.includes(a.path)) ? { ...a, cms: true, uploaded_at: a.uploaded_at || nowIso } : a);
+          const stamped = current.map(a => (a && uploadedPaths.includes(a.path)) ? { ...a, cms: true, uploaded_at: stampIso } : a);
           await updateComplaintFields(c.id, { attachments: stamped });
         } catch (e) { console.error("Failed to stamp CMS report:", e); }
       }
     }
+    setCmsBackdate("");
     setTicketReportBusy(false);
     await onRefresh();
   };
@@ -3536,7 +3573,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                 );
               })()}
             </div>
-            <AttachmentViewer attachments={c.attachments} />
+            <AttachmentViewer attachments={c.attachments} isAdmin={isAdmin} complaintId={c.id} onRefresh={onRefresh} />
             {/* ── Acknowledge (provider) ── */}
             {canAcknowledge && !ackOpen && (
               <div style={{ marginTop: 14 }}>
@@ -3654,6 +3691,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
               {canUploadTicketReport && (
                 <>
                   <input ref={ticketReportRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) handleUploadTicketReport(Array.from(e.target.files)); e.target.value = ""; }} />
+                  {isAdmin && isDisputeTicket && <input type="date" style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={cmsBackdate} onChange={e => setCmsBackdate(e.target.value)} title="Optional: upload CMS report as a past date (as Novair)" />}
                   <button style={{ ...styles.btnTealSmall, background: "#fff", color: C.tealDark, border: `1px solid ${C.tealLight}`, boxShadow: "none", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => ticketReportRef.current?.click()} disabled={ticketReportBusy}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     {ticketReportBusy ? "Uploading…" : reportButtonLabel}
