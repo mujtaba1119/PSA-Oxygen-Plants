@@ -2967,7 +2967,7 @@ function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmi
       supabase.from("comments").select("id", { count: "exact", head: true }).eq("complaint_id", complaintId).then(({ count: c }) => { if (!cancelled && c !== null) setCount(c); });
     };
     fetchCount();
-    const iv = setInterval(() => { if (!document.hidden) fetchCount(); }, 5000);
+    const iv = setInterval(() => { if (!document.hidden) fetchCount(); }, 20000);
     return () => { cancelled = true; clearInterval(iv); };
   }, [complaintId]);
 
@@ -2975,7 +2975,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
   useEffect(() => {
     if (!expanded) return;
     loadComments();
-    const iv = setInterval(() => { if (!document.hidden) loadComments(); }, 5000);
+    const iv = setInterval(() => { if (!document.hidden) loadComments(); }, 20000);
     return () => clearInterval(iv);
   }, [expanded, loadComments]);
   // When a comment notification is clicked, auto-expand and highlight the matching comment
