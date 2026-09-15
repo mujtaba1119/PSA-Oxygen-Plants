@@ -3371,7 +3371,10 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     setWarrBusy(true);
     const by = isAdmin ? (warrAs || "Admin") : currentUser.name;
     await setWarrantyStatus(c.id, warrChoice, warrNote.trim(), by);
-    if (warrFiles.length) await uploadComplaintAttachments(c.id, warrFiles, uploaderLabel(currentUser));
+    if (warrFiles.length) {
+      const up = await uploadComplaintAttachments(c.id, warrFiles, uploaderLabel(currentUser));
+      if (up.length < warrFiles.length) alert(`${warrFiles.length - up.length} of ${warrFiles.length} file(s) failed to upload.${up.uploadError ? `\n\nReason: ${up.uploadError}` : ""}`);
+    }
     setWarrOpen(false); setWarrChoice(null); setWarrNote(""); setWarrAs(""); setWarrFiles([]); setWarrBusy(false);
     await onRefresh();
   };
@@ -3469,7 +3472,10 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     await acknowledgeComplaint(c.id, who, isAdmin && ackDate ? ackDate : null);
     const noteText = ackNote.trim();
     await insertComment(c.id, who, commentRole, noteText ? `Acknowledged — ${noteText}` : "Acknowledged the ticket.");
-    if (ackFiles.length) await uploadComplaintAttachments(c.id, ackFiles, uploaderLabel(currentUser));
+    if (ackFiles.length) {
+      const up = await uploadComplaintAttachments(c.id, ackFiles, uploaderLabel(currentUser));
+      if (up.length < ackFiles.length) alert(`${ackFiles.length - up.length} of ${ackFiles.length} file(s) failed to upload. The ticket was still acknowledged.${up.uploadError ? `\n\nReason: ${up.uploadError}` : ""}`);
+    }
     if (ackMode === "visit" && ackVisitDate) await onLogVisit(c.id, ackVisitDate, isAdmin ? (ackAs || null) : null);
     setAckOpen(false); setAckNote(""); setAckFiles([]); setAckVisitDate(""); setAckDate(""); setAckAs(""); setAckMode(null);
     setAckBusy(false);
