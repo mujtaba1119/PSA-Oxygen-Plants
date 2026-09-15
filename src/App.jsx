@@ -609,10 +609,21 @@ async function fetchComments(complaintId) {
   return data;
 }
 async function insertComment(complaintId, author, authorRole, content, commentDate) {
+  const createdAt = commentDate ? new Date(commentDate).toISOString() : null;
+  // Try the direct Supabase path first (same proven path as attachment persistence); fall back
+  // to the /api/db serverless function. Comments were the only flow with no fallback, so a
+  // single serverless hiccup silently lost the comment (and any attachment reference in it).
+  try {
+    const row = { complaint_id: complaintId, author, author_role: authorRole, content };
+    if (createdAt) row.created_at = createdAt;
+    const { data, error } = await supabase.from("comments").insert(row).select().single();
+    if (!error && data) return data;
+    if (error) console.error("Direct comment insert failed, trying dbWrite:", error.message);
+  } catch (e) { console.error("Direct comment insert threw, trying dbWrite:", e); }
   const payload = { action: "insert_comment", complaint_id: complaintId, author, author_role: authorRole, content };
-  if (commentDate) payload.created_at = new Date(commentDate).toISOString();
+  if (createdAt) payload.created_at = createdAt;
   const data = await dbWrite(payload);
-  if (data.error || !data.comment) { console.error(data.error); return null; }
+  if (data.error || !data.comment) { console.error(data.error); return { error: data.error || "Comment could not be saved." }; }
   return data.comment;
 }
 async function deleteComment(id) {
@@ -3058,7 +3069,12 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
         msgParts.push(`[attached:${pathEntries}]`);
       }
     }
-    await insertComment(complaintId, author, role, msgParts.join("\n"));
+    const saved = await insertComment(complaintId, author, role, msgParts.join("\n"));
+    if (!saved || saved.error) {
+      alert(`Your comment could not be posted${saved && saved.error ? `:\n\n${saved.error}` : "."}\n\nYour text and files are still here — please press Post to try again.`);
+      setPosting(false);
+      return; // keep text + commentFiles so nothing is lost
+    }
     setText(""); setCommentFiles([]); setFileInputKey(k => k + 1); setPosting(false); await loadComments();
     // Notify: if hospital comments, notify companies. If company comments, notify hospital + other companies.
     const userId = currentUser.id || currentUser.name?.toLowerCase().replace(/\s+/g, "");
