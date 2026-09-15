@@ -1714,6 +1714,7 @@ function LoginScreen({ onLogin }) {
         </div>
         {err && <p style={{ color: C.red, fontSize: 13, fontWeight: 600, margin: "0 0 14px", textAlign: "center" }}>{err}</p>}
         <button style={{ width: "100%", padding: "15px 0", fontSize: 14.5, fontWeight: 700, color: "#fff", background: (locked || submitting) ? "#9db8b4" : C.teal, border: "none", borderRadius: 12, cursor: (locked || submitting) ? "not-allowed" : "pointer", boxShadow: "0 4px 12px rgba(13,148,136,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={submit} disabled={locked || submitting}>{submitting ? "Signing in…" : locked ? "Locked" : "Sign in"}{!submitting && !locked && <span style={{ fontSize: 16 }}>→</span>}</button>
+        <div style={{ textAlign: "center", fontSize: 10, color: "#c3ccc9", marginTop: 14, letterSpacing: 0.3 }}>{UI_BUILD}</div>
       </div>
 
       {/* Partner logos panel — one row with dividers, teal accent line */}
