@@ -235,7 +235,7 @@ function SeverityBadge({ severity }) {
    from status "Open" plus assignment/visit data, so no cron job is needed:
      Open (no assignee) -> Assigned (has assignee, visit not yet arrived)
      -> In Progress (visit date has arrived) -> Resolved -> Verified          */
-const UI_BUILD = "16-Sep-2026 · rev K (fast refresh)";
+const UI_BUILD = "16-Sep-2026 · rev L (instant comments)";
 if (typeof console !== "undefined") console.log("OxyTrack UI build:", UI_BUILD);
 const getCompanyName = u => u.company || u.name;
 const isAmexUser = u => getCompanyName(u) === "Amex";
@@ -611,6 +611,13 @@ async function fetchComments(complaintId) {
   return data;
 }
 async function insertComment(complaintId, author, authorRole, content, commentDate) {
+  const done = (comment) => {
+    // Tell any open comment thread for this ticket to reload immediately — report uploads,
+    // warranty, acknowledge and visit flows insert comments from outside the thread component,
+    // which otherwise wouldn't show them until its next background poll (up to 20s).
+    try { window.dispatchEvent(new CustomEvent("ox:comment-added", { detail: { complaintId } })); } catch {}
+    return comment;
+  };
   const createdAt = commentDate ? new Date(commentDate).toISOString() : null;
   // Try the direct Supabase path first (same proven path as attachment persistence); fall back
   // to the /api/db serverless function. Comments were the only flow with no fallback, so a
@@ -619,14 +626,14 @@ async function insertComment(complaintId, author, authorRole, content, commentDa
     const row = { complaint_id: complaintId, author, author_role: authorRole, content };
     if (createdAt) row.created_at = createdAt;
     const { data, error } = await supabase.from("comments").insert(row).select().single();
-    if (!error && data) return data;
+    if (!error && data) return done(data);
     if (error) console.error("Direct comment insert failed, trying dbWrite:", error.message);
   } catch (e) { console.error("Direct comment insert threw, trying dbWrite:", e); }
   const payload = { action: "insert_comment", complaint_id: complaintId, author, author_role: authorRole, content };
   if (createdAt) payload.created_at = createdAt;
   const data = await dbWrite(payload);
   if (data.error || !data.comment) { console.error(data.error); return { error: data.error || "Comment could not be saved." }; }
-  return data.comment;
+  return done(data.comment);
 }
 async function deleteComment(id) {
   const data = await dbWrite({ action: "delete_comment", id });
@@ -3039,6 +3046,13 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
     const iv = setInterval(() => { if (!document.hidden) loadComments(); }, 20000);
     return () => clearInterval(iv);
   }, [expanded, loadComments]);
+  // Instant refresh when any flow (report upload, warranty, acknowledge, visit) posts a
+  // comment on this ticket — no waiting for the background poll.
+  useEffect(() => {
+    const onAdded = (e) => { if (e.detail && e.detail.complaintId === complaintId) loadComments(); };
+    window.addEventListener("ox:comment-added", onAdded);
+    return () => window.removeEventListener("ox:comment-added", onAdded);
+  }, [complaintId, loadComments]);
   // When a comment notification is clicked, auto-expand and highlight the matching comment
   useEffect(() => {
     if (highlightCommentText && highlightCommentText.trim()) {
