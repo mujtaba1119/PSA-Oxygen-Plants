@@ -235,7 +235,7 @@ function SeverityBadge({ severity }) {
    from status "Open" plus assignment/visit data, so no cron job is needed:
      Open (no assignee) -> Assigned (has assignee, visit not yet arrived)
      -> In Progress (visit date has arrived) -> Resolved -> Verified          */
-const UI_BUILD = "16-Sep-2026 · rev I (uploads via buttons only)";
+const UI_BUILD = "16-Sep-2026 · rev J (NUW report in comments)";
 if (typeof console !== "undefined") console.log("OxyTrack UI build:", UI_BUILD);
 const getCompanyName = u => u.company || u.name;
 const isAmexUser = u => getCompanyName(u) === "Amex";
@@ -3357,7 +3357,9 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
       const up = await uploadComplaintAttachments(c.id, warrFiles, uploaderLabel(currentUser));
       if (up.length < warrFiles.length) alert(`${warrFiles.length - up.length} of ${warrFiles.length} file(s) failed to upload.${up.uploadError ? `\n\nReason: ${up.uploadError}` : ""}`);
       // Files attached while opening a dispute (Not Under Warranty) count as CMS reports:
-      // stamp them so they appear in the Corrective Maintenance Record with an upload date.
+      // stamp them so they appear in the Corrective Maintenance Record with an upload date,
+      // and post a comment showing the file with "CMS" mentioned — same as the
+      // Upload CMS Report button.
       if (warrChoice === "not_under_warranty" && up.length) {
         try {
           const upPaths = up.map(u => u.path);
@@ -3367,6 +3369,10 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
           const stamped = current.map(a => (a && upPaths.includes(a.path)) ? { ...a, cms: true, uploaded_at: a.uploaded_at || nowIso } : a);
           await updateComplaintFields(c.id, { attachments: stamped });
         } catch (e) { console.error("Failed to stamp warranty-panel CMS files:", e); }
+        const cAuthor = isAdmin ? (warrAs || "Novair") : (currentUser.name === getCompanyName(currentUser) ? currentUser.name : `${currentUser.name} — ${getCompanyName(currentUser)}`);
+        const cRole = isAdmin ? "company" : currentUser.role;
+        const pathEntries = up.map(u => `${u.name}|${u.path}`).join(",");
+        await insertComment(c.id, cAuthor, cRole, `${cAuthor} uploaded a CMS report\n[attached:${pathEntries}]`);
       }
     }
     setWarrOpen(false); setWarrChoice(null); setWarrNote(""); setWarrAs(""); setWarrFiles([]); setWarrBusy(false);
