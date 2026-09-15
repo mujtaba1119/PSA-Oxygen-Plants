@@ -4083,6 +4083,64 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   );
 }
 
+/* ─── Storage Diagnostics (temporary, admin-only) — tests PDF uploads to the attachments
+   bucket and shows the exact result/error on screen, so no DevTools digging is needed. ─── */
+function StorageDiagnostics() {
+  const [running, setRunning] = useState(false);
+  const [results, setResults] = useState(null);
+
+  const runTests = async () => {
+    setRunning(true);
+    const out = [];
+    const stamp = Date.now();
+    const cleanupPaths = [];
+    const tryUpload = async (label, path, blob) => {
+      try {
+        const uploadPromise = supabase.storage.from("attachments").upload(path, blob, { contentType: "application/pdf", upsert: true });
+        const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error("Timed out after 60s — connection stalled")), 60000));
+        const { error } = await Promise.race([uploadPromise, timeout]);
+        if (error) out.push({ label, ok: false, msg: error.message });
+        else { out.push({ label, ok: true, msg: "Uploaded successfully" }); cleanupPaths.push(path); }
+      } catch (e) { out.push({ label, ok: false, msg: (e && e.message) || String(e) }); }
+    };
+    // 1. Tiny valid PDF (~0.3 KB) — catches MIME-type blocks
+    const tinyPdf = new Blob(["%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]>>endobj\ntrailer<</Size 4/Root 1 0 R>>\n%%EOF"], { type: "application/pdf" });
+    await tryUpload("Tiny PDF (0.3 KB)", `diagnostics/${stamp}_tiny.pdf`, tinyPdf);
+    // 2. 6 MB PDF-typed blob — catches size limits in the common range
+    const bigPdf = new Blob([new Uint8Array(6 * 1024 * 1024)], { type: "application/pdf" });
+    await tryUpload("Large PDF (6 MB)", `diagnostics/${stamp}_big.pdf`, bigPdf);
+    // Clean up whatever succeeded
+    if (cleanupPaths.length) { try { await supabase.storage.from("attachments").remove(cleanupPaths); } catch {} }
+    setResults(out);
+    setRunning(false);
+  };
+
+  return (
+    <div style={{ background: "#fffbe8", border: "1px solid #f5e6a8", borderRadius: 12, padding: "14px 18px", marginBottom: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#7a6a2f" }}>Storage Diagnostics (temporary)</div>
+          <div style={{ fontSize: 12, color: "#9a8a4f" }}>Tests PDF uploads to the attachments bucket and shows the exact error, if any.</div>
+        </div>
+        <button onClick={runTests} disabled={running} style={{ fontSize: 12.5, fontWeight: 700, color: "#fff", background: running ? "#b8a86f" : "#b45309", border: "none", borderRadius: 8, padding: "9px 18px", cursor: running ? "wait" : "pointer" }}>{running ? "Testing…" : "Run PDF Upload Test"}</button>
+      </div>
+      {results && (
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+          {results.map((r, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, padding: "8px 12px", borderRadius: 8, background: r.ok ? "#ecfdf5" : "#fef2f2", border: `1px solid ${r.ok ? "#a7f3d0" : "#fecaca"}` }}>
+              <span style={{ fontWeight: 800, color: r.ok ? "#16a34a" : "#dc2626", flexShrink: 0 }}>{r.ok ? "✓" : "✕"}</span>
+              <span style={{ fontWeight: 700, color: "#1a1d21", flexShrink: 0 }}>{r.label}:</span>
+              <span style={{ color: r.ok ? "#166534" : "#991b1b", wordBreak: "break-word" }}>{r.msg}</span>
+            </div>
+          ))}
+          {!results.every(r => r.ok) && <div style={{ fontSize: 12, color: "#7a6a2f", marginTop: 4 }}>Copy the red message above and share it — it states the exact reason uploads fail.</div>}
+          {results.every(r => r.ok) && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>Both direct uploads work — the bucket accepts PDFs. If in-app PDF uploads still fail, the problem is elsewhere (share this result).</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Admin Dashboard ─── */
 
 /* ─── Sidebar Navigation Icons (hand-drawn SVG, matching existing stroke style) ─── */
@@ -5911,6 +5969,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
           </div>))}
         </>)}
         {tab === "emails" && (<>
+          <StorageDiagnostics />
           <h2 style={styles.sectionTitle}>Email Notifications</h2><p style={{ fontSize: 14, color: "#4a5568", marginBottom: 20, lineHeight: 1.5 }}>When a complaint is submitted, emails go to that hospital&apos;s service-provider group plus Amex and UNDP (via Resend / <code>RESEND_API_KEY</code>). Shutdown emails are sent manually from the Overview tab.</p>
           <div style={styles.formSection}><h3 style={{ fontSize: 15, fontWeight: 600, color: "#1a2332", margin: "0 0 12px" }}>Add Email</h3><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><select style={{ ...styles.pwInput, width: 150, padding: "8px 10px" }} value={emailGroup} onChange={e => setEmailGroup(e.target.value)}>{emailGroupOptions.map(g => <option key={g} value={g}>{g}</option>)}</select><input style={{ ...styles.pwInput, flex: 1, minWidth: 200, padding: "8px 10px" }} type="email" placeholder="email@example.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddEmail()} /><button style={styles.pwSaveBtn} onClick={handleAddEmail}>{emailSaving ? "…" : "Add"}</button></div></div>
           {emailGroupOptions.map(g => { const ge = notifEmails.filter(e => e.group_name === g); if (!ge.length) return null; return (<div key={g} style={{ marginTop: 20 }}><h3 style={{ fontSize: 15, fontWeight: 600, color: "#0e7c6b", margin: "0 0 10px" }}>{g}</h3>{ge.map(e => (<div key={e.id} style={{ ...styles.pwCard, display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 14, color: "#1a2332" }}>{e.email}</span><button style={{ ...styles.pwCancelBtn, color: "#e53e3e", fontSize: 14 }} onClick={() => handleDeleteEmail(e.id)}>Remove</button></div>))}</div>); })}
