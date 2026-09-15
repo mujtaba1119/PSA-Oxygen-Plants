@@ -423,6 +423,7 @@ const compressImageFile = (file) => new Promise((resolve) => {
 async function uploadComplaintAttachments(complaintId, fileList, uploadedBy) {
   const files = Array.from(fileList || []);
   if (files.length === 0) return [];
+  let lastError = null;
   const uploadOne = async (rawFile, idx) => {
     try {
       const file = await compressImageFile(rawFile);
@@ -430,12 +431,13 @@ async function uploadComplaintAttachments(complaintId, fileList, uploadedBy) {
       const safeName = (rawFile.name || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
       const path = `complaints/${complaintId}/${Date.now()}_${idx}_${rand}_${safeName}`;
       const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: true });
-      if (error) { console.error("Upload error:", rawFile.name, error.message); return null; }
+      if (error) { console.error("Upload error:", rawFile.name, error.message); lastError = error.message; return null; }
       return uploadedBy ? { name: rawFile.name, path, uploaded_by: uploadedBy } : { name: rawFile.name, path };
-    } catch (e) { console.error("Upload failed for", rawFile.name, e); return null; }
+    } catch (e) { console.error("Upload failed for", rawFile.name, e); lastError = e && e.message; return null; }
   };
   // Upload all files in parallel
   const results = (await Promise.all(files.map((f, i) => uploadOne(f, i)))).filter(Boolean);
+  if (lastError) { try { Object.defineProperty(results, "uploadError", { value: lastError, enumerable: false }); } catch {} }
   // Persist to the complaint record. Re-read the LATEST attachments right before writing to
   // minimize clobbering when several uploads/comments land close together.
   if (results.length > 0) {
@@ -3027,7 +3029,8 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
       try { uploaded = await uploadComplaintAttachments(complaintId, commentFiles, uploaderLabel(currentUser)); } catch (e) { console.error("Upload error:", e); }
       if (uploaded.length < commentFiles.length) {
         const failedCount = commentFiles.length - uploaded.length;
-        alert(`${failedCount} file${failedCount > 1 ? "s" : ""} failed to upload. ${uploaded.length > 0 ? "The rest were posted." : "Please try again."}`);
+        const reason = uploaded.uploadError ? `\n\nReason: ${uploaded.uploadError}` : "";
+        alert(`${failedCount} file${failedCount > 1 ? "s" : ""} failed to upload. ${uploaded.length > 0 ? "The rest were posted." : "Please try again."}${reason}`);
         if (uploaded.length === 0) { setPosting(false); return; }
       }
       if (uploaded.length > 0) {
