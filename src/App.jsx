@@ -4091,9 +4091,45 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
 
 /* ─── Storage Diagnostics (temporary, admin-only) — tests PDF uploads to the attachments
    bucket and shows the exact result/error on screen, so no DevTools digging is needed. ─── */
-function StorageDiagnostics() {
+function StorageDiagnostics({ complaints = [] }) {
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState(null);
+  const [running2, setRunning2] = useState(false);
+  const [results2, setResults2] = useState(null);
+
+  // Test 2: the REAL in-app upload path — same helper the comments/panels use
+  // (compression → retry/timeout → storage → persist to complaints.attachments), then verify + clean up.
+  const runFullPathTest = async () => {
+    const target = complaints[0];
+    if (!target) { setResults2([{ label: "Setup", ok: false, msg: "No complaints exist to test against." }]); return; }
+    setRunning2(true);
+    const out = [];
+    try {
+      const pdfFile = new File(["%PDF-1.4\n%%EOF"], "diag_path_test.pdf", { type: "application/pdf" });
+      const imgFile = new File([new Uint8Array(200 * 1024)], "diag_path_test.jpg", { type: "image/jpeg" });
+      const res = await uploadComplaintAttachments(target.id, [pdfFile, imgFile], "Diagnostics");
+      out.push({ label: "Upload via real helper", ok: res.length === 2, msg: res.length === 2 ? "Both files uploaded" : `Only ${res.length}/2 uploaded${res.uploadError ? ` — ${res.uploadError}` : ""}` });
+      // Verify persistence in the complaints.attachments column
+      const paths = res.map(r => r.path);
+      let persisted = false; let readErr = null;
+      try {
+        const { data, error } = await supabase.from("complaints").select("attachments").eq("id", target.id).single();
+        if (error) readErr = error.message;
+        else persisted = paths.length > 0 && paths.every(p => (data?.attachments || []).some(a => a && a.path === p));
+      } catch (e) { readErr = e && e.message; }
+      out.push({ label: "Saved to ticket record", ok: persisted, msg: persisted ? "Attachment records persisted" : (readErr ? `Read failed — ${readErr}` : "Uploaded files were NOT found in the ticket's attachment list (persistence write failed)") });
+      // Clean up: remove test files from storage and strip them from the ticket record
+      try {
+        if (paths.length) await supabase.storage.from("attachments").remove(paths);
+        const { data: cur } = await supabase.from("complaints").select("attachments").eq("id", target.id).single();
+        const stripped = (cur?.attachments || []).filter(a => !a || !paths.includes(a.path));
+        const { error: upd } = await supabase.from("complaints").update({ attachments: stripped }).eq("id", target.id);
+        if (upd) await updateComplaintFields(target.id, { attachments: stripped });
+      } catch {}
+    } catch (e) { out.push({ label: "Test crashed", ok: false, msg: (e && e.message) || String(e) }); }
+    setResults2(out);
+    setRunning2(false);
+  };
 
   const runTests = async () => {
     setRunning(true);
@@ -4128,7 +4164,10 @@ function StorageDiagnostics() {
           <div style={{ fontSize: 14, fontWeight: 700, color: "#7a6a2f" }}>Storage Diagnostics (temporary)</div>
           <div style={{ fontSize: 12, color: "#9a8a4f" }}>Tests PDF uploads to the attachments bucket and shows the exact error, if any.</div>
         </div>
-        <button onClick={runTests} disabled={running} style={{ fontSize: 12.5, fontWeight: 700, color: "#fff", background: running ? "#b8a86f" : "#b45309", border: "none", borderRadius: 8, padding: "9px 18px", cursor: running ? "wait" : "pointer" }}>{running ? "Testing…" : "Run PDF Upload Test"}</button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={runTests} disabled={running} style={{ fontSize: 12.5, fontWeight: 700, color: "#fff", background: running ? "#b8a86f" : "#b45309", border: "none", borderRadius: 8, padding: "9px 18px", cursor: running ? "wait" : "pointer" }}>{running ? "Testing…" : "Run PDF Upload Test"}</button>
+          <button onClick={runFullPathTest} disabled={running2} style={{ fontSize: 12.5, fontWeight: 700, color: "#fff", background: running2 ? "#b8a86f" : "#0f766e", border: "none", borderRadius: 8, padding: "9px 18px", cursor: running2 ? "wait" : "pointer" }}>{running2 ? "Testing…" : "Run Full In-App Path Test"}</button>
+        </div>
       </div>
       {results && (
         <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -4141,6 +4180,17 @@ function StorageDiagnostics() {
           ))}
           {!results.every(r => r.ok) && <div style={{ fontSize: 12, color: "#7a6a2f", marginTop: 4 }}>Copy the red message above and share it — it states the exact reason uploads fail.</div>}
           {results.every(r => r.ok) && <div style={{ fontSize: 12, color: "#166534", marginTop: 4 }}>Both direct uploads work — the bucket accepts PDFs. If in-app PDF uploads still fail, the problem is elsewhere (share this result).</div>}
+        </div>
+      )}
+      {results2 && (
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+          {results2.map((r, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, padding: "8px 12px", borderRadius: 8, background: r.ok ? "#ecfdf5" : "#fef2f2", border: `1px solid ${r.ok ? "#a7f3d0" : "#fecaca"}` }}>
+              <span style={{ fontWeight: 800, color: r.ok ? "#16a34a" : "#dc2626", flexShrink: 0 }}>{r.ok ? "✓" : "✕"}</span>
+              <span style={{ fontWeight: 700, color: "#1a1d21", flexShrink: 0 }}>{r.label}:</span>
+              <span style={{ color: r.ok ? "#166534" : "#991b1b", wordBreak: "break-word" }}>{r.msg}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -5975,7 +6025,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
           </div>))}
         </>)}
         {tab === "emails" && (<>
-          <StorageDiagnostics />
+          <StorageDiagnostics complaints={complaints} />
           <h2 style={styles.sectionTitle}>Email Notifications</h2><p style={{ fontSize: 14, color: "#4a5568", marginBottom: 20, lineHeight: 1.5 }}>When a complaint is submitted, emails go to that hospital&apos;s service-provider group plus Amex and UNDP (via Resend / <code>RESEND_API_KEY</code>). Shutdown emails are sent manually from the Overview tab.</p>
           <div style={styles.formSection}><h3 style={{ fontSize: 15, fontWeight: 600, color: "#1a2332", margin: "0 0 12px" }}>Add Email</h3><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><select style={{ ...styles.pwInput, width: 150, padding: "8px 10px" }} value={emailGroup} onChange={e => setEmailGroup(e.target.value)}>{emailGroupOptions.map(g => <option key={g} value={g}>{g}</option>)}</select><input style={{ ...styles.pwInput, flex: 1, minWidth: 200, padding: "8px 10px" }} type="email" placeholder="email@example.com" value={newEmail} onChange={e => setNewEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddEmail()} /><button style={styles.pwSaveBtn} onClick={handleAddEmail}>{emailSaving ? "…" : "Add"}</button></div></div>
           {emailGroupOptions.map(g => { const ge = notifEmails.filter(e => e.group_name === g); if (!ge.length) return null; return (<div key={g} style={{ marginTop: 20 }}><h3 style={{ fontSize: 15, fontWeight: 600, color: "#0e7c6b", margin: "0 0 10px" }}>{g}</h3>{ge.map(e => (<div key={e.id} style={{ ...styles.pwCard, display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ fontSize: 14, color: "#1a2332" }}>{e.email}</span><button style={{ ...styles.pwCancelBtn, color: "#e53e3e", fontSize: 14 }} onClick={() => handleDeleteEmail(e.id)}>Remove</button></div>))}</div>); })}
