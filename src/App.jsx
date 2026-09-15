@@ -3412,6 +3412,18 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     if (warrFiles.length) {
       const up = await uploadComplaintAttachments(c.id, warrFiles, uploaderLabel(currentUser));
       if (up.length < warrFiles.length) alert(`${warrFiles.length - up.length} of ${warrFiles.length} file(s) failed to upload.${up.uploadError ? `\n\nReason: ${up.uploadError}` : ""}`);
+      // Files attached while opening a dispute (Not Under Warranty) count as CMS reports:
+      // stamp them so they appear in the Corrective Maintenance Record with an upload date.
+      if (warrChoice === "not_under_warranty" && up.length) {
+        try {
+          const upPaths = up.map(u => u.path);
+          const nowIso = new Date().toISOString();
+          const { data: existing } = await supabase.from("complaints").select("attachments").eq("id", c.id).single();
+          const current = Array.isArray(existing?.attachments) ? existing.attachments : [];
+          const stamped = current.map(a => (a && upPaths.includes(a.path)) ? { ...a, cms: true, uploaded_at: a.uploaded_at || nowIso } : a);
+          await updateComplaintFields(c.id, { attachments: stamped });
+        } catch (e) { console.error("Failed to stamp warranty-panel CMS files:", e); }
+      }
     }
     setWarrOpen(false); setWarrChoice(null); setWarrNote(""); setWarrAs(""); setWarrFiles([]); setWarrBusy(false);
     await onRefresh();
