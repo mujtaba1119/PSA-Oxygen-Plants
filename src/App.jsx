@@ -235,7 +235,7 @@ function SeverityBadge({ severity }) {
    from status "Open" plus assignment/visit data, so no cron job is needed:
      Open (no assignee) -> Assigned (has assignee, visit not yet arrived)
      -> In Progress (visit date has arrived) -> Resolved -> Verified          */
-const UI_BUILD = "16-Sep-2026 · rev H (ack fix)";
+const UI_BUILD = "16-Sep-2026 · rev I (uploads via buttons only)";
 if (typeof console !== "undefined") console.log("OxyTrack UI build:", UI_BUILD);
 const getCompanyName = u => u.company || u.name;
 const isAmexUser = u => getCompanyName(u) === "Amex";
@@ -2990,10 +2990,6 @@ function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmi
   const [editingComment, setEditingComment] = useState(null); const [editText, setEditText] = useState("");
   const [count, setCount] = useState(0);
   const [highlightId, setHighlightId] = useState(null);
-  const [commentFiles, setCommentFiles] = useState([]);
-  const [fileInputKey, setFileInputKey] = useState(0);
-  const fileInputId = `cf-${complaintId}-${fileInputKey}`;
-  const attachRef = useRef(null);
   const reportFileRef = useRef(null);
   const [reportingCommentId, setReportingCommentId] = useState(null);
   const [reportUploading, setReportUploading] = useState(false);
@@ -3054,32 +3050,16 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
   }, [highlightCommentText, loaded, comments.length]);
 
   const post = async () => {
-    if ((!text.trim() && commentFiles.length === 0) || posting) return; setPosting(true);
+    if (!text.trim() || posting) return; setPosting(true);
     const author = currentUser.role === "admin" ? "Admin" : currentUser.role === "hospital" ? currentUser.name + " Hospital" : (currentUser.name === getCompanyName(currentUser) ? currentUser.name : `${currentUser.name} — ${getCompanyName(currentUser)}`);
     const role = currentUser.role;
-    const msgParts = [];
-    if (text.trim()) msgParts.push(text.trim());
-    if (commentFiles.length > 0) {
-      let uploaded = [];
-      try { uploaded = await uploadComplaintAttachments(complaintId, commentFiles, uploaderLabel(currentUser)); } catch (e) { console.error("Upload error:", e); }
-      if (uploaded.length < commentFiles.length) {
-        const failedCount = commentFiles.length - uploaded.length;
-        const reason = uploaded.uploadError ? `\n\nReason: ${uploaded.uploadError}` : "";
-        alert(`${failedCount} file${failedCount > 1 ? "s" : ""} failed to upload. ${uploaded.length > 0 ? "The rest were posted." : "Please try again."}${reason}`);
-        if (uploaded.length === 0) { setPosting(false); return; }
-      }
-      if (uploaded.length > 0) {
-        const pathEntries = uploaded.map(u => `${u.name}|${u.path}`).join(",");
-        msgParts.push(`[attached:${pathEntries}]`);
-      }
-    }
-    const saved = await insertComment(complaintId, author, role, msgParts.join("\n"));
+    const saved = await insertComment(complaintId, author, role, text.trim());
     if (!saved || saved.error) {
-      alert(`Your comment could not be posted${saved && saved.error ? `:\n\n${saved.error}` : "."}\n\nYour text and files are still here — please press Post to try again.`);
+      alert(`Your comment could not be posted${saved && saved.error ? `:\n\n${saved.error}` : "."}\n\nYour text is still here — please press Post to try again.`);
       setPosting(false);
-      return; // keep text + commentFiles so nothing is lost
+      return; // keep text so nothing is lost
     }
-    setText(""); setCommentFiles([]); setFileInputKey(k => k + 1); setPosting(false); await loadComments();
+    setText(""); setPosting(false); await loadComments();
     // Notify: if hospital comments, notify companies. If company comments, notify hospital + other companies.
     const userId = currentUser.id || currentUser.name?.toLowerCase().replace(/\s+/g, "");
     const companyKey = (currentUser.company || currentUser.name || "").toLowerCase().replace(/[\s-]+/g, "");
@@ -3145,25 +3125,9 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
           ))}
           {(canComment || isAdmin) && (
             <div>
-              {commentFiles.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-                  {commentFiles.map((f, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#0f766e", background: "#e6f5f0", padding: "3px 8px 3px 10px", borderRadius: 14, border: "1px solid #cfeae2" }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-                      <span style={{ maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
-                      <button onClick={() => setCommentFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#e53e3e", fontSize: 13, fontWeight: 700, padding: 0, lineHeight: 1 }}>×</button>
-                    </div>
-                  ))}
-                </div>
-              )}
               <div style={styles.commentInputRow}>
                 <input style={styles.commentInput} placeholder="Write a comment…" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && post()} />
-                <input ref={attachRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xlsx,.xls" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) setCommentFiles(prev => [...prev, ...Array.from(e.target.files)]); e.target.value = ""; }} />
-                <button onClick={() => attachRef.current?.click()} title="Attach file — posts with your comment" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#0f766e", background: "#e6f5f0", border: `1px solid ${C.tealLight}`, borderRadius: 8, padding: "6px 12px", cursor: "pointer", flexShrink: 0 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-                  Attach
-                </button>
-                <button style={{ ...styles.commentSendBtn, background: ((!text.trim() && commentFiles.length === 0) || posting) ? "#9db8b4" : C.teal, cursor: ((!text.trim() && commentFiles.length === 0) || posting) ? "not-allowed" : "pointer", boxShadow: ((!text.trim() && commentFiles.length === 0) || posting) ? "none" : "0 3px 8px rgba(13,148,136,0.25)" }} onClick={post} disabled={(!text.trim() && commentFiles.length === 0) || posting}>{posting ? "Posting…" : "Post"}</button>
+                <button style={{ ...styles.commentSendBtn, background: (!text.trim() || posting) ? "#9db8b4" : C.teal, cursor: (!text.trim() || posting) ? "not-allowed" : "pointer", boxShadow: (!text.trim() || posting) ? "none" : "0 3px 8px rgba(13,148,136,0.25)" }} onClick={post} disabled={!text.trim() || posting}>{posting ? "Posting…" : "Post"}</button>
               </div>
             </div>
           )}
@@ -3429,11 +3393,12 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   //  • "Upload Report" — any general report. Available to the site's own service provider at any
   //    stage, to admin, and (on a dispute) to Novair. Hidden once the ticket is Verified.
   const isSiteProvider = isProviderUser(currentUser) && getProvider(c.hospital) === getCompanyName(currentUser);
+  const isTicketHospital = currentUser.role === "hospital" && hospitalMatches(c.hospital, currentUser.name);
   const isDisputeTicket = c.warranty_status === "not_under_warranty";
   const isNovairOnly = isAdmin || (getCompanyName(currentUser) === "Novair" && (currentUser.name === "Novair" || isManagerUser(currentUser)));
   const canUploadCmsReport = !isFullyClosed && isDisputeTicket && isNovairOnly;
   const canUploadPlainReport = !isFullyClosed && (
-    isAdmin || isSiteProvider || (isDisputeTicket && getCompanyName(currentUser) === "Novair")
+    isAdmin || isSiteProvider || isTicketHospital || (isDisputeTicket && getCompanyName(currentUser) === "Novair")
   );
   const ticketReportRef = useRef(null);
   const plainReportRef = useRef(null);
@@ -3459,7 +3424,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
         : currentUser.role === "hospital" ? currentUser.name + " Hospital"
         : (currentUser.name === getCompanyName(currentUser) ? currentUser.name : `${currentUser.name} — ${getCompanyName(currentUser)}`);
       const pathEntries = uploaded.map(u => `${u.name}|${u.path}`).join(",");
-      const label = isCms ? "uploaded a CMS report" : "uploaded a report";
+      const label = isCms ? "uploaded a CMS report" : (currentUser.role === "hospital" ? "uploaded an attachment" : "uploaded a report");
       const backdateIso = (isAdmin && isCms && cmsBackdate) ? new Date(cmsBackdate).toISOString() : null;
       await insertComment(c.id, author, adminAsNovair ? "company" : currentUser.role, `${author} ${label}\n[attached:${pathEntries}]`, backdateIso);
       // CMS reports get stamped (cms flag + upload date) so the Corrective Maintenance Record table
@@ -3782,7 +3747,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                   <input ref={plainReportRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) handleUploadTicketReport(Array.from(e.target.files), "report"); e.target.value = ""; }} />
                   <button style={{ ...styles.btnTealSmall, background: "#fff", color: C.tealDark, border: `1px solid ${C.tealLight}`, boxShadow: "none", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => plainReportRef.current?.click()} disabled={plainReportBusy}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    {plainReportBusy ? "Uploading…" : "Upload Report"}
+                    {plainReportBusy ? "Uploading…" : (isTicketHospital ? "Upload Attachment" : "Upload Report")}
                   </button>
                 </>
               )}
