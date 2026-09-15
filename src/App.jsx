@@ -239,6 +239,18 @@ const getCompanyName = u => u.company || u.name;
 const isAmexUser = u => getCompanyName(u) === "Amex";
 const isProviderUser = u => ["Novair", "Intexim", "Z-Corps"].includes(getCompanyName(u));
 const isManagerUser = u => u.role === "company" && u.company_role === "manager";
+// Build the "who uploaded this" label per role:
+// - hospital → hospital display name only
+// - company account (name === company, e.g. "Novair"/"UNDP") → company only
+// - staff sub-account (e.g. a Novair manager) → "Name — Company"
+// - admin → "Admin"
+function uploaderLabel(user) {
+  if (!user) return "";
+  if (user.role === "admin") return "Admin";
+  if (user.role === "hospital") return displayName(user.name);
+  const company = getCompanyName(user);
+  return user.name === company ? company : `${user.name} — ${company}`;
+}
 
 function statusLabel(status) { return status === "Verified" ? "Resolved & Verified" : status === "In Progress" ? "Open · In Progress" : status; }
 
@@ -408,7 +420,7 @@ const compressImageFile = (file) => new Promise((resolve) => {
 });
 // Upload one or more files as attachments on a complaint (shared by submission forms + the
 // acknowledgement / work-notes panel).
-async function uploadComplaintAttachments(complaintId, fileList) {
+async function uploadComplaintAttachments(complaintId, fileList, uploadedBy) {
   const files = Array.from(fileList || []);
   if (files.length === 0) return [];
   const uploadOne = async (rawFile, idx) => {
@@ -419,7 +431,7 @@ async function uploadComplaintAttachments(complaintId, fileList) {
       const path = `complaints/${complaintId}/${Date.now()}_${idx}_${rand}_${safeName}`;
       const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: true });
       if (error) { console.error("Upload error:", rawFile.name, error.message); return null; }
-      return { name: rawFile.name, path };
+      return uploadedBy ? { name: rawFile.name, path, uploaded_by: uploadedBy } : { name: rawFile.name, path };
     } catch (e) { console.error("Upload failed for", rawFile.name, e); return null; }
   };
   // Upload all files in parallel
@@ -2955,7 +2967,7 @@ function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmi
   const handleUploadReport = async (commentId, files) => {
     if (!files.length || reportUploading) return;
     setReportUploading(true);
-    const uploaded = await uploadComplaintAttachments(complaintId, files);
+    const uploaded = await uploadComplaintAttachments(complaintId, files, uploaderLabel(currentUser));
     const pathEntries = uploaded.map(u => `${u.name}|${u.path}`).join(",");
     const cm = comments.find(x => x.id === commentId);
     if (cm) {
@@ -3012,7 +3024,7 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
     if (text.trim()) msgParts.push(text.trim());
     if (commentFiles.length > 0) {
       let uploaded = [];
-      try { uploaded = await uploadComplaintAttachments(complaintId, commentFiles); } catch (e) { console.error("Upload error:", e); }
+      try { uploaded = await uploadComplaintAttachments(complaintId, commentFiles, uploaderLabel(currentUser)); } catch (e) { console.error("Upload error:", e); }
       if (uploaded.length < commentFiles.length) {
         const failedCount = commentFiles.length - uploaded.length;
         alert(`${failedCount} file${failedCount > 1 ? "s" : ""} failed to upload. ${uploaded.length > 0 ? "The rest were posted." : "Please try again."}`);
@@ -3258,23 +3270,26 @@ function AttachmentViewer({ attachments, isAdmin, complaintId, onRefresh }) {
       {expanded && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
           {atts.map((a, i) => (
-            <div key={a.path || i} style={{ position: "relative", border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
-              {a.cms && <span style={{ position: "absolute", top: 4, left: 4, zIndex: 2, fontSize: 8.5, fontWeight: 800, color: "#fff", background: "#0f766e", padding: "2px 6px", borderRadius: 5, letterSpacing: 0.4 }}>CMS</span>}
-              {isAdmin && (
-                <button onClick={() => handleDelete(a)} disabled={deleting === a.path} title="Delete attachment" style={{ position: "absolute", top: 4, right: 4, zIndex: 2, width: 20, height: 20, borderRadius: "50%", border: "none", background: "rgba(192,57,43,0.92)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, lineHeight: 1, padding: 0 }}>
-                  {deleting === a.path ? "…" : "✕"}
-                </button>
-              )}
-              {urls[a.path] ? (
-                (a.name || "").match(/\.(jpg|jpeg|png|gif|webp)$/i)
-                  ? <a href={urls[a.path]} target="_blank" rel="noopener"><img src={urls[a.path]} alt={a.name} style={{ width: 120, height: 90, objectFit: "cover", display: "block" }} /></a>
-                  : <a href={urls[a.path]} target="_blank" rel="noopener" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 120, height: 90, background: (a.name || "").match(/\.pdf$/i) ? "#fef2f2" : "#f0f4ff", textDecoration: "none", gap: 6, padding: 8 }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={(a.name || "").match(/\.pdf$/i) ? "#dc2626" : "#4f6df5"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                      <span style={{ fontSize: 9.5, fontWeight: 600, color: "#4a5568", textAlign: "center", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", wordBreak: "break-all", maxWidth: "100%" }}>{a.name || "File"}</span>
-                    </a>
-              ) : (
-                <div style={{ width: 120, height: 90, display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontSize: 11, color: C.textLight }}>Loading…</div>
-              )}
+            <div key={a.path || i} style={{ width: 120 }}>
+              <div style={{ position: "relative", border: `1px solid ${C.border}`, borderRadius: 8, overflow: "hidden" }}>
+                {a.cms && <span style={{ position: "absolute", top: 4, left: 4, zIndex: 2, fontSize: 8.5, fontWeight: 800, color: "#fff", background: "#0f766e", padding: "2px 6px", borderRadius: 5, letterSpacing: 0.4 }}>CMS</span>}
+                {isAdmin && (
+                  <button onClick={() => handleDelete(a)} disabled={deleting === a.path} title="Delete attachment" style={{ position: "absolute", top: 4, right: 4, zIndex: 2, width: 20, height: 20, borderRadius: "50%", border: "none", background: "rgba(192,57,43,0.92)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, lineHeight: 1, padding: 0 }}>
+                    {deleting === a.path ? "…" : "✕"}
+                  </button>
+                )}
+                {urls[a.path] ? (
+                  (a.name || "").match(/\.(jpg|jpeg|png|gif|webp)$/i)
+                    ? <a href={urls[a.path]} target="_blank" rel="noopener"><img src={urls[a.path]} alt={a.name} style={{ width: 120, height: 90, objectFit: "cover", display: "block" }} /></a>
+                    : <a href={urls[a.path]} target="_blank" rel="noopener" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: 120, height: 90, background: (a.name || "").match(/\.pdf$/i) ? "#fef2f2" : "#f0f4ff", textDecoration: "none", gap: 6, padding: 8 }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={(a.name || "").match(/\.pdf$/i) ? "#dc2626" : "#4f6df5"} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <span style={{ fontSize: 9.5, fontWeight: 600, color: "#4a5568", textAlign: "center", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", wordBreak: "break-all", maxWidth: "100%" }}>{a.name || "File"}</span>
+                      </a>
+                ) : (
+                  <div style={{ width: 120, height: 90, display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, fontSize: 11, color: C.textLight }}>Loading…</div>
+                )}
+              </div>
+              {a.uploaded_by && <div style={{ fontSize: 9, fontWeight: 600, color: "#8a9199", marginTop: 4, lineHeight: 1.25, textAlign: "center", wordBreak: "break-word" }}>{a.uploaded_by}</div>}
             </div>
           ))}
         </div>
@@ -3331,7 +3346,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     setWarrBusy(true);
     const by = isAdmin ? (warrAs || "Admin") : currentUser.name;
     await setWarrantyStatus(c.id, warrChoice, warrNote.trim(), by);
-    if (warrFiles.length) await uploadComplaintAttachments(c.id, warrFiles);
+    if (warrFiles.length) await uploadComplaintAttachments(c.id, warrFiles, uploaderLabel(currentUser));
     setWarrOpen(false); setWarrChoice(null); setWarrNote(""); setWarrAs(""); setWarrFiles([]); setWarrBusy(false);
     await onRefresh();
   };
@@ -3367,10 +3382,10 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const handleUploadTicketReport = async (files) => {
     if (!files.length || ticketReportBusy) return;
     setTicketReportBusy(true);
-    const uploaded = await uploadComplaintAttachments(c.id, files);
+    const adminAsNovair = isAdmin && isDisputeTicket;
+    const uploaderName = adminAsNovair ? "Novair" : uploaderLabel(currentUser);
+    const uploaded = await uploadComplaintAttachments(c.id, files, uploaderName);
     if (uploaded.length) {
-      // Admin uploading a CMS report on a dispute does so "as Novair".
-      const adminAsNovair = isAdmin && isDisputeTicket;
       const author = adminAsNovair ? "Novair"
         : currentUser.role === "admin" ? "Admin"
         : currentUser.role === "hospital" ? currentUser.name + " Hospital"
@@ -3420,7 +3435,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     await acknowledgeComplaint(c.id, who, isAdmin && ackDate ? ackDate : null);
     const noteText = ackNote.trim();
     await insertComment(c.id, who, commentRole, noteText ? `Acknowledged — ${noteText}` : "Acknowledged the ticket.");
-    if (ackFiles.length) await uploadComplaintAttachments(c.id, ackFiles);
+    if (ackFiles.length) await uploadComplaintAttachments(c.id, ackFiles, uploaderLabel(currentUser));
     if (ackMode === "visit" && ackVisitDate) await onLogVisit(c.id, ackVisitDate, isAdmin ? (ackAs || null) : null);
     setAckOpen(false); setAckNote(""); setAckFiles([]); setAckVisitDate(""); setAckDate(""); setAckAs(""); setAckMode(null);
     setAckBusy(false);
@@ -3870,7 +3885,7 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
         const path = `complaints/${complaintId}/${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
         const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type, upsert: false });
         if (error) { console.error("Upload error:", error.message); return null; }
-        return { name: rawFile.name, path };
+        return { name: rawFile.name, path, uploaded_by: uploaderLabel(user) };
       } catch (e) { console.error("Upload failed:", e); return null; }
     }))).filter(Boolean);
     if (results.length > 0) {
@@ -5604,7 +5619,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
         const path = `complaints/${complaintId}/${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
         const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type, upsert: false });
         if (error) { console.error("Upload error:", error.message); return null; }
-        return { name: rawFile.name, path };
+        return { name: rawFile.name, path, uploaded_by: "Admin" };
       } catch (e) { console.error("Upload failed:", e); return null; }
     }))).filter(Boolean);
     if (results.length > 0) {
