@@ -235,7 +235,7 @@ function SeverityBadge({ severity }) {
    from status "Open" plus assignment/visit data, so no cron job is needed:
      Open (no assignee) -> Assigned (has assignee, visit not yet arrived)
      -> In Progress (visit date has arrived) -> Resolved -> Verified          */
-const UI_BUILD = "16-Sep-2026 · rev J (NUW report in comments)";
+const UI_BUILD = "16-Sep-2026 · rev K (fast refresh)";
 if (typeof console !== "undefined") console.log("OxyTrack UI build:", UI_BUILD);
 const getCompanyName = u => u.company || u.name;
 const isAmexUser = u => getCompanyName(u) === "Amex";
@@ -1407,9 +1407,20 @@ function AppInner() {
 
   const reload = useCallback(async (onProgress) => {
     const total = 6; let done = 0;
-    const track = onProgress ? (p) => p.then(r => { done++; onProgress(done / total); return r; }) : (p) => p;
-    const [c, u, e, s, sd, ee] = await Promise.all([track(fetchComplaints()), track(fetchUsers()), track(fetchEmails()), track(fetchSiteNotes()), track(fetchShutdowns()), track(fetchEscalationEmails())]);
-    setComplaints(c); setUsers(u); setNotifEmails(e); setSiteNotes(s); setShutdowns(sd); setEscalationEmails(ee);
+    // Update each slice of state the moment its own fetch resolves — the complaints list (the
+    // thing that shows a new ticket/report/comment) must not wait for the slowest of six
+    // queries (fetchUsers goes through a serverless function whose cold start alone can take
+    // seconds). Completion semantics are unchanged: the returned promise still resolves when
+    // all six are done, with the same final state and progress reporting.
+    const track = (p, setter) => p.then(r => { done++; if (onProgress) onProgress(done / total); if (setter) setter(r); return r; });
+    const [, u] = await Promise.all([
+      track(fetchComplaints(), setComplaints),
+      track(fetchUsers(), setUsers),
+      track(fetchEmails(), setNotifEmails),
+      track(fetchSiteNotes(), setSiteNotes),
+      track(fetchShutdowns(), setShutdowns),
+      track(fetchEscalationEmails(), setEscalationEmails),
+    ]);
     return u;
   }, []);
 
