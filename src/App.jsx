@@ -235,7 +235,7 @@ function SeverityBadge({ severity }) {
    from status "Open" plus assignment/visit data, so no cron job is needed:
      Open (no assignee) -> Assigned (has assignee, visit not yet arrived)
      -> In Progress (visit date has arrived) -> Resolved -> Verified          */
-const UI_BUILD = "16-Sep-2026 · rev L (instant comments)";
+const UI_BUILD = "16-Sep-2026 · rev M (CMR equipment column)";
 if (typeof console !== "undefined") console.log("OxyTrack UI build:", UI_BUILD);
 const getCompanyName = u => u.company || u.name;
 const isAmexUser = u => getCompanyName(u) === "Amex";
@@ -4733,6 +4733,7 @@ function CorrectiveMaintenanceRecordPage({ site, complaints, onBack }) {
           <thead>
             <tr style={{ background: "linear-gradient(90deg, #0b3b38, #0f766e)" }}>
               <th style={thStyle}>Serial Number</th>
+              <th style={thStyle}>Equipment</th>
               <th style={thStyle}>Ticket Open</th>
               <th style={thStyle}>Visit Dates</th>
               <th style={thStyle}>CMS Report</th>
@@ -4740,11 +4741,12 @@ function CorrectiveMaintenanceRecordPage({ site, complaints, onBack }) {
           </thead>
           <tbody style={{ background: "#fff" }}>
             {rows.length === 0 && (
-              <tr><td colSpan={4} style={{ fontSize: 13, color: "#94a3b8", padding: "36px 0", textAlign: "center" }}>No corrective maintenance records — no disputed tickets for this site.</td></tr>
+              <tr><td colSpan={5} style={{ fontSize: 13, color: "#94a3b8", padding: "36px 0", textAlign: "center" }}>No corrective maintenance records — no disputed tickets for this site.</td></tr>
             )}
             {rows.map(r => (
               <tr key={r.id}>
                 <td style={{ ...tdStyle, fontWeight: 700, color: "#0f766e", fontFamily: "'DM Mono', ui-monospace, monospace" }}>{r.serial}</td>
+                <td style={{ ...tdStyle, fontWeight: 600, color: "#1a1d21" }}>{equipTypeForSerial(r.serial) || <span style={{ color: "#b8c0c0" }}>—</span>}</td>
                 <td style={{ ...tdStyle, fontWeight: 600, color: "#1a1d21" }}>{fmt(r.openDate)}</td>
                 <td style={tdStyle}>{r.visits.length ? r.visits.map(fmt).join(", ") : <span style={{ color: "#b8c0c0" }}>—</span>}</td>
                 <td style={tdStyle}>
