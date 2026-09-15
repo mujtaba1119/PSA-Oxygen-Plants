@@ -235,7 +235,7 @@ function SeverityBadge({ severity }) {
    from status "Open" plus assignment/visit data, so no cron job is needed:
      Open (no assignee) -> Assigned (has assignee, visit not yet arrived)
      -> In Progress (visit date has arrived) -> Resolved -> Verified          */
-const UI_BUILD = "16-Sep-2026 · rev G (held attachments)";
+const UI_BUILD = "16-Sep-2026 · rev H (ack fix)";
 if (typeof console !== "undefined") console.log("OxyTrack UI build:", UI_BUILD);
 const getCompanyName = u => u.company || u.name;
 const isAmexUser = u => getCompanyName(u) === "Amex";
@@ -3355,8 +3355,6 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   // Acknowledgement panel (new workflow)
   const [ackOpen, setAckOpen] = useState(false);
   const [ackNote, setAckNote] = useState("");
-  const [ackMode, setAckMode] = useState(null); // "remote" | "visit" — must be chosen explicitly
-  const [ackVisitDate, setAckVisitDate] = useState("");
   const [ackDate, setAckDate] = useState(""); // admin only: acknowledge on a past date
   const [ackAs, setAckAs] = useState(""); // admin only: acknowledge on behalf of a provider
   const [ackBusy, setAckBusy] = useState(false);
@@ -3495,7 +3493,6 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   // log a visit date. This NEVER resolves the ticket — resolving is a separate action later.
   const handleAcknowledge = async () => {
     if (ackBusy) return;
-    if (ackMode === "visit" && !ackVisitDate) return;
     setAckBusy(true);
     const who = isAdmin ? (ackAs || "Admin") : currentUser.name;
     // When admin acts on behalf of a provider, store the comment as a company comment (not admin)
@@ -3504,8 +3501,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     await acknowledgeComplaint(c.id, who, isAdmin && ackDate ? ackDate : null);
     const noteText = ackNote.trim();
     await insertComment(c.id, who, commentRole, noteText ? `Acknowledged — ${noteText}` : "Acknowledged the ticket.");
-    if (ackMode === "visit" && ackVisitDate) await onLogVisit(c.id, ackVisitDate, isAdmin ? (ackAs || null) : null);
-    setAckOpen(false); setAckNote(""); setAckFiles([]); setAckVisitDate(""); setAckDate(""); setAckAs(""); setAckMode(null);
+    setAckOpen(false); setAckNote(""); setAckDate(""); setAckAs("");
     setAckBusy(false);
     await onRefresh();
   };
@@ -3694,17 +3690,12 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                     <span style={{ fontSize: 10.5, color: "#a8935a" }}>{ackDate ? "" : "blank = today"}</span>
                   </div>
                 )}
-                <div style={{ fontSize: 11.5, fontWeight: 600, color: C.textMid, marginTop: 12, marginBottom: 6 }}>Log a visit? <span style={{ fontWeight: 500, color: C.textLight }}>(optional)</span></div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                  <button onClick={() => setAckMode(ackMode === "visit" ? null : "visit")} style={{ fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer", border: ackMode === "visit" ? "1.5px solid transparent" : `1.5px solid ${C.tealLight}`, background: ackMode === "visit" ? "linear-gradient(135deg, #0d9488, #0f766e)" : "#fff", color: ackMode === "visit" ? "#fff" : C.tealDark }}>{ackMode === "visit" ? "✓ Logging a visit" : "Log visit"}</button>
-                  {ackMode === "visit" && <input type="date" value={ackVisitDate} onChange={e => setAckVisitDate(e.target.value)} style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} />}
-                </div>
                 <div style={{ fontSize: 11, color: C.textLight, marginTop: 8 }}>
-                  {ackMode === "visit" ? "The ticket will move to Open · In Progress with this visit logged. You can add more visits and resolve later." : "The ticket will move to Open · In Progress. You can log visits and mark it resolved later."}
+                  The ticket will move to Open · In Progress. You can log visits and mark it resolved later.
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                  <button style={{ ...styles.btnTealSmall, opacity: (ackMode === "visit" && !ackVisitDate) ? 0.5 : 1 }} onClick={handleAcknowledge} disabled={ackBusy || (ackMode === "visit" && !ackVisitDate)}>{ackBusy ? "…" : "✓ Acknowledge"}</button>
-                  <button style={{ ...styles.btnTealSmall, background: "#fff", color: C.textMid, border: `1px solid ${C.borderLight}`, boxShadow: "none" }} onClick={() => { setAckOpen(false); setAckMode(null); }} disabled={ackBusy}>Cancel</button>
+                  <button style={styles.btnTealSmall} onClick={handleAcknowledge} disabled={ackBusy}>{ackBusy ? "…" : "✓ Acknowledge"}</button>
+                  <button style={{ ...styles.btnTealSmall, background: "#fff", color: C.textMid, border: `1px solid ${C.borderLight}`, boxShadow: "none" }} onClick={() => setAckOpen(false)} disabled={ackBusy}>Cancel</button>
                 </div>
               </div>
             )}
