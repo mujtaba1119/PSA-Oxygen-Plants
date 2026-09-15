@@ -424,20 +424,29 @@ async function uploadComplaintAttachments(complaintId, fileList, uploadedBy) {
   const files = Array.from(fileList || []);
   if (files.length === 0) return [];
   let lastError = null;
+  const PERMANENT_ERR = /exceed|too large|payload|not supported|invalid|policy|denied|unauthorized/i;
+  const MAX_BYTES = 50 * 1024 * 1024; // Supabase hard ceiling; larger files can never succeed
   const uploadOne = async (rawFile, idx) => {
+    if (rawFile && rawFile.size > MAX_BYTES) { lastError = `"${rawFile.name}" is ${(rawFile.size / 1048576).toFixed(1)} MB — larger than the 50 MB upload limit.`; return null; }
     let file;
     try { file = await compressImageFile(rawFile); } catch { file = rawFile; }
     const rand = Math.random().toString(36).slice(2, 8);
     const safeName = (rawFile.name || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
-    // Retry transient upload failures (network hiccups, cold edge responses). Each attempt uses a
-    // fresh unique path so a partially-succeeded upload can't cause an "already exists" conflict.
+    // Retry transient failures only (network hiccups). Permanent errors (size/mime/policy) stop
+    // immediately — re-uploading a large file that can never succeed just hangs the UI.
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const path = `complaints/${complaintId}/${Date.now()}_${idx}_${rand}_${attempt}_${safeName}`;
-        const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: true });
+        const uploadPromise = supabase.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: true });
+        const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error("Upload timed out — check your connection and try again.")), 90000));
+        const { error } = await Promise.race([uploadPromise, timeout]);
         if (!error) return uploadedBy ? { name: rawFile.name, path, uploaded_by: uploadedBy } : { name: rawFile.name, path };
         console.error(`Upload error (attempt ${attempt + 1}):`, rawFile.name, error.message); lastError = error.message;
-      } catch (e) { console.error(`Upload failed (attempt ${attempt + 1}) for`, rawFile.name, e); lastError = e && e.message; }
+        if (PERMANENT_ERR.test(error.message || "")) return null; // no point retrying
+      } catch (e) {
+        console.error(`Upload failed (attempt ${attempt + 1}) for`, rawFile.name, e); lastError = e && e.message;
+        if (PERMANENT_ERR.test((e && e.message) || "")) return null;
+      }
       if (attempt < 2) await new Promise(r => setTimeout(r, 600 * (attempt + 1))); // backoff before retry
     }
     return null;
@@ -2993,9 +3002,13 @@ function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmi
       supabase.from("comments").select("id", { count: "exact", head: true }).eq("complaint_id", complaintId).then(({ count: c }) => { if (!cancelled && c !== null) setCount(c); });
     };
     fetchCount();
-    const iv = setInterval(() => { if (!document.hidden) fetchCount(); }, 20000);
+    // While expanded, loadComments maintains the count — a separate count poll is redundant.
+    // Collapsed cards refresh their badge slowly; with many cards on screen this poll is the
+    // main source of background query load, so keep it light.
+    if (expanded) return () => { cancelled = true; };
+    const iv = setInterval(() => { if (!document.hidden) fetchCount(); }, 60000);
     return () => { cancelled = true; clearInterval(iv); };
-  }, [complaintId]);
+  }, [complaintId, expanded]);
 
 const loadComments = useCallback(async () => { const data = await fetchComments(complaintId); setComments(data); setCount(data.length); setLoaded(true); }, [complaintId]);
   useEffect(() => {
@@ -3403,6 +3416,10 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     const adminAsNovair = isAdmin && isCms;
     const uploaderName = adminAsNovair ? "Novair" : uploaderLabel(currentUser);
     const uploaded = await uploadComplaintAttachments(c.id, files, uploaderName);
+    if (uploaded.length < files.length) {
+      const reason = uploaded.uploadError ? `\n\nReason: ${uploaded.uploadError}` : "";
+      alert(`${files.length - uploaded.length} of ${files.length} file(s) failed to upload.${reason}`);
+    }
     if (uploaded.length) {
       const author = adminAsNovair ? "Novair"
         : currentUser.role === "admin" ? "Admin"
@@ -3905,21 +3922,12 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   });
 
   const doUpload = async (complaintId, fileList) => {
-    const results = (await Promise.all(Array.from(fileList).map(async (rawFile, i) => {
-      try {
-        const file = await compressImage(rawFile);
-        const path = `complaints/${complaintId}/${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-        const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type, upsert: false });
-        if (error) { console.error("Upload error:", error.message); return null; }
-        return { name: rawFile.name, path, uploaded_by: uploaderLabel(user) };
-      } catch (e) { console.error("Upload failed:", e); return null; }
-    }))).filter(Boolean);
-    if (results.length > 0) {
-      try {
-        const { data: existing } = await supabase.from("complaints").select("attachments").eq("id", complaintId).single();
-        const current = Array.isArray(existing?.attachments) ? existing.attachments : [];
-        await dbWrite({ action: "update_complaint_fields", id: complaintId, fields: { attachments: [...current, ...results] } });
-      } catch (e) { console.error("Failed to update complaint attachments:", e); }
+    // Shared helper: compression, retry with timeout, uploader attribution, persistence.
+    const results = await uploadComplaintAttachments(complaintId, fileList, uploaderLabel(user));
+    const total = Array.from(fileList || []).length;
+    if (results.length < total) {
+      const reason = results.uploadError ? `\n\nReason: ${results.uploadError}` : "";
+      alert(`${total - results.length} of ${total} file(s) failed to upload. Your complaint was submitted${results.length ? " with the remaining files" : " without attachments"}.${reason}`);
     }
   };
 
@@ -5639,21 +5647,12 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
   });
 
   const adminDoUpload = async (complaintId, fileList) => {
-    const results = (await Promise.all(Array.from(fileList).map(async (rawFile, i) => {
-      try {
-        const file = await adminCompressImage(rawFile);
-        const path = `complaints/${complaintId}/${Date.now()}_${i}_${file.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-        const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type, upsert: false });
-        if (error) { console.error("Upload error:", error.message); return null; }
-        return { name: rawFile.name, path, uploaded_by: "Admin" };
-      } catch (e) { console.error("Upload failed:", e); return null; }
-    }))).filter(Boolean);
-    if (results.length > 0) {
-      try {
-        const { data: existing } = await supabase.from("complaints").select("attachments").eq("id", complaintId).single();
-        const current = Array.isArray(existing?.attachments) ? existing.attachments : [];
-        await dbWrite({ action: "update_complaint_fields", id: complaintId, fields: { attachments: [...current, ...results] } });
-      } catch (e) { console.error("Failed to update complaint attachments:", e); }
+    // Shared helper: compression, retry with timeout, uploader attribution, persistence.
+    const results = await uploadComplaintAttachments(complaintId, fileList, "Admin");
+    const total = Array.from(fileList || []).length;
+    if (results.length < total) {
+      const reason = results.uploadError ? `\n\nReason: ${results.uploadError}` : "";
+      alert(`${total - results.length} of ${total} file(s) failed to upload. The complaint was submitted${results.length ? " with the remaining files" : " without attachments"}.${reason}`);
     }
   };
 
