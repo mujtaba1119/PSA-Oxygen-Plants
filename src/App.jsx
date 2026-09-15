@@ -3329,6 +3329,8 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const [equipSaving, setEquipSaving] = useState(false);
   const c = complaint;
   const effStatus = getEffectiveStatus(c);
+  // Once a ticket is Verified it's fully closed — no more comments, uploads, warranty or actions.
+  const isFullyClosed = c.status === "Verified";
   // Open (unresolved/unverified) tickets start expanded; fully closed tickets start collapsed until clicked
   const [expanded, setExpanded] = useState(effStatus !== "Verified");
 
@@ -3340,7 +3342,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   const canVerify = canVerifyTicket(currentUser) && c.status === "Resolved";
   const alreadyAssigned = assigneeNames(c);
   const availableStaff = staffOptions.filter(s => !alreadyAssigned.includes(s.name));
-  const canWarranty = canSetWarranty(currentUser, c.hospital, c);
+  const canWarranty = !isFullyClosed && canSetWarranty(currentUser, c.hospital, c);
   const handleSetWarranty = async () => {
     if (warrBusy || !warrChoice) return;
     setWarrBusy(true);
@@ -3366,23 +3368,29 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     await onRefresh();
   };
 
-  // Report upload — once a ticket is acknowledged. On a normal (non-disputed) ticket, any
-  // Novair/Intexim/Z-Corps/Amex account or admin can upload a report. On a DISPUTED ticket
-  // (Not Under Warranty), the button becomes "Upload CMS Report" and is restricted to Novair
-  // (the Novair account or a Novair manager) or admin, and stays visible after the dispute opens.
+  // Report uploads. Two separate buttons can appear:
+  //  • "Upload CMS Report" — dispute only, Novair (account or manager) or admin.
+  //  • "Upload Report" — any general report. Available to the site's own service provider at any
+  //    stage, to admin, and (on a dispute) to Novair. Hidden once the ticket is Verified.
+  const isSiteProvider = isProviderUser(currentUser) && getProvider(c.hospital) === getCompanyName(currentUser);
   const isDisputeTicket = c.warranty_status === "not_under_warranty";
   const isNovairOnly = isAdmin || (getCompanyName(currentUser) === "Novair" && (currentUser.name === "Novair" || isManagerUser(currentUser)));
-  const canUploadTicketReport = isAcknowledged(c) && (isDisputeTicket
-    ? isNovairOnly
-    : (isAdmin || ["Novair", "Intexim", "Z-Corps", "Amex"].includes(getCompanyName(currentUser))));
-  const reportButtonLabel = isDisputeTicket ? "Upload CMS Report" : "Upload Report";
+  const canUploadCmsReport = !isFullyClosed && isDisputeTicket && isNovairOnly;
+  const canUploadPlainReport = !isFullyClosed && (
+    isAdmin || isSiteProvider || (isDisputeTicket && getCompanyName(currentUser) === "Novair")
+  );
   const ticketReportRef = useRef(null);
+  const plainReportRef = useRef(null);
   const [ticketReportBusy, setTicketReportBusy] = useState(false);
+  const [plainReportBusy, setPlainReportBusy] = useState(false);
   const [cmsBackdate, setCmsBackdate] = useState(""); // admin only: upload CMS report as a past date
-  const handleUploadTicketReport = async (files) => {
-    if (!files.length || ticketReportBusy) return;
-    setTicketReportBusy(true);
-    const adminAsNovair = isAdmin && isDisputeTicket;
+  // mode: "cms" stamps the attachment as a CMS report (dispute); "report" is a plain report.
+  const handleUploadTicketReport = async (files, mode) => {
+    const isCms = mode === "cms";
+    const busy = isCms ? ticketReportBusy : plainReportBusy;
+    if (!files.length || busy) return;
+    if (isCms) setTicketReportBusy(true); else setPlainReportBusy(true);
+    const adminAsNovair = isAdmin && isCms;
     const uploaderName = adminAsNovair ? "Novair" : uploaderLabel(currentUser);
     const uploaded = await uploadComplaintAttachments(c.id, files, uploaderName);
     if (uploaded.length) {
@@ -3391,14 +3399,13 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
         : currentUser.role === "hospital" ? currentUser.name + " Hospital"
         : (currentUser.name === getCompanyName(currentUser) ? currentUser.name : `${currentUser.name} — ${getCompanyName(currentUser)}`);
       const pathEntries = uploaded.map(u => `${u.name}|${u.path}`).join(",");
-      const label = isDisputeTicket ? "uploaded a CMS report" : "uploaded a report";
-      const backdateIso = (isAdmin && cmsBackdate) ? new Date(cmsBackdate).toISOString() : null;
+      const label = isCms ? "uploaded a CMS report" : "uploaded a report";
+      const backdateIso = (isAdmin && isCms && cmsBackdate) ? new Date(cmsBackdate).toISOString() : null;
       await insertComment(c.id, author, adminAsNovair ? "company" : currentUser.role, `${author} ${label}\n[attached:${pathEntries}]`, backdateIso);
-      // On disputes, stamp the just-uploaded attachments as CMS reports with an upload date so
-      // the Corrective Maintenance Record table can show the report + when it was uploaded.
-      // Admins may set a past date via the date picker; that date also becomes the dispute date
-      // so the ticket timeline's "Disputed" marker lands on it.
-      if (isDisputeTicket) {
+      // CMS reports get stamped (cms flag + upload date) so the Corrective Maintenance Record table
+      // can show them. Admins may set a past date; that date also becomes the dispute date so the
+      // ticket timeline's "Disputed" marker lands on it. Plain reports are not stamped.
+      if (isCms) {
         try {
           const uploadedPaths = uploaded.map(u => u.path);
           const stampIso = backdateIso || new Date().toISOString();
@@ -3412,7 +3419,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
       }
     }
     setCmsBackdate("");
-    setTicketReportBusy(false);
+    if (isCms) setTicketReportBusy(false); else setPlainReportBusy(false);
     await onRefresh();
   };
 
@@ -3716,13 +3723,22 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                   <button style={styles.btnTealSmall} onClick={handleLogVisit} disabled={busy || !visitDatePick}>{busy ? "…" : hasVisits(c) ? "Log Another Visit" : "Log Visit"}</button>
                 </>
               )}
-              {canUploadTicketReport && (
+              {canUploadCmsReport && (
                 <>
-                  <input ref={ticketReportRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) handleUploadTicketReport(Array.from(e.target.files)); e.target.value = ""; }} />
-                  {isAdmin && isDisputeTicket && <input type="date" style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={cmsBackdate} onChange={e => setCmsBackdate(e.target.value)} title="Optional: upload CMS report as a past date (as Novair)" />}
+                  <input ref={ticketReportRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) handleUploadTicketReport(Array.from(e.target.files), "cms"); e.target.value = ""; }} />
+                  {isAdmin && <input type="date" style={{ fontSize: 12, padding: "8px 10px", border: `1px solid ${C.tealLight}`, borderRadius: 8 }} value={cmsBackdate} onChange={e => setCmsBackdate(e.target.value)} title="Optional: upload CMS report as a past date (as Novair)" />}
                   <button style={{ ...styles.btnTealSmall, background: "#fff", color: C.tealDark, border: `1px solid ${C.tealLight}`, boxShadow: "none", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => ticketReportRef.current?.click()} disabled={ticketReportBusy}>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    {ticketReportBusy ? "Uploading…" : reportButtonLabel}
+                    {ticketReportBusy ? "Uploading…" : "Upload CMS Report"}
+                  </button>
+                </>
+              )}
+              {canUploadPlainReport && (
+                <>
+                  <input ref={plainReportRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) handleUploadTicketReport(Array.from(e.target.files), "report"); e.target.value = ""; }} />
+                  <button style={{ ...styles.btnTealSmall, background: "#fff", color: C.tealDark, border: `1px solid ${C.tealLight}`, boxShadow: "none", display: "inline-flex", alignItems: "center", gap: 6 }} onClick={() => plainReportRef.current?.click()} disabled={plainReportBusy}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    {plainReportBusy ? "Uploading…" : "Upload Report"}
                   </button>
                 </>
               )}
@@ -3791,7 +3807,7 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                 </div>
               );
             })()}
-            <CommentSection complaintId={c.id} hospital={c.hospital} currentUser={currentUser} canComment={canComment} isAdmin={isAdmin} highlightCommentText={highlightCommentText} complaintAttachments={c.attachments} />
+            <CommentSection complaintId={c.id} hospital={c.hospital} currentUser={currentUser} canComment={canComment && !isFullyClosed} isAdmin={isAdmin && !isFullyClosed} highlightCommentText={highlightCommentText} complaintAttachments={c.attachments} />
           </div>
           )}
         </>
