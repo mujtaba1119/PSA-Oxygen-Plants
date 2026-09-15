@@ -3004,19 +3004,25 @@ function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmi
     }
     if (uploaded.length > 0) {
       const pathEntries = uploaded.map(u => `${u.name}|${u.path}`).join(",");
-      const saved = await insertComment(complaintId, author, currentUser.role, `${author} attached ${uploaded.length > 1 ? "files" : "a file"}\n[attached:${pathEntries}]`);
+      // If the person has typed a comment, post text + attachment together as ONE comment;
+      // otherwise post a standalone "attached a file" entry.
+      const typed = text.trim();
+      const content = typed ? `${typed}\n[attached:${pathEntries}]` : `${author} attached ${uploaded.length > 1 ? "files" : "a file"}\n[attached:${pathEntries}]`;
+      const saved = await insertComment(complaintId, author, currentUser.role, content);
       if (!saved || saved.error) {
         alert(`The file uploaded, but the comment could not be posted${saved && saved.error ? `:\n\n${saved.error}` : "."}\n\nThe file is saved in the ticket's Attachments section.`);
       } else {
+        if (typed) setText("");
         await loadComments();
         const userId = currentUser.id || currentUser.name?.toLowerCase().replace(/\s+/g, "");
         const companyKey = (currentUser.company || currentUser.name || "").toLowerCase().replace(/[\s-]+/g, "");
         const notifTitle = currentUser.role === "admin" ? "New Comment" : `New Comment from ${author}`;
+        const notifMsg = typed || "Attached a file";
         if (currentUser.role === "hospital") {
-          notifyUsers("comment", notifTitle, "Attached a file", hospital || currentUser.name, complaintId, userId).catch(() => {});
+          notifyUsers("comment", notifTitle, notifMsg, hospital || currentUser.name, complaintId, userId).catch(() => {});
         } else if (hospital) {
-          createNotification(hospital.toLowerCase().replace(/\s+/g, ""), "comment", notifTitle, "Attached a file", complaintId, hospital).catch(() => {});
-          notifyUsers("comment", notifTitle, "Attached a file", hospital, complaintId, companyKey).catch(() => {});
+          createNotification(hospital.toLowerCase().replace(/\s+/g, ""), "comment", notifTitle, notifMsg, complaintId, hospital).catch(() => {});
+          notifyUsers("comment", notifTitle, notifMsg, hospital, complaintId, companyKey).catch(() => {});
         }
       }
     }
