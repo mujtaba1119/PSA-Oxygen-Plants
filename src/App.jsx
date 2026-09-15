@@ -2991,43 +2991,6 @@ function CommentSection({ complaintId, hospital, currentUser, canComment, isAdmi
   const [fileInputKey, setFileInputKey] = useState(0);
   const fileInputId = `cf-${complaintId}-${fileInputKey}`;
   const attachRef = useRef(null);
-  const [attachBusy, setAttachBusy] = useState(false);
-  // Attach flow matching the proven upload buttons elsewhere: pick file(s) → upload immediately →
-  // post as its own comment referencing the file(s). No held state, no separate Post step.
-  const handleAttachFiles = async (files) => {
-    if (!files.length || attachBusy) return;
-    setAttachBusy(true);
-    const author = currentUser.role === "admin" ? "Admin" : currentUser.role === "hospital" ? currentUser.name + " Hospital" : (currentUser.name === getCompanyName(currentUser) ? currentUser.name : `${currentUser.name} — ${getCompanyName(currentUser)}`);
-    const uploaded = await uploadComplaintAttachments(complaintId, files, uploaderLabel(currentUser));
-    if (uploaded.length < files.length) {
-      alert(`${files.length - uploaded.length} of ${files.length} file(s) failed to upload.${uploaded.uploadError ? `\n\nReason: ${uploaded.uploadError}` : ""}`);
-    }
-    if (uploaded.length > 0) {
-      const pathEntries = uploaded.map(u => `${u.name}|${u.path}`).join(",");
-      // If the person has typed a comment, post text + attachment together as ONE comment;
-      // otherwise post a standalone "attached a file" entry.
-      const typed = text.trim();
-      const content = typed ? `${typed}\n[attached:${pathEntries}]` : `${author} attached ${uploaded.length > 1 ? "files" : "a file"}\n[attached:${pathEntries}]`;
-      const saved = await insertComment(complaintId, author, currentUser.role, content);
-      if (!saved || saved.error) {
-        alert(`The file uploaded, but the comment could not be posted${saved && saved.error ? `:\n\n${saved.error}` : "."}\n\nThe file is saved in the ticket's Attachments section.`);
-      } else {
-        if (typed) setText("");
-        await loadComments();
-        const userId = currentUser.id || currentUser.name?.toLowerCase().replace(/\s+/g, "");
-        const companyKey = (currentUser.company || currentUser.name || "").toLowerCase().replace(/[\s-]+/g, "");
-        const notifTitle = currentUser.role === "admin" ? "New Comment" : `New Comment from ${author}`;
-        const notifMsg = typed || "Attached a file";
-        if (currentUser.role === "hospital") {
-          notifyUsers("comment", notifTitle, notifMsg, hospital || currentUser.name, complaintId, userId).catch(() => {});
-        } else if (hospital) {
-          createNotification(hospital.toLowerCase().replace(/\s+/g, ""), "comment", notifTitle, notifMsg, complaintId, hospital).catch(() => {});
-          notifyUsers("comment", notifTitle, notifMsg, hospital, complaintId, companyKey).catch(() => {});
-        }
-      }
-    }
-    setAttachBusy(false);
-  };
   const reportFileRef = useRef(null);
   const [reportingCommentId, setReportingCommentId] = useState(null);
   const [reportUploading, setReportUploading] = useState(false);
@@ -3179,14 +3142,25 @@ const loadComments = useCallback(async () => { const data = await fetchComments(
           ))}
           {(canComment || isAdmin) && (
             <div>
+              {commentFiles.length > 0 && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                  {commentFiles.map((f, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#0f766e", background: "#e6f5f0", padding: "3px 8px 3px 10px", borderRadius: 14, border: "1px solid #cfeae2" }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0f766e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+                      <span style={{ maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</span>
+                      <button onClick={() => setCommentFiles(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#e53e3e", fontSize: 13, fontWeight: 700, padding: 0, lineHeight: 1 }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div style={styles.commentInputRow}>
                 <input style={styles.commentInput} placeholder="Write a comment…" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && post()} />
-                <input ref={attachRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xlsx,.xls" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) handleAttachFiles(Array.from(e.target.files)); e.target.value = ""; }} />
-                <button onClick={() => attachRef.current?.click()} disabled={attachBusy} title="Attach file — uploads immediately" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#0f766e", background: "#e6f5f0", border: `1px solid ${C.tealLight}`, borderRadius: 8, padding: "6px 12px", cursor: attachBusy ? "wait" : "pointer", flexShrink: 0 }}>
+                <input ref={attachRef} type="file" accept="image/*,application/pdf,.pdf,.doc,.docx,.xlsx,.xls" multiple style={{ display: "none" }} onChange={e => { if (e.target.files && e.target.files.length) setCommentFiles(prev => [...prev, ...Array.from(e.target.files)]); e.target.value = ""; }} />
+                <button onClick={() => attachRef.current?.click()} title="Attach file — posts with your comment" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#0f766e", background: "#e6f5f0", border: `1px solid ${C.tealLight}`, borderRadius: 8, padding: "6px 12px", cursor: "pointer", flexShrink: 0 }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-                  {attachBusy ? "Uploading…" : "Attach"}
+                  Attach
                 </button>
-                <button style={{ ...styles.commentSendBtn, background: (!text.trim() || posting) ? "#9db8b4" : C.teal, cursor: (!text.trim() || posting) ? "not-allowed" : "pointer", boxShadow: (!text.trim() || posting) ? "none" : "0 3px 8px rgba(13,148,136,0.25)" }} onClick={post} disabled={!text.trim() || posting}>{posting ? "…" : "Post"}</button>
+                <button style={{ ...styles.commentSendBtn, background: ((!text.trim() && commentFiles.length === 0) || posting) ? "#9db8b4" : C.teal, cursor: ((!text.trim() && commentFiles.length === 0) || posting) ? "not-allowed" : "pointer", boxShadow: ((!text.trim() && commentFiles.length === 0) || posting) ? "none" : "0 3px 8px rgba(13,148,136,0.25)" }} onClick={post} disabled={(!text.trim() && commentFiles.length === 0) || posting}>{posting ? "Posting…" : "Post"}</button>
               </div>
             </div>
           )}
