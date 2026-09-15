@@ -425,15 +425,22 @@ async function uploadComplaintAttachments(complaintId, fileList, uploadedBy) {
   if (files.length === 0) return [];
   let lastError = null;
   const uploadOne = async (rawFile, idx) => {
-    try {
-      const file = await compressImageFile(rawFile);
-      const rand = Math.random().toString(36).slice(2, 8);
-      const safeName = (rawFile.name || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
-      const path = `complaints/${complaintId}/${Date.now()}_${idx}_${rand}_${safeName}`;
-      const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: true });
-      if (error) { console.error("Upload error:", rawFile.name, error.message); lastError = error.message; return null; }
-      return uploadedBy ? { name: rawFile.name, path, uploaded_by: uploadedBy } : { name: rawFile.name, path };
-    } catch (e) { console.error("Upload failed for", rawFile.name, e); lastError = e && e.message; return null; }
+    let file;
+    try { file = await compressImageFile(rawFile); } catch { file = rawFile; }
+    const rand = Math.random().toString(36).slice(2, 8);
+    const safeName = (rawFile.name || "file").replace(/[^a-zA-Z0-9._-]/g, "_");
+    // Retry transient upload failures (network hiccups, cold edge responses). Each attempt uses a
+    // fresh unique path so a partially-succeeded upload can't cause an "already exists" conflict.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const path = `complaints/${complaintId}/${Date.now()}_${idx}_${rand}_${attempt}_${safeName}`;
+        const { error } = await supabase.storage.from("attachments").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: true });
+        if (!error) return uploadedBy ? { name: rawFile.name, path, uploaded_by: uploadedBy } : { name: rawFile.name, path };
+        console.error(`Upload error (attempt ${attempt + 1}):`, rawFile.name, error.message); lastError = error.message;
+      } catch (e) { console.error(`Upload failed (attempt ${attempt + 1}) for`, rawFile.name, e); lastError = e && e.message; }
+      if (attempt < 2) await new Promise(r => setTimeout(r, 600 * (attempt + 1))); // backoff before retry
+    }
+    return null;
   };
   // Upload all files in parallel
   const results = (await Promise.all(files.map((f, i) => uploadOne(f, i)))).filter(Boolean);
