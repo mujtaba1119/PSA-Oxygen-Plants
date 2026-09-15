@@ -235,6 +235,8 @@ function SeverityBadge({ severity }) {
    from status "Open" plus assignment/visit data, so no cron job is needed:
      Open (no assignee) -> Assigned (has assignee, visit not yet arrived)
      -> In Progress (visit date has arrived) -> Resolved -> Verified          */
+const UI_BUILD = "16-Sep-2026 · rev G (held attachments)";
+if (typeof console !== "undefined") console.log("OxyTrack UI build:", UI_BUILD);
 const getCompanyName = u => u.company || u.name;
 const isAmexUser = u => getCompanyName(u) === "Amex";
 const isProviderUser = u => ["Novair", "Intexim", "Z-Corps"].includes(getCompanyName(u));
@@ -4179,7 +4181,7 @@ function StorageDiagnostics({ complaints = [] }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#7a6a2f" }}>Storage Diagnostics (temporary)</div>
-          <div style={{ fontSize: 12, color: "#9a8a4f" }}>Tests PDF uploads to the attachments bucket and shows the exact error, if any.</div>
+          <div style={{ fontSize: 12, color: "#9a8a4f" }}>Tests PDF uploads to the attachments bucket and shows the exact error, if any. · <b>UI build: {UI_BUILD}</b></div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button onClick={runTests} disabled={running} style={{ fontSize: 12.5, fontWeight: 700, color: "#fff", background: running ? "#b8a86f" : "#b45309", border: "none", borderRadius: 8, padding: "9px 18px", cursor: running ? "wait" : "pointer" }}>{running ? "Testing…" : "Run PDF Upload Test"}</button>
