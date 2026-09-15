@@ -3378,7 +3378,6 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
   // Acknowledgement panel (new workflow)
   const [ackOpen, setAckOpen] = useState(false);
   const [ackNote, setAckNote] = useState("");
-  const [ackFiles, setAckFiles] = useState([]);
   const [ackMode, setAckMode] = useState(null); // "remote" | "visit" — must be chosen explicitly
   const [ackVisitDate, setAckVisitDate] = useState("");
   const [ackDate, setAckDate] = useState(""); // admin only: acknowledge on a past date
@@ -3528,10 +3527,6 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
     await acknowledgeComplaint(c.id, who, isAdmin && ackDate ? ackDate : null);
     const noteText = ackNote.trim();
     await insertComment(c.id, who, commentRole, noteText ? `Acknowledged — ${noteText}` : "Acknowledged the ticket.");
-    if (ackFiles.length) {
-      const up = await uploadComplaintAttachments(c.id, ackFiles, uploaderLabel(currentUser));
-      if (up.length < ackFiles.length) alert(`${ackFiles.length - up.length} of ${ackFiles.length} file(s) failed to upload. The ticket was still acknowledged.${up.uploadError ? `\n\nReason: ${up.uploadError}` : ""}`);
-    }
     if (ackMode === "visit" && ackVisitDate) await onLogVisit(c.id, ackVisitDate, isAdmin ? (ackAs || null) : null);
     setAckOpen(false); setAckNote(""); setAckFiles([]); setAckVisitDate(""); setAckDate(""); setAckAs(""); setAckMode(null);
     setAckBusy(false);
@@ -3722,14 +3717,6 @@ function ComplaintCard({ complaint, currentUser, canComment, isAdmin, onAssign, 
                     <span style={{ fontSize: 10.5, color: "#a8935a" }}>{ackDate ? "" : "blank = today"}</span>
                   </div>
                 )}
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: C.tealDark, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", border: `1px dashed ${C.tealLight}`, borderRadius: 8 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    Upload photos / report
-                    <input type="file" accept="image/*,application/pdf" multiple style={{ display: "none" }} onChange={e => setAckFiles(prev => [...prev, ...Array.from(e.target.files)])} />
-                  </label>
-                  {ackFiles.length > 0 && <span style={{ fontSize: 12, color: C.textMid }}>{ackFiles.length} file{ackFiles.length === 1 ? "" : "s"} selected <button onClick={() => setAckFiles([])} style={{ border: "none", background: "none", color: "#c0392b", cursor: "pointer", fontWeight: 700 }}>✕</button></span>}
-                </div>
                 <div style={{ fontSize: 11.5, fontWeight: 600, color: C.textMid, marginTop: 12, marginBottom: 6 }}>Log a visit? <span style={{ fontWeight: 500, color: C.textLight }}>(optional)</span></div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                   <button onClick={() => setAckMode(ackMode === "visit" ? null : "visit")} style={{ fontSize: 12, fontWeight: 700, padding: "8px 14px", borderRadius: 8, cursor: "pointer", border: ackMode === "visit" ? "1.5px solid transparent" : `1.5px solid ${C.tealLight}`, background: ackMode === "visit" ? "linear-gradient(135deg, #0d9488, #0f766e)" : "#fff", color: ackMode === "visit" ? "#fff" : C.tealDark }}>{ackMode === "visit" ? "✓ Logging a visit" : "Log visit"}</button>
