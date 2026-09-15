@@ -277,13 +277,12 @@ function getEffectiveStatus(c) {
   return c.status;
 }
 
-// Any user of the site's own service-provider company (or admin) may acknowledge an open,
-// not-yet-acknowledged ticket.
+// The site's own service-provider company (or admin) may acknowledge an open, not-yet-acknowledged
+// ticket. Novair only sees Acknowledge on Novair sites — not on Intexim/Z-Corps sites.
 function canAcknowledgeTicket(user, hospital, c) {
   if (c.status !== "Open" || isAcknowledged(c)) return false;
   if (user.role === "admin") return true;
   if (isProviderUser(user) && getProvider(hospital) === getCompanyName(user)) return true;
-  if (getCompanyName(user) === "Novair" && isProviderUser(user)) return true;
   return false;
 }
 // Once acknowledged, the provider can keep working the ticket: log visits, add notes/uploads.
@@ -1140,6 +1139,12 @@ function GlobalAnimations() {
       @keyframes ox-grow-up { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 
       .ox-bar { transform-origin: bottom; animation: ox-grow-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+      /* Novair Help guide typography */
+      .ox-guide-body p { font-size: 13px; color: #4a5560; margin: 0 0 10px; line-height: 1.5; }
+      .ox-guide-body ol, .ox-guide-body ul { margin: 0 0 12px 18px; }
+      .ox-guide-body li { font-size: 13px; color: #4a5560; margin-bottom: 6px; line-height: 1.5; }
+      .ox-guide-body b { color: #1a1d21; }
 
       /* subtle hover lift for dashboard cards, tiles and tables */
       .ox-lift { transition: transform 0.45s cubic-bezier(0.22,1,0.36,1), box-shadow 0.45s cubic-bezier(0.22,1,0.36,1); }
@@ -4049,6 +4054,7 @@ function SidebarIcon({ name, size = 20 }) {
     refresh: <svg viewBox="0 0 24 24" style={s}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>,
     bell: <svg viewBox="0 0 24 24" style={s}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,
     signout: <svg viewBox="0 0 24 24" style={s}><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
+    help: <svg viewBox="0 0 24 24" style={s}><circle cx="12" cy="12" r="9"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
   };
   return paths[name] || null;
 }
@@ -5892,6 +5898,133 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
   );
 }
 
+/* ─── Novair Help / User Guide (Novair-only tab) ─── */
+function NovairGuide() {
+  const [open, setOpen] = useState("tickets"); // which section is expanded
+  const toggle = (k) => setOpen(prev => prev === k ? null : k);
+
+  const quick = [
+    { n: "1", h: "Acknowledge", p: "Accept a new ticket so everyone knows you're on it." },
+    { n: "2", h: "Resolve Remotely", p: "Fix it remotely if you can, then close with remarks." },
+    { n: "3", h: "Log a Visit", p: "If not, schedule/log a visit and upload reports." },
+    { n: "4", h: "Warranty Call", p: "Mark Under Warranty, or Not — with a CMS report." },
+    { n: "5", h: "Mark Resolved", p: "When the job's done, mark it resolved." },
+  ];
+
+  const sections = [
+    { key: "dashboard", emoji: "📊", title: "Dashboard", sub: "Your daily overview", body: (
+      <>
+        <p>This is your home screen — a quick overview when you log in. The tiles at the top give you a snapshot of your sites and tickets.</p>
+        <p>Below that, tickets are grouped into sections — <b>Novair</b>, <b>Intexim</b> and <b>Z-Corps</b> — so you can see open work at a glance. Each ticket card shows the site, severity, how many days it's been open, the equipment involved, and a timeline of what's happened so far.</p>
+        <ul><li>Check here first thing each morning to see what needs attention.</li><li>Tap <b>Manage Ticket →</b> on any card to jump straight into working it.</li></ul>
+      </>
+    ) },
+    { key: "sites", emoji: "🏥", title: "Site Status", sub: "Which plants are up or down", body: (
+      <>
+        <p>A list of all the oxygen plants and whether each one is currently <b>Functional</b> or <b>Shut Down</b>. If a site is down, you'll see how many days of downtime it has and why.</p>
+        <ul><li>Use this to check the health of the whole network at a glance.</li><li>Each row shows the site's service provider and current status.</li></ul>
+      </>
+    ) },
+    { key: "activity", emoji: "🕒", title: "Activity", sub: "The live feed of everything happening", body: (
+      <>
+        <p>A running log of the last 30 days — every visit, resolution, escalation and comment across your sites, newest first.</p>
+        <ul><li>Filter by site or provider, or by type: Visits, Resolved, Escalations.</li><li>Great for catching up on what your team did while you were away.</li></ul>
+      </>
+    ) },
+    { key: "tickets", emoji: "🎫", title: "Tickets", sub: "Where the real work happens", body: (
+      <>
+        <p>Every maintenance complaint lives here. You don't create tickets — the hospital raises them. Your job is to act on a new ticket once it arrives. A ticket moves through these stages:</p>
+        <div style={gStyles.life}>
+          {[["Open", "#c2622f"], ["Acknowledged", "#5b3a9c"], ["Visit", "#b45309"], ["Resolved", "#16a34a"], ["Verified", "#2f9e58"]].map(([l, c], i, a) => (
+            <React.Fragment key={l}><span style={{ ...gStyles.stg, background: c }}>{l}</span>{i < a.length - 1 && <span style={gStyles.arr}>→</span>}</React.Fragment>
+          ))}
+        </div>
+        <p><b>When a new ticket comes in:</b></p>
+        <ol>
+          <li><b>Acknowledge it</b> — tap Acknowledge to accept the ticket and let everyone know you're handling it. Add a note if you like.</li>
+          <li><b>Try to resolve it remotely</b> — many issues can be fixed over the phone or with guidance, without going to site.</li>
+          <li><b>If it's resolved remotely</b> — mark it resolved and close the ticket with remarks explaining what was done.</li>
+          <li><b>If it can't be resolved remotely</b> — schedule or log a visit to the site. You can <b>upload visit reports</b> and <b>log multiple visits</b> if the job needs more than one trip.</li>
+          <li><b>Make the warranty call</b> — after a visit, decide:
+            <ul><li><b>Under Warranty</b> — mark it if the issue is covered under warranty.</li><li><b>Not Under Warranty</b> — mark it if it isn't. You can then <b>upload a CMS Report</b> along with it.</li></ul>
+          </li>
+          <li><b>Mark Resolved</b> — once the issue is fixed. Amex then verifies it to close it out.</li>
+        </ol>
+        <div style={gStyles.note}>💡 Acknowledging a ticket does <b>not</b> resolve it — it just says "I've got this." The ticket stays open until you mark it resolved.</div>
+      </>
+    ) },
+    { key: "equipment", emoji: "⚙️", title: "Equipment", sub: "The machines at each site", body: (
+      <>
+        <p>Browse each site and see all its equipment — oxygen generators, compressors, dryers, panels, generators and more — with serial numbers.</p>
+        <ul><li>Tap a site, then tap a piece of equipment to see its full <b>history</b>: every ticket and every maintenance visit tied to it.</li><li>Preventive maintenance visits logged for a site show up here across all its equipment.</li></ul>
+      </>
+    ) },
+    { key: "maintenance", emoji: "🛠️", title: "Maintenance", sub: "Preventive & corrective records", body: (
+      <>
+        <p>Pick a site and you'll get two record books:</p>
+        <ul><li><b>Preventive Maintenance Record</b> — scheduled maintenance visits, with dates (single or multi-day), equipment status notes, and uploaded reports.</li><li><b>Corrective Maintenance Record</b> — automatically filled from disputed tickets (Not Under Warranty), showing the serial, ticket open date, visit dates, and the CMS report.</li></ul>
+        <div style={gStyles.note}>💡 The Corrective record fills itself — you don't type anything into it. Just upload the CMS report on the disputed ticket and it appears here.</div>
+      </>
+    ) },
+  ];
+
+  return (
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif", maxWidth: 880 }}>
+      <div style={{ marginBottom: 4 }}>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: 0, letterSpacing: "-0.01em" }}>Help &amp; User Guide</h2>
+        <div style={{ fontSize: 12, color: "#8a9199", marginTop: 3 }}>Everything you can do in OxyTrack, explained step by step.</div>
+      </div>
+
+      {/* mocking banner */}
+      <div style={{ margin: "18px 0 24px", padding: "16px 20px", borderRadius: 14, background: "linear-gradient(135deg, #0b3b38, #0f766e)", color: "#eafff9", border: "1px solid #0d9488", display: "flex", alignItems: "center", gap: 14 }}>
+        <span style={{ fontSize: 26, flexShrink: 0 }}>🧑‍🏫</span>
+        <span style={{ fontSize: 13.5, fontWeight: 500 }}>You found the Help tab. Statistically, that was the hard part. Read on — slowly.</span>
+      </div>
+
+      {/* quick start */}
+      <div style={gStyles.label}>Quick Start — the 5 things you'll actually do</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 8 }}>
+        {quick.map(q => (
+          <div key={q.n} style={{ background: "#fff", border: "1px solid #e8ecf0", borderRadius: 14, padding: 16 }}>
+            <div style={{ width: 26, height: 26, borderRadius: 8, background: "#e6f5f0", color: "#0f766e", fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>{q.n}</div>
+            <div style={{ fontSize: 13.5, fontWeight: 800, marginBottom: 4, color: "#1a1d21" }}>{q.h}</div>
+            <div style={{ fontSize: 11.5, color: "#8a9199" }}>{q.p}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* per-tab accordion */}
+      <div style={gStyles.label}>What each tab does</div>
+      {sections.map(sec => {
+        const isOpen = open === sec.key;
+        return (
+          <div key={sec.key} style={{ background: "#fff", border: "1px solid #e8ecf0", borderRadius: 14, marginBottom: 10, overflow: "hidden" }}>
+            <div onClick={() => toggle(sec.key)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "15px 18px", cursor: "pointer", userSelect: "none" }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg, #f0fdfa, #e6f5f0)", border: "1px solid #d5f0ea", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 17 }}>{sec.emoji}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>{sec.title}</div>
+                <div style={{ fontSize: 11.5, fontWeight: 500, color: "#8a9199", marginTop: 1 }}>{sec.sub}</div>
+              </div>
+              <span style={{ color: "#b8c0c0", transition: "transform 0.2s", transform: isOpen ? "rotate(90deg)" : "none" }}>▶</span>
+            </div>
+            {isOpen && <div className="ox-guide-body" style={{ padding: "4px 18px 18px 64px" }}>{sec.body}</div>}
+          </div>
+        );
+      })}
+
+      <div style={{ textAlign: "center", fontSize: 11, color: "#b0b8bf", marginTop: 24 }}>OxyTrack · Novair User Guide</div>
+    </div>
+  );
+}
+// Shared inline styles for the guide (hoisted so they're not recreated each render).
+const gStyles = {
+  label: { fontSize: 11, fontWeight: 700, color: "#0f766e", textTransform: "uppercase", letterSpacing: "0.09em", margin: "22px 0 12px" },
+  life: { display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, margin: "6px 0 14px" },
+  stg: { fontSize: 10.5, fontWeight: 700, padding: "5px 10px", borderRadius: 8, color: "#fff" },
+  arr: { color: "#b8c0c0", fontWeight: 700 },
+  note: { background: "#fffbe8", border: "1px solid #f5e6a8", borderRadius: 10, padding: "10px 12px", fontSize: 12, color: "#7a6a2f", marginTop: 4 },
+};
+
 /* ─── Company Dashboard (Sidebar Layout) ─── */
 function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRefresh, onLogout }) {
   const [tab, setTab] = useState("dashboard"); const [selected, setSelected] = useState(null); const [refreshing, setRefreshing] = useState(false);
@@ -5934,11 +6067,12 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
     { id: "equipment", icon: "equipment", label: "Equipment" },
     { id: "maintenance", icon: "maintenance", label: "Maintenance" },
     { id: "analytics", icon: "analytics", label: "Analytics" },
+    ...(companyName === "Novair" ? [{ id: "guide", icon: "help", label: "Help" }] : []),
   ];
 
   const PAGE_TITLES = {
     dashboard: "Dashboard", sites: "Site Status", equipment: "Equipment", tickets: "Tickets",
-    activity: "Activity", maintenance: "Maintenance", analytics: "Analytics"
+    activity: "Activity", maintenance: "Maintenance", analytics: "Analytics", guide: "Help"
   };
 
   return (
@@ -5976,6 +6110,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
           {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={["Intexim","Z-Corps"].includes(companyName) ? companyName : null} currentUser={user} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "maintenance" && <MaintenanceTab hospitals={myHospitals} siteNotes={siteNotes} complaints={complaints} isAdmin={false} onRefresh={onRefresh} />}
           {tab === "analytics" && <AnalyticsPage complaints={complaints} shutdowns={shutdowns} />}
+          {tab === "guide" && <NovairGuide />}
           </div>
         </main>
         <PartnerFooter />
