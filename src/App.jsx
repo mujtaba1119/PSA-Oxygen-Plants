@@ -235,7 +235,7 @@ function SeverityBadge({ severity }) {
    from status "Open" plus assignment/visit data, so no cron job is needed:
      Open (no assignee) -> Assigned (has assignee, visit not yet arrived)
      -> In Progress (visit date has arrived) -> Resolved -> Verified          */
-const UI_BUILD = "19-Sep-2026 · rev N (remote monitoring)";
+const UI_BUILD = "19-Sep-2026 · rev O (full CSS screens)";
 if (typeof console !== "undefined") console.log("OxyTrack UI build:", UI_BUILD);
 const getCompanyName = u => u.company || u.name;
 const isAmexUser = u => getCompanyName(u) === "Amex";
@@ -4096,47 +4096,289 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   );
 }
 
-/* ─── Remote Monitoring (admin-only) — CSS-style plant view per site. Line status derives from
-   real system data (site shutdowns + open equipment tickets); pressure/purity are nominal display
-   values since no live plant telemetry link exists. ─── */
+/* ─── Remote Monitoring (admin-only) — full CSS screen suite per site. Status derives from
+   real system data (shutdowns + open tickets); readings are nominal display values. ─── */
 function RemoteMonitoring({ complaints = [], siteNotes = [], shutdowns = [] }) {
   const [site, setSite] = useState(ALL_HOSPITALS[0]);
+  const [screen, setScreen] = useState("home"); // home|generators|devices2|details|trendmenu|trend:<key>|alarms|settings|tcpip|network
   const [now, setNow] = useState(new Date());
   useEffect(() => { const iv = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(iv); }, []);
+  useEffect(() => { setScreen("home"); }, [site]);
 
   const eq = EQUIPMENT_DATA[site] || {};
   const openTickets = complaints.filter(c => hospitalMatches(c.hospital, site) && !isClosedStatus(c.status));
   const openSerials = new Set(openTickets.flatMap(c => extractSerials(c.description)));
-  const sevRank = { Critical: 3, High: 2, Low: 1 };
-  const worstSevFor = (serials) => openTickets.reduce((worst, c) => {
-    const s = extractSerials(c.description);
-    if (!s.some(x => serials.includes(x))) return worst;
-    const sev = c.severity || getDefaultSeverity(c.title);
-    return (sevRank[sev] || 0) > (sevRank[worst] || 0) ? sev : worst;
-  }, null);
+  const fault = (serial) => serial && openSerials.has(String(serial));
   const isDown = !!activeShutdown(site, shutdowns) || (siteNotes.find(s => hospitalMatches(s.hospital, site))?.site_status === "Shut Down");
+  const gen1Bad = isDown || fault(eq.oxyswing_a) || fault(eq.comp1) || fault(eq.dryer1);
+  const gen2Bad = isDown || fault(eq.oxyswing_b) || fault(eq.comp2) || fault(eq.dryer2);
 
-  const lines = [
-    { n: 1, comp: eq.comp1, dryer: eq.dryer1, gen: eq.oxyswing_a, pressure: "7.3 bar", purity: "93.7 %" },
-    { n: 2, comp: eq.comp2, dryer: eq.dryer2, gen: eq.oxyswing_b, pressure: "7.5 bar", purity: "93.7 %" },
-  ];
+  // deterministic tiny jitter so trend lines look alive but stable per site
+  const seed = [...site].reduce((a, ch) => a + ch.charCodeAt(0), 0);
+  const jit = (i, amp) => Math.sin(seed + i * 1.7) * amp;
 
-  const Box = ({ label, serial }) => {
-    const fault = serial && openSerials.has(String(serial));
-    return (
-      <div style={{ textAlign: "center", width: 108 }}>
-        <div style={{ height: 64, borderRadius: 8, border: `1px solid ${fault ? "#fecaca" : "#d7dde2"}`, background: fault ? "#fef2f2" : "linear-gradient(180deg,#f7f9fa,#e9edf0)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={fault ? "#dc2626" : "#5c6b76"} strokeWidth="1.6" strokeLinecap="round"><rect x="4" y="5" width="16" height="14" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/><circle cx="9" cy="14.5" r="1.6"/><circle cx="15" cy="14.5" r="1.6"/></svg>
+  const B = { blue: "#2f68b0", blueD: "#245089", green: "#3fae4a", red: "#dc2626", yellow: "#e0c229", grey: "#c3ccd2", panel: "#5b87c0" };
+  const Dot = ({ ok, size = 13 }) => <span style={{ width: size, height: size, borderRadius: "50%", flexShrink: 0, background: ok ? B.green : B.red, boxShadow: `0 0 6px ${ok ? B.green : B.red}` }} />;
+  const HmiBtn = ({ label, onClick, active }) => (
+    <button onClick={onClick} style={{ display: "block", width: "100%", fontSize: 11.5, fontWeight: 800, letterSpacing: 0.4, color: active ? "#c02428" : "#fff", background: active ? "#e3e8ec" : `linear-gradient(180deg,${B.blue},${B.blueD})`, border: "none", borderRadius: 5, padding: "9px 0", cursor: "pointer", boxShadow: "0 2px 3px rgba(0,0,0,0.18)" }}>{label}</button>
+  );
+  const StateBar = ({ text, color, w = 130 }) => <div style={{ fontSize: 10.5, fontWeight: 800, color: "#fff", background: color, textAlign: "center", padding: "4px 0", borderRadius: 3, letterSpacing: 0.4, minWidth: w }}>{text}</div>;
+  const Legend = () => (
+    <div style={{ border: "1px solid #d7dde2", borderRadius: 8, background: "#fff", padding: "10px 12px", fontSize: 11, color: "#5c6b76" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><span style={{ width: 11, height: 11, borderRadius: "50%", background: B.grey }} />No defaults</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 11, height: 11, borderRadius: "50%", background: B.red }} />Technical failure</div>
+    </div>
+  );
+  const SideNav = ({ buttons }) => (
+    <div style={{ width: 210, display: "flex", flexDirection: "column", gap: 9 }}>
+      {buttons.map(([label, target, active]) => <HmiBtn key={label} label={label} onClick={() => setScreen(target)} active={active} />)}
+      <div style={{ height: 4 }} />
+      <Legend />
+    </div>
+  );
+  const MachineImg = ({ kind, bad }) => (
+    <div style={{ width: 92, height: 66, borderRadius: 6, border: `1px solid ${bad ? "#fecaca" : "#cfd6dc"}`, background: bad ? "#fef2f2" : "linear-gradient(180deg,#f6f8f9,#e6eaee)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {kind === "gen"
+        ? <svg width="40" height="44" viewBox="0 0 40 44" fill="none" stroke={bad ? B.red : "#4c5a66"} strokeWidth="1.5"><rect x="3" y="3" width="16" height="38" rx="2"/><rect x="22" y="8" width="5" height="33"/><rect x="29" y="8" width="5" height="33"/><text x="7" y="27" fontSize="8" fill={bad ? B.red : "#4c5a66"} stroke="none" transform="rotate(-90 11 24)">OS</text></svg>
+        : kind === "dryer"
+        ? <svg width="34" height="38" viewBox="0 0 34 38" fill="none" stroke={bad ? B.red : "#4c5a66"} strokeWidth="1.5"><rect x="4" y="4" width="26" height="30" rx="3"/><path d="M9 12h16M9 18h16M9 24h16"/></svg>
+        : <svg width="40" height="38" viewBox="0 0 40 38" fill="none" stroke={bad ? B.red : "#4c5a66"} strokeWidth="1.5"><rect x="3" y="6" width="34" height="26" rx="3"/><line x1="3" y1="14" x2="37" y2="14"/><circle cx="14" cy="23" r="3"/><circle cx="26" cy="23" r="3"/></svg>}
+    </div>
+  );
+
+  /* ── screens ── */
+  const Home = () => (
+    <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+      <div style={{ flex: 1, minWidth: 440, display: "flex", flexDirection: "column", gap: 24 }}>
+        {[{ n: 1, comp: eq.comp1, dryer: eq.dryer1, gen: eq.oxyswing_a, p: "7.3 bar", run: !isDown, bad: gen1Bad },
+          { n: 2, comp: eq.comp2, dryer: eq.dryer2, gen: eq.oxyswing_b, p: "7.5 bar", run: !isDown && !gen2Bad, bad: gen2Bad }].map(L => (
+          <div key={L.n} style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: "#94a3ad", width: 12 }}>{L.n}</div>
+            <div style={{ textAlign: "center" }}><MachineImg kind="comp" bad={fault(L.comp)} /><div style={{ fontSize: 11, fontWeight: 700, color: "#33404a", marginTop: 4 }}>Compressor</div><StateBar text={fault(L.comp) ? "FAULT" : "OK"} color={fault(L.comp) ? B.red : B.green} w={92} /></div>
+            <div style={{ width: 24, height: 2, background: B.blue }} />
+            <div style={{ textAlign: "center" }}><MachineImg kind="dryer" bad={fault(L.dryer)} /><div style={{ fontSize: 11, fontWeight: 700, color: "#33404a", marginTop: 4 }}>Dryer</div><StateBar text={fault(L.dryer) ? "FAULT" : "OK"} color={fault(L.dryer) ? B.red : B.green} w={92} /></div>
+            <div style={{ width: 24, height: 2, background: B.blue }} />
+            <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <MachineImg kind="gen" bad={L.bad} />
+              <div>
+                <div style={{ fontSize: 11.5, color: "#5c6b76" }}>Pressure <b style={{ color: "#1f2a33" }}>{L.p}</b></div>
+                <div style={{ fontSize: 11.5, color: "#5c6b76" }}>Purity <b style={{ color: "#1f2a33" }}>93.7 %</b></div>
+                <div style={{ marginTop: 5, display: "flex", flexDirection: "column", gap: 4 }}>
+                  <StateBar text={isDown ? "STOPPED" : L.n === 2 && L.bad ? "STOPPED" : L.n === 2 ? "READY TO START" : "RUNNING"} color={isDown || (L.n === 2 && L.bad) ? B.red : L.n === 2 ? "#2d9fd8" : B.green} w={170} />
+                  <StateBar text={L.bad && !isDown ? "WARNING" : "OK"} color={L.bad && !isDown ? B.yellow : B.green} w={170} />
+                </div>
+              </div>
+              <Dot ok={!L.bad} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <SideNav buttons={[["Next", "devices2"], ["Details", "generators"], ["Settings", "settings"], ["Trends", "trendmenu"], ["Alarms History", "alarms", true]]} />
+    </div>
+  );
+
+  const GenPanel = ({ title, bad, p, flow, hours, ready }) => (
+    <div style={{ background: B.panel, borderRadius: 6, padding: "12px 14px", width: 290, color: "#fff" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}><b style={{ fontSize: 13 }}>{title}</b><Dot ok={!bad} /></div>
+      {[["Purity", "93.7 %"], ["Output Pressure", p], ["Output flowrate", flow], ["Hour counter", hours]].map(([k, v]) => (
+        <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, marginBottom: 5 }}><span>{k}</span><b>{v}</b></div>
+      ))}
+      {[["Filters maintenance", "Not required"], ["Valves maintenance", "Not required"]].map(([k, v]) => (
+        <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11.5, marginBottom: 5 }}><span>{k}</span><StateBar text={v} color={B.green} w={104} /></div>
+      ))}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11.5, marginBottom: 5 }}><span>Phase</span><StateBar text={bad ? "STOPPED" : ready ? "READY TO START" : "RUNNING"} color={bad ? B.red : ready ? "#2d9fd8" : B.green} w={140} /></div>
+      {[["General state", !bad], ["Dryer alarm", true], ["Air compressor alarm", true]].map(([k, ok]) => (
+        <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11.5, marginBottom: 5 }}><span>{k}</span><StateBar text={ok ? "OK" : "ALARM"} color={ok ? B.green : B.red} w={104} /></div>
+      ))}
+    </div>
+  );
+  const Generators = () => (
+    <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+      <div style={{ flex: 1, minWidth: 440, display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <GenPanel title="O2 Generator 1" bad={gen1Bad} p="7.3 bar" flow="18.7 Nm3/h" hours="03726 h" />
+        <GenPanel title="O2 Generator 2" bad={gen2Bad} p="7.5 bar" flow="0.0 Nm3/h" hours="03487 h" ready />
+      </div>
+      <SideNav buttons={[["Previous", "home"], ["Next", "devices2"], ["Settings", "settings"], ["Trends", "trendmenu"], ["Alarms History", "alarms", true]]} />
+    </div>
+  );
+
+  const Devices2 = () => (
+    <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+      <div style={{ flex: 1, minWidth: 440 }}>
+        <div style={{ display: "flex", gap: 40, flexWrap: "wrap", marginBottom: 22 }}>
+          {[["Oxycheck", eq.oxycheck, "93.6 %"], ["Medgas Flow", eq.medgas, "17.8 m3/h"]].map(([label, serial, val]) => (
+            <div key={label} style={{ textAlign: "center" }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}><Dot ok={!fault(serial)} /></div>
+              <MachineImg kind="dryer" bad={fault(serial)} />
+              <div style={{ fontSize: 11, color: "#5c6b76", marginTop: 3 }}>{val}</div>
+              <StateBar text={fault(serial) ? "FAULT" : "OK"} color={fault(serial) ? B.red : B.green} w={92} />
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#33404a", marginTop: 3 }}>{label}</div>
+            </div>
+          ))}
         </div>
-        <div style={{ fontSize: 11.5, fontWeight: 700, color: "#33404a", marginTop: 6 }}>{label}</div>
-        <div style={{ fontSize: 9, color: "#94a3ad", fontFamily: "ui-monospace, monospace" }}>{serial || "—"}</div>
-        <div style={{ marginTop: 4, fontSize: 10, fontWeight: 800, color: "#fff", background: fault ? "#dc2626" : "#3fae4a", borderRadius: 4, padding: "3px 0", letterSpacing: 0.5 }}>{fault ? "FAULT" : "OK"}</div>
+        <div style={{ display: "flex", gap: 40, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}><Dot ok={!fault(eq.hpox) && !isDown} /></div>
+            <MachineImg kind="comp" bad={fault(eq.hpox)} />
+            <div style={{ fontSize: 11, color: "#5c6b76", marginTop: 3 }}>3.6 bar → 38.5 bar</div>
+            <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 3 }}><StateBar text="OK" color={B.green} w={58} /><StateBar text="STOP" color={B.red} w={58} /></div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#33404a", marginTop: 3 }}>Booster HPOX 450</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}><Dot ok={!fault(eq.medgas)} /></div>
+            <div style={{ display: "flex", gap: 18, alignItems: "flex-end" }}>
+              <div style={{ fontSize: 10.5, color: "#5c6b76" }}>104.00 b<div style={{ display: "flex", gap: 2, marginTop: 3 }}>{[0,1,2,3,4].map(i => <div key={i} style={{ width: 7, height: 44, borderRadius: 3, border: "1px solid #aab6bf", background: "linear-gradient(180deg,#f2f5f7,#d8dee3)" }} />)}</div></div>
+              <div style={{ fontSize: 10.5, color: "#5c6b76" }}>9.20 b<div style={{ margin: "3px 0" }}><StateBar text="OK" color={B.green} w={70} /></div>Medgas Bank</div>
+              <div style={{ fontSize: 10.5, color: "#5c6b76" }}>58.00 b<div style={{ display: "flex", gap: 2, marginTop: 3 }}>{[0,1,2,3,4].map(i => <div key={i} style={{ width: 7, height: 44, borderRadius: 3, border: "1px solid #aab6bf", background: "linear-gradient(180deg,#f2f5f7,#d8dee3)" }} />)}</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <SideNav buttons={[["Previous", "generators"], ["Details", "details"], ["Settings", "settings"], ["Trends", "trendmenu"], ["Alarms History", "alarms", true]]} />
+    </div>
+  );
+
+  const DetailCol = ({ title, ok, rows, states }) => (
+    <div style={{ background: B.panel, borderRadius: 6, padding: "12px 14px", minWidth: 240, color: "#fff", flex: 1 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}><b style={{ fontSize: 13 }}>{title}</b><Dot ok={ok} /></div>
+      {(rows || []).map(([k, v]) => <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, marginBottom: 5 }}><span>{k}</span><b>{v}</b></div>)}
+      {(states || []).map(([k, txt, col]) => <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11.5, marginBottom: 5 }}><span>{k}</span><StateBar text={txt} color={col} w={92} /></div>)}
+    </div>
+  );
+  const Details = () => (
+    <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+      <div style={{ flex: 1, minWidth: 460, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <DetailCol title="MEDGASFLOW" ok={!fault(eq.medgas)} rows={[["Flow", "17.7 m3/h"], ["Total counter", "138614.7 m3"], ["Current week", "2224.3 m3"], ["Current month", "6195.7 m3"], ["Current year", "82005.2 m3"], ["Previous week", "1751.4 m3"], ["Previous month", "9719.6 m3"], ["Previous year", "56609.4 m3"]]} states={[["Flow alarm", "OK", B.green]]} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: 1, minWidth: 250 }}>
+          <DetailCol title="HPOX 450" ok={!fault(eq.hpox)} rows={[["Output Pressure", "38.5 bar"], ["Input pressure", "3.6 bar"], ["Temperature 1", "140.0 °C"], ["Temperature 2", "95.0 °C"], ["Working hours", "983 h"], ["Status", "STOP"]]} states={[["General Alarm", "OK", B.green]]} />
+          <DetailCol title="MEDGAS BANK" ok={!fault(eq.medgas)} rows={[["Left bank pressure", "106.00 b"], ["Network pressure", "9.20 b"], ["Right bank pressure", "59.00 b"]]} states={[["Left bank state", "OK", B.green], ["Network state", "OK", B.green], ["Right bank state", "OK", B.green]]} />
+        </div>
+        <DetailCol title="Oxycheck" ok={!fault(eq.oxycheck)} rows={[["O2", "93.6 %"]]} states={[["Low alarm", "OK", B.green], ["High alarm", "OK", B.green]]} />
+      </div>
+      <SideNav buttons={[["Home", "home"], ["Previous", "devices2"], ["Settings", "settings"], ["Trends", "trendmenu"], ["Alarms History", "alarms", true]]} />
+    </div>
+  );
+
+  const TREND_DEFS = {
+    o2g1: { title: "O2% Gen. 1", max: 110, base: 93.7, amp: 0.4, color: "#37e06f" },
+    o2g2: { title: "O2% Gen. 2", max: 110, base: 93.7, amp: 0.4, color: "#37e06f" },
+    press: { title: "Output pressure (b", max: 10, base: 7.3, amp: 0.15, color: "#e8f3ff", second: { base: 4.6, amp: 0.12, color: "#ffffff" } },
+    flow: { title: "Flow (lmin)", max: 900, base: 6, amp: 2, color: "#ff5a7a" },
+    o2: { title: "O2%", max: 100, base: 93.7, amp: 0.25, color: "#d98bff" },
+  };
+  const TrendMenu = () => (
+    <div style={{ maxWidth: 430, margin: "8px auto", display: "flex", flexDirection: "column", gap: 14 }}>
+      {[["Generators", "trend:o2g1"], ["Oxycheck", "trend:o2"], ["Medgasflow", "trend:flow"], ["Medgas Bank", "trend:press"], ["HPOX 450", "trend:press"]].map(([l, t]) => <HmiBtn key={l} label={l} onClick={() => setScreen(t)} />)}
+      <div style={{ width: 140, alignSelf: "flex-end", marginTop: 10 }}><HmiBtn label="Home" onClick={() => setScreen("home")} /></div>
+    </div>
+  );
+  const Trend = ({ def }) => {
+    const W = 640, H = 330, N = 60;
+    const line = (base, amp) => Array.from({ length: N }, (_, i) => `${(i / (N - 1)) * W},${H - ((base + jit(i, amp)) / def.max) * H}`).join(" ");
+    const from = new Date(now.getTime() - 10.8 * 3600000);
+    const fmt = (d) => `${d.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })}\n${d.toLocaleTimeString("en-GB")}`;
+    return (
+      <div>
+        <div style={{ background: "#2b7fd4", borderRadius: 6, padding: "10px 12px 6px", position: "relative" }}>
+          <div style={{ textAlign: "center", fontSize: 11.5, color: "#ffd6e0", fontWeight: 700, marginBottom: 4 }}>{def.title}</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", fontSize: 10, color: "#ffe3ea", paddingBottom: 14 }}><span>+{def.max.toFixed(1)}</span><span>+0.0</span></div>
+            <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ background: "#2b7fd4", borderLeft: "1.5px solid #ffb3c2", borderBottom: "1.5px solid #ffb3c2" }}>
+              {[...Array(9)].map((_, i) => <line key={i} x1="0" x2={W} y1={(i + 1) * H / 10} y2={(i + 1) * H / 10} stroke="#4e95dd" strokeWidth="0.6" />)}
+              <polyline points={line(def.base, def.amp)} fill="none" stroke={def.color} strokeWidth="1.6" />
+              {def.second && <polyline points={line(def.second.base, def.second.amp)} fill="none" stroke={def.second.color} strokeWidth="1.4" />}
+            </svg>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9.5, color: "#eef6ff", whiteSpace: "pre-line", marginTop: 3 }}>
+            <span>{fmt(from)}</span><span style={{ alignSelf: "center", color: "#ffe3ea" }}>Run</span><span>{fmt(now)}</span>
+          </div>
+          <div style={{ position: "absolute", left: -2, top: "38%", display: "flex", flexDirection: "column", gap: 6 }}>
+            {["M", "G"].map(k => <span key={k} style={{ fontSize: 10, fontWeight: 700, color: "#2b5a8c", background: "#dfe9f2", border: "1px solid #b9c9d8", borderRadius: 3, padding: "6px 7px" }}>{k}</span>)}
+          </div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}><div style={{ width: 150 }}><HmiBtn label="Previous" onClick={() => setScreen("trendmenu")} /></div></div>
       </div>
     );
   };
-  const Banner = ({ text, color }) => (
-    <div style={{ fontSize: 11.5, fontWeight: 800, color: "#fff", background: color, textAlign: "center", padding: "5px 0", borderRadius: 4, letterSpacing: 0.6, marginTop: 5, minWidth: 168 }}>{text}</div>
+
+  const Alarms = () => (
+    <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+      <div style={{ flex: 1, minWidth: 420 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: "#c02428", marginBottom: 8 }}>ALARMS HISTORY — open tickets at {displayName(site)}</div>
+        <div style={{ border: "1px solid #d7dde2", borderRadius: 8, background: "#fff", padding: 12, maxHeight: 330, overflowY: "auto" }}>
+          {openTickets.length === 0 && <div style={{ fontSize: 12, color: "#94a3ad", textAlign: "center", padding: "22px 0" }}>No active alarms.</div>}
+          {openTickets.map(c => (
+            <div key={c.id} style={{ borderBottom: "1px solid #eef1f3", padding: "8px 2px" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#33404a" }}>{c.title}</div>
+              <div style={{ fontSize: 10.5, color: (c.severity || getDefaultSeverity(c.title)) === "Critical" ? B.red : "#b45309" }}>{c.severity || getDefaultSeverity(c.title)} · open {Math.floor((Date.now() - new Date(c.created_at)) / 86400000)}d · {statusLabel(getEffectiveStatus(c))}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <SideNav buttons={[["Home", "home"], ["Settings", "settings"], ["Trends", "trendmenu"], ["Alarms History", "alarms", true]]} />
+    </div>
   );
+
+  const Settings = () => (
+    <div style={{ maxWidth: 430, margin: "4px auto", textAlign: "center" }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: "#fff", background: "#9aa5ad", borderRadius: 4, padding: "8px 0", marginBottom: 16 }}>{now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })} {now.toLocaleTimeString("en-GB")}</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "#1f2a33", marginBottom: 8 }}>Default reporting waiting time</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", background: "#9aa5ad", borderRadius: 4, padding: "7px 0", width: 110, margin: "0 auto 8px" }}>0 s</div>
+      <div style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: B.red, borderRadius: 4, padding: "6px 0", width: 110, margin: "0 auto 16px" }}>Relay open</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <HmiBtn label="TCP / IP settings" onClick={() => setScreen("tcpip")} />
+        <HmiBtn label="Factory settings" onClick={() => {}} />
+        <HmiBtn label="Password" onClick={() => {}} />
+      </div>
+      <div style={{ fontSize: 11.5, color: "#5c6b76", margin: "14px 0" }}>Rev. 3</div>
+      <div style={{ width: 140, marginLeft: "auto" }}><HmiBtn label="Home" onClick={() => setScreen("home")} /></div>
+    </div>
+  );
+
+  const IpRow = ({ label, last, ok }) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+      <div style={{ width: 120, fontSize: 12, fontWeight: 700, color: "#1f2a33", textAlign: "right" }}>{label}</div>
+      {["192", "168", "1", String(last)].map((v, i) => <div key={i} style={{ width: 74, fontSize: 12.5, fontWeight: 700, color: "#fff", background: B.panel, border: "1px solid #3d6ea6", borderRadius: 3, textAlign: "center", padding: "7px 0" }}>{v}</div>)}
+      {ok !== undefined && <Dot ok={ok} size={15} />}
+    </div>
+  );
+  const Tcpip = () => (
+    <div style={{ maxWidth: 560, margin: "10px auto" }}>
+      <IpRow label="Supervision system" last={15} />
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+        <div style={{ width: 120, fontSize: 12, fontWeight: 700, color: "#1f2a33", textAlign: "right" }}>Subnet mask</div>
+        {["255", "255", "255", "0"].map((v, i) => <div key={i} style={{ width: 74, fontSize: 12.5, fontWeight: 700, color: "#fff", background: B.panel, border: "1px solid #3d6ea6", borderRadius: 3, textAlign: "center", padding: "7px 0" }}>{v}</div>)}
+      </div>
+      <IpRow label="Gateway" last={1} />
+      <div style={{ width: 150, margin: "14px auto" }}><HmiBtn label="WAN Validation" onClick={() => {}} /></div>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+        <div style={{ width: 130 }}><HmiBtn label="Previous" onClick={() => setScreen("settings")} /></div>
+        <div style={{ width: 130 }}><HmiBtn label="Next" onClick={() => setScreen("network")} /></div>
+      </div>
+    </div>
+  );
+  const Network = () => (
+    <div style={{ maxWidth: 560, margin: "10px auto" }}>
+      <IpRow label="O2 Generator 1" last={31} ok={!gen1Bad} />
+      <IpRow label="O2 Generator 2" last={11} ok={!gen2Bad} />
+      <IpRow label="Oxycheck" last={12} ok={!fault(eq.oxycheck)} />
+      <IpRow label="Medgasflow" last={14} ok={!fault(eq.medgas)} />
+      <IpRow label="Medgas Bank" last={27} ok={!fault(eq.medgas)} />
+      <IpRow label="HPOX 450" last={13} ok={!fault(eq.hpox)} />
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}><div style={{ width: 130 }}><HmiBtn label="Previous" onClick={() => setScreen("tcpip")} /></div></div>
+    </div>
+  );
+
+  const body = screen === "home" ? <Home />
+    : screen === "generators" ? <Generators />
+    : screen === "devices2" ? <Devices2 />
+    : screen === "details" ? <Details />
+    : screen === "trendmenu" ? <TrendMenu />
+    : screen.startsWith("trend:") ? <Trend def={TREND_DEFS[screen.slice(6)] || TREND_DEFS.o2} />
+    : screen === "alarms" ? <Alarms />
+    : screen === "settings" ? <Settings />
+    : screen === "tcpip" ? <Tcpip />
+    : <Network />;
 
   return (
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
@@ -4149,69 +4391,14 @@ function RemoteMonitoring({ complaints = [], siteNotes = [], shutdowns = [] }) {
           {ALL_HOSPITALS.map(h => <option key={h} value={h}>{displayName(h)}</option>)}
         </select>
       </div>
-
       <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid #d7dde2", boxShadow: "0 2px 10px rgba(15,23,25,0.06)", background: "#fdfdfd" }}>
-        {/* HMI header strip */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 16px", background: "#f2f5f7", borderBottom: "1px solid #d7dde2", flexWrap: "wrap" }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: "#c02428", letterSpacing: 0.3 }}>OXYTRACK <span style={{ color: "#5c6b76", fontWeight: 600 }}>· {displayName(site)}</span></div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#c02428", letterSpacing: 0.3, cursor: "pointer" }} onClick={() => setScreen("home")}>OXYTRACK <span style={{ color: "#5c6b76", fontWeight: 600 }}>· {displayName(site)}</span></div>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#1f2a33", background: "#dfe7ec", padding: "5px 14px", borderRadius: 6, fontFamily: "ui-monospace, monospace" }}>{now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })} {now.toLocaleTimeString("en-GB")}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#7a8791" }}>
-            <span style={{ width: 12, height: 12, borderRadius: "50%", background: isDown ? "#dc2626" : "#3fae4a", boxShadow: `0 0 6px ${isDown ? "#dc2626" : "#3fae4a"}` }} />Link state
-          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#7a8791" }}><Dot ok={!isDown} size={12} />Modbus state</div>
         </div>
-
-        <div style={{ display: "flex", gap: 18, padding: 20, flexWrap: "wrap" }}>
-          {/* lines */}
-          <div style={{ flex: 1, minWidth: 460, display: "flex", flexDirection: "column", gap: 22 }}>
-            {lines.map(L => {
-              const lineSerials = [L.comp, L.dryer, L.gen].filter(Boolean).map(String);
-              const sev = worstSevFor(lineSerials);
-              const banner = isDown ? { t: "STOPPED", c: "#dc2626" } : { t: "RUNNING", c: "#3fae4a" };
-              const sub = isDown ? { t: "SITE SHUT DOWN", c: "#9aa5ad" } : sev ? { t: `WARNING · ${sev.toUpperCase()} TICKET OPEN`, c: sev === "Low" ? "#d9b023" : "#e0a422" } : { t: "OK", c: "#3fae4a" };
-              const dot = isDown || sev === "Critical" ? "#dc2626" : sev ? "#e0a422" : "#3fae4a";
-              return (
-                <div key={L.n} style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: "#94a3ad", width: 14 }}>{L.n}</div>
-                  <Box label="Compressor" serial={L.comp} />
-                  <div style={{ width: 26, height: 2, background: "#3f6fb5" }} />
-                  <Box label="Dryer" serial={L.dryer} />
-                  <div style={{ width: 26, height: 2, background: "#3f6fb5" }} />
-                  <div style={{ textAlign: "left" }}>
-                    <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                      <div>
-                        <div style={{ fontSize: 11.5, color: "#5c6b76" }}>Pressure <b style={{ color: "#1f2a33" }}>{L.pressure}</b></div>
-                        <div style={{ fontSize: 11.5, color: "#5c6b76" }}>Purity <b style={{ color: "#1f2a33" }}>{L.purity}</b></div>
-                        <div style={{ fontSize: 9, color: "#a7b2ba", fontFamily: "ui-monospace, monospace" }}>OS {L.gen || "—"}</div>
-                      </div>
-                      <span style={{ width: 13, height: 13, borderRadius: "50%", background: dot, boxShadow: `0 0 6px ${dot}` }} />
-                    </div>
-                    <Banner text={banner.t} color={banner.c} />
-                    <Banner text={sub.t} color={sub.c} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {/* side panel */}
-          <div style={{ width: 230, display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: "linear-gradient(180deg,#3f6fb5,#2c5292)", textAlign: "center", padding: "9px 0", borderRadius: 6, letterSpacing: 0.4 }}>ALARMS HISTORY</div>
-            <div style={{ border: "1px solid #d7dde2", borderRadius: 8, background: "#fff", padding: 10, maxHeight: 210, overflowY: "auto" }}>
-              {openTickets.length === 0 && <div style={{ fontSize: 11.5, color: "#94a3ad", textAlign: "center", padding: "16px 0" }}>No active alarms.</div>}
-              {openTickets.map(c => (
-                <div key={c.id} style={{ borderBottom: "1px solid #eef1f3", padding: "7px 2px" }}>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: "#33404a" }}>{c.title}</div>
-                  <div style={{ fontSize: 10, color: (c.severity || getDefaultSeverity(c.title)) === "Critical" ? "#dc2626" : "#b45309" }}>{c.severity || getDefaultSeverity(c.title)} · open {Math.floor((Date.now() - new Date(c.created_at)) / 86400000)}d</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ border: "1px solid #d7dde2", borderRadius: 8, background: "#fff", padding: "10px 12px", fontSize: 11, color: "#5c6b76" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><span style={{ width: 11, height: 11, borderRadius: "50%", background: "#c3ccd2" }} />No defaults</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><span style={{ width: 11, height: 11, borderRadius: "50%", background: "#e0a422" }} />Open ticket on line</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 11, height: 11, borderRadius: "50%", background: "#dc2626" }} />Technical failure / shut down</div>
-            </div>
-          </div>
-        </div>
-        <div style={{ padding: "8px 16px", borderTop: "1px solid #e6ebef", fontSize: 10.5, color: "#a7b2ba" }}>Line status derives from OxyTrack tickets and shutdown records. Pressure and purity are nominal display values — live plant telemetry is not connected.</div>
+        <div style={{ padding: 20 }}>{body}</div>
+        <div style={{ padding: "8px 16px", borderTop: "1px solid #e6ebef", fontSize: 10.5, color: "#a7b2ba" }}>Status derives from OxyTrack tickets and shutdown records. Readings, counters and network values are nominal display values — live plant telemetry is not connected.</div>
       </div>
     </div>
   );
