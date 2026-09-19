@@ -235,7 +235,7 @@ function SeverityBadge({ severity }) {
    from status "Open" plus assignment/visit data, so no cron job is needed:
      Open (no assignee) -> Assigned (has assignee, visit not yet arrived)
      -> In Progress (visit date has arrived) -> Resolved -> Verified          */
-const UI_BUILD = "16-Sep-2026 · rev M (CMR equipment column)";
+const UI_BUILD = "19-Sep-2026 · rev N (remote monitoring)";
 if (typeof console !== "undefined") console.log("OxyTrack UI build:", UI_BUILD);
 const getCompanyName = u => u.company || u.name;
 const isAmexUser = u => getCompanyName(u) === "Amex";
@@ -4096,6 +4096,127 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   );
 }
 
+/* ─── Remote Monitoring (admin-only) — CSS-style plant view per site. Line status derives from
+   real system data (site shutdowns + open equipment tickets); pressure/purity are nominal display
+   values since no live plant telemetry link exists. ─── */
+function RemoteMonitoring({ complaints = [], siteNotes = [], shutdowns = [] }) {
+  const [site, setSite] = useState(ALL_HOSPITALS[0]);
+  const [now, setNow] = useState(new Date());
+  useEffect(() => { const iv = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(iv); }, []);
+
+  const eq = EQUIPMENT_DATA[site] || {};
+  const openTickets = complaints.filter(c => hospitalMatches(c.hospital, site) && !isClosedStatus(c.status));
+  const openSerials = new Set(openTickets.flatMap(c => extractSerials(c.description)));
+  const sevRank = { Critical: 3, High: 2, Low: 1 };
+  const worstSevFor = (serials) => openTickets.reduce((worst, c) => {
+    const s = extractSerials(c.description);
+    if (!s.some(x => serials.includes(x))) return worst;
+    const sev = c.severity || getDefaultSeverity(c.title);
+    return (sevRank[sev] || 0) > (sevRank[worst] || 0) ? sev : worst;
+  }, null);
+  const isDown = !!activeShutdown(site, shutdowns) || (siteNotes.find(s => hospitalMatches(s.hospital, site))?.site_status === "Shut Down");
+
+  const lines = [
+    { n: 1, comp: eq.comp1, dryer: eq.dryer1, gen: eq.oxyswing_a, pressure: "7.3 bar", purity: "93.7 %" },
+    { n: 2, comp: eq.comp2, dryer: eq.dryer2, gen: eq.oxyswing_b, pressure: "7.5 bar", purity: "93.7 %" },
+  ];
+
+  const Box = ({ label, serial }) => {
+    const fault = serial && openSerials.has(String(serial));
+    return (
+      <div style={{ textAlign: "center", width: 108 }}>
+        <div style={{ height: 64, borderRadius: 8, border: `1px solid ${fault ? "#fecaca" : "#d7dde2"}`, background: fault ? "#fef2f2" : "linear-gradient(180deg,#f7f9fa,#e9edf0)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={fault ? "#dc2626" : "#5c6b76"} strokeWidth="1.6" strokeLinecap="round"><rect x="4" y="5" width="16" height="14" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/><circle cx="9" cy="14.5" r="1.6"/><circle cx="15" cy="14.5" r="1.6"/></svg>
+        </div>
+        <div style={{ fontSize: 11.5, fontWeight: 700, color: "#33404a", marginTop: 6 }}>{label}</div>
+        <div style={{ fontSize: 9, color: "#94a3ad", fontFamily: "ui-monospace, monospace" }}>{serial || "—"}</div>
+        <div style={{ marginTop: 4, fontSize: 10, fontWeight: 800, color: "#fff", background: fault ? "#dc2626" : "#3fae4a", borderRadius: 4, padding: "3px 0", letterSpacing: 0.5 }}>{fault ? "FAULT" : "OK"}</div>
+      </div>
+    );
+  };
+  const Banner = ({ text, color }) => (
+    <div style={{ fontSize: 11.5, fontWeight: 800, color: "#fff", background: color, textAlign: "center", padding: "5px 0", borderRadius: 4, letterSpacing: 0.6, marginTop: 5, minWidth: 168 }}>{text}</div>
+  );
+
+  return (
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+        <div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", margin: 0, letterSpacing: "-0.01em" }}>Remote Monitoring</h2>
+          <div style={{ fontSize: 12, color: "#8a9199", marginTop: 3 }}>Central Supervision System view · admin only</div>
+        </div>
+        <select value={site} onChange={e => setSite(e.target.value)} style={{ fontSize: 13, fontWeight: 600, padding: "9px 14px", border: "1.5px solid #ccfbf1", borderRadius: 10, background: "#fff", color: "#111" }}>
+          {ALL_HOSPITALS.map(h => <option key={h} value={h}>{displayName(h)}</option>)}
+        </select>
+      </div>
+
+      <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid #d7dde2", boxShadow: "0 2px 10px rgba(15,23,25,0.06)", background: "#fdfdfd" }}>
+        {/* HMI header strip */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 16px", background: "#f2f5f7", borderBottom: "1px solid #d7dde2", flexWrap: "wrap" }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: "#c02428", letterSpacing: 0.3 }}>OXYTRACK <span style={{ color: "#5c6b76", fontWeight: 600 }}>· {displayName(site)}</span></div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#1f2a33", background: "#dfe7ec", padding: "5px 14px", borderRadius: 6, fontFamily: "ui-monospace, monospace" }}>{now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })} {now.toLocaleTimeString("en-GB")}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#7a8791" }}>
+            <span style={{ width: 12, height: 12, borderRadius: "50%", background: isDown ? "#dc2626" : "#3fae4a", boxShadow: `0 0 6px ${isDown ? "#dc2626" : "#3fae4a"}` }} />Link state
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 18, padding: 20, flexWrap: "wrap" }}>
+          {/* lines */}
+          <div style={{ flex: 1, minWidth: 460, display: "flex", flexDirection: "column", gap: 22 }}>
+            {lines.map(L => {
+              const lineSerials = [L.comp, L.dryer, L.gen].filter(Boolean).map(String);
+              const sev = worstSevFor(lineSerials);
+              const banner = isDown ? { t: "STOPPED", c: "#dc2626" } : { t: "RUNNING", c: "#3fae4a" };
+              const sub = isDown ? { t: "SITE SHUT DOWN", c: "#9aa5ad" } : sev ? { t: `WARNING · ${sev.toUpperCase()} TICKET OPEN`, c: sev === "Low" ? "#d9b023" : "#e0a422" } : { t: "OK", c: "#3fae4a" };
+              const dot = isDown || sev === "Critical" ? "#dc2626" : sev ? "#e0a422" : "#3fae4a";
+              return (
+                <div key={L.n} style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#94a3ad", width: 14 }}>{L.n}</div>
+                  <Box label="Compressor" serial={L.comp} />
+                  <div style={{ width: 26, height: 2, background: "#3f6fb5" }} />
+                  <Box label="Dryer" serial={L.dryer} />
+                  <div style={{ width: 26, height: 2, background: "#3f6fb5" }} />
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontSize: 11.5, color: "#5c6b76" }}>Pressure <b style={{ color: "#1f2a33" }}>{L.pressure}</b></div>
+                        <div style={{ fontSize: 11.5, color: "#5c6b76" }}>Purity <b style={{ color: "#1f2a33" }}>{L.purity}</b></div>
+                        <div style={{ fontSize: 9, color: "#a7b2ba", fontFamily: "ui-monospace, monospace" }}>OS {L.gen || "—"}</div>
+                      </div>
+                      <span style={{ width: 13, height: 13, borderRadius: "50%", background: dot, boxShadow: `0 0 6px ${dot}` }} />
+                    </div>
+                    <Banner text={banner.t} color={banner.c} />
+                    <Banner text={sub.t} color={sub.c} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* side panel */}
+          <div style={{ width: 230, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: "linear-gradient(180deg,#3f6fb5,#2c5292)", textAlign: "center", padding: "9px 0", borderRadius: 6, letterSpacing: 0.4 }}>ALARMS HISTORY</div>
+            <div style={{ border: "1px solid #d7dde2", borderRadius: 8, background: "#fff", padding: 10, maxHeight: 210, overflowY: "auto" }}>
+              {openTickets.length === 0 && <div style={{ fontSize: 11.5, color: "#94a3ad", textAlign: "center", padding: "16px 0" }}>No active alarms.</div>}
+              {openTickets.map(c => (
+                <div key={c.id} style={{ borderBottom: "1px solid #eef1f3", padding: "7px 2px" }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: "#33404a" }}>{c.title}</div>
+                  <div style={{ fontSize: 10, color: (c.severity || getDefaultSeverity(c.title)) === "Critical" ? "#dc2626" : "#b45309" }}>{c.severity || getDefaultSeverity(c.title)} · open {Math.floor((Date.now() - new Date(c.created_at)) / 86400000)}d</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ border: "1px solid #d7dde2", borderRadius: 8, background: "#fff", padding: "10px 12px", fontSize: 11, color: "#5c6b76" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><span style={{ width: 11, height: 11, borderRadius: "50%", background: "#c3ccd2" }} />No defaults</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}><span style={{ width: 11, height: 11, borderRadius: "50%", background: "#e0a422" }} />Open ticket on line</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={{ width: 11, height: 11, borderRadius: "50%", background: "#dc2626" }} />Technical failure / shut down</div>
+            </div>
+          </div>
+        </div>
+        <div style={{ padding: "8px 16px", borderTop: "1px solid #e6ebef", fontSize: 10.5, color: "#a7b2ba" }}>Line status derives from OxyTrack tickets and shutdown records. Pressure and purity are nominal display values — live plant telemetry is not connected.</div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Storage Diagnostics (temporary, admin-only) — tests PDF uploads to the attachments
    bucket and shows the exact result/error on screen, so no DevTools digging is needed. ─── */
 function StorageDiagnostics({ complaints = [] }) {
@@ -4225,6 +4346,7 @@ function SidebarIcon({ name, size = 20 }) {
     bell: <svg viewBox="0 0 24 24" style={s}><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>,
     signout: <svg viewBox="0 0 24 24" style={s}><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,
     help: <svg viewBox="0 0 24 24" style={s}><circle cx="12" cy="12" r="9"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+    monitor: <svg viewBox="0 0 24 24" style={s}><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><polyline points="6 11 9 8 12 12 15 9 18 11"/></svg>,
   };
   return paths[name] || null;
 }
@@ -5806,6 +5928,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
   const NAV_ITEMS = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "sites", icon: "sites", label: "Site Status" },
+    { id: "monitoring", icon: "monitor", label: "Monitoring" },
     { id: "activity", icon: "activity", label: "Activity", badge: hasNewActivity && tab !== "activity" },
     { id: "tickets", icon: "tickets", label: "Tickets" },
     { id: "equipment", icon: "equipment", label: "Equipment" },
@@ -5820,7 +5943,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
 
   const PAGE_TITLES = {
     dashboard: "Dashboard", sites: "Site Status", equipment: "Equipment", tickets: "Tickets", submit: "Submit Ticket",
-    maintenance: "Maintenance", analytics: "Analytics", users: "Users", emails: "Emails", activity: "Activity"
+    maintenance: "Maintenance", analytics: "Analytics", users: "Users", emails: "Emails", activity: "Activity", monitoring: "Remote Monitoring"
   };
 
   return (
@@ -6033,6 +6156,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
             {hospitalUsers.filter(u => hospitals.some(h => h.toLowerCase().replace(/\s+/g, "") === u.id.toLowerCase().replace(/\s+/g, ""))).map(u => (<div key={u.id} style={{ ...styles.pwCard, marginBottom: 4 }}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong></div><div style={styles.pwRight}>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} type="password" placeholder="New password (min 8)" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Password</button>)}<button style={{ fontSize: 11, color: C.red, background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button></div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}
           </div>))}
         </>)}
+        {tab === "monitoring" && <RemoteMonitoring complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} />}
         {tab === "emails" && (<>
           <StorageDiagnostics complaints={complaints} />
           <h2 style={styles.sectionTitle}>Email Notifications</h2><p style={{ fontSize: 14, color: "#4a5568", marginBottom: 20, lineHeight: 1.5 }}>When a complaint is submitted, emails go to that hospital&apos;s service-provider group plus Amex and UNDP (via Resend / <code>RESEND_API_KEY</code>). Shutdown emails are sent manually from the Overview tab.</p>
