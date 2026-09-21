@@ -235,7 +235,7 @@ function SeverityBadge({ severity }) {
    from status "Open" plus assignment/visit data, so no cron job is needed:
      Open (no assignee) -> Assigned (has assignee, visit not yet arrived)
      -> In Progress (visit date has arrived) -> Resolved -> Verified          */
-const UI_BUILD = "19-Sep-2026 · rev O (full CSS screens)";
+const UI_BUILD = "19-Sep-2026 · rev P (live telemetry)";
 if (typeof console !== "undefined") console.log("OxyTrack UI build:", UI_BUILD);
 const getCompanyName = u => u.company || u.name;
 const isAmexUser = u => getCompanyName(u) === "Amex";
@@ -1732,7 +1732,6 @@ function LoginScreen({ onLogin }) {
         </div>
         {err && <p style={{ color: C.red, fontSize: 13, fontWeight: 600, margin: "0 0 14px", textAlign: "center" }}>{err}</p>}
         <button style={{ width: "100%", padding: "15px 0", fontSize: 14.5, fontWeight: 700, color: "#fff", background: (locked || submitting) ? "#9db8b4" : C.teal, border: "none", borderRadius: 12, cursor: (locked || submitting) ? "not-allowed" : "pointer", boxShadow: "0 4px 12px rgba(13,148,136,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }} onClick={submit} disabled={locked || submitting}>{submitting ? "Signing in…" : locked ? "Locked" : "Sign in"}{!submitting && !locked && <span style={{ fontSize: 16 }}>→</span>}</button>
-        <div style={{ textAlign: "center", fontSize: 10, color: "#c3ccc9", marginTop: 14, letterSpacing: 0.3 }}>{UI_BUILD}</div>
       </div>
 
       {/* Partner logos panel — one row with dividers, teal accent line */}
@@ -4113,6 +4112,38 @@ function RemoteMonitoring({ complaints = [], siteNotes = [], shutdowns = [] }) {
   const gen1Bad = isDown || fault(eq.oxyswing_a) || fault(eq.comp1) || fault(eq.dryer1);
   const gen2Bad = isDown || fault(eq.oxyswing_b) || fault(eq.comp2) || fault(eq.dryer2);
 
+  // ── Live telemetry ─────────────────────────────────────────────────────────
+  // A local script at the site POSTs readings to /api/telemetry, which upserts one row per
+  // site into the telemetry_latest table. We poll that row every 5s while this tab is open.
+  // If the row is missing or older than 60s, we fall back to nominal display values.
+  const [tele, setTele] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    const pull = async () => {
+      try {
+        const { data, error } = await supabase.from("telemetry_latest").select("data, updated_at").eq("hospital", site).maybeSingle();
+        if (!cancelled) setTele(!error && data ? data : null);
+      } catch { if (!cancelled) setTele(null); }
+    };
+    pull();
+    const iv = setInterval(() => { if (!document.hidden) pull(); }, 5000);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [site]);
+  const teleFresh = !!(tele && tele.updated_at && (Date.now() - new Date(tele.updated_at).getTime()) < 60000);
+  const L_ = teleFresh && tele.data ? tele.data : {};
+  const NOM = {
+    gen1: { purity: 93.7, pressure: 7.3, flow: 18.7, hours: 3726 },
+    gen2: { purity: 93.7, pressure: 7.5, flow: 0.0, hours: 3487 },
+    oxycheck: { o2: 93.6 },
+    medgasflow: { flow: 17.7, total: 138614.7, cweek: 2224.3, cmonth: 6195.7, cyear: 82005.2, pweek: 1751.4, pmonth: 9719.6, pyear: 56609.4 },
+    bank: { left: 104.0, network: 9.2, right: 59.0 },
+    hpox: { out: 38.5, inp: 3.6, t1: 140.0, t2: 95.0, hours: 983, status: "STOP" },
+  };
+  const tv = (group, key) => { const v = L_ && L_[group] && L_[group][key]; return (v === undefined || v === null) ? NOM[group][key] : v; };
+  const f1 = (n) => Number(n).toFixed(1);
+  const genPhase = (n, fallback) => (teleFresh && L_["gen" + n] && L_["gen" + n].phase) ? String(L_["gen" + n].phase).toUpperCase() : fallback;
+  const nodeOk = (name, fallback) => (teleFresh && L_.modbus && L_.modbus[name] !== undefined) ? !!L_.modbus[name] : fallback;
+
   // deterministic tiny jitter so trend lines look alive but stable per site
   const seed = [...site].reduce((a, ch) => a + ch.charCodeAt(0), 0);
   const jit = (i, amp) => Math.sin(seed + i * 1.7) * amp;
@@ -4150,8 +4181,8 @@ function RemoteMonitoring({ complaints = [], siteNotes = [], shutdowns = [] }) {
   const Home = () => (
     <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
       <div style={{ flex: 1, minWidth: 440, display: "flex", flexDirection: "column", gap: 24 }}>
-        {[{ n: 1, comp: eq.comp1, dryer: eq.dryer1, gen: eq.oxyswing_a, p: "7.3 bar", run: !isDown, bad: gen1Bad },
-          { n: 2, comp: eq.comp2, dryer: eq.dryer2, gen: eq.oxyswing_b, p: "7.5 bar", run: !isDown && !gen2Bad, bad: gen2Bad }].map(L => (
+        {[{ n: 1, comp: eq.comp1, dryer: eq.dryer1, gen: eq.oxyswing_a, p: f1(tv("gen1", "pressure")) + " bar", pu: f1(tv("gen1", "purity")) + " %", run: !isDown, bad: gen1Bad },
+          { n: 2, comp: eq.comp2, dryer: eq.dryer2, gen: eq.oxyswing_b, p: f1(tv("gen2", "pressure")) + " bar", pu: f1(tv("gen2", "purity")) + " %", run: !isDown && !gen2Bad, bad: gen2Bad }].map(L => (
           <div key={L.n} style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: "#94a3ad", width: 12 }}>{L.n}</div>
             <div style={{ textAlign: "center" }}><MachineImg kind="comp" bad={fault(L.comp)} /><div style={{ fontSize: 11, fontWeight: 700, color: "#33404a", marginTop: 4 }}>Compressor</div><StateBar text={fault(L.comp) ? "FAULT" : "OK"} color={fault(L.comp) ? B.red : B.green} w={92} /></div>
@@ -4162,9 +4193,9 @@ function RemoteMonitoring({ complaints = [], siteNotes = [], shutdowns = [] }) {
               <MachineImg kind="gen" bad={L.bad} />
               <div>
                 <div style={{ fontSize: 11.5, color: "#5c6b76" }}>Pressure <b style={{ color: "#1f2a33" }}>{L.p}</b></div>
-                <div style={{ fontSize: 11.5, color: "#5c6b76" }}>Purity <b style={{ color: "#1f2a33" }}>93.7 %</b></div>
+                <div style={{ fontSize: 11.5, color: "#5c6b76" }}>Purity <b style={{ color: "#1f2a33" }}>{L.pu}</b></div>
                 <div style={{ marginTop: 5, display: "flex", flexDirection: "column", gap: 4 }}>
-                  <StateBar text={isDown ? "STOPPED" : L.n === 2 && L.bad ? "STOPPED" : L.n === 2 ? "READY TO START" : "RUNNING"} color={isDown || (L.n === 2 && L.bad) ? B.red : L.n === 2 ? "#2d9fd8" : B.green} w={170} />
+                  <StateBar text={isDown ? "STOPPED" : genPhase(L.n, L.n === 2 && L.bad ? "STOPPED" : L.n === 2 ? "READY TO START" : "RUNNING")} color={isDown || (L.n === 2 && L.bad) ? B.red : L.n === 2 ? "#2d9fd8" : B.green} w={170} />
                   <StateBar text={L.bad && !isDown ? "WARNING" : "OK"} color={L.bad && !isDown ? B.yellow : B.green} w={170} />
                 </div>
               </div>
@@ -4177,16 +4208,16 @@ function RemoteMonitoring({ complaints = [], siteNotes = [], shutdowns = [] }) {
     </div>
   );
 
-  const GenPanel = ({ title, bad, p, flow, hours, ready }) => (
+  const GenPanel = ({ title, bad, p, pu, flow, hours, ready, phase }) => (
     <div style={{ background: B.panel, borderRadius: 6, padding: "12px 14px", width: 290, color: "#fff" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}><b style={{ fontSize: 13 }}>{title}</b><Dot ok={!bad} /></div>
-      {[["Purity", "93.7 %"], ["Output Pressure", p], ["Output flowrate", flow], ["Hour counter", hours]].map(([k, v]) => (
+      {[["Purity", pu || "93.7 %"], ["Output Pressure", p], ["Output flowrate", flow], ["Hour counter", hours]].map(([k, v]) => (
         <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, marginBottom: 5 }}><span>{k}</span><b>{v}</b></div>
       ))}
       {[["Filters maintenance", "Not required"], ["Valves maintenance", "Not required"]].map(([k, v]) => (
         <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11.5, marginBottom: 5 }}><span>{k}</span><StateBar text={v} color={B.green} w={104} /></div>
       ))}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11.5, marginBottom: 5 }}><span>Phase</span><StateBar text={bad ? "STOPPED" : ready ? "READY TO START" : "RUNNING"} color={bad ? B.red : ready ? "#2d9fd8" : B.green} w={140} /></div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11.5, marginBottom: 5 }}><span>Phase</span><StateBar text={bad ? "STOPPED" : (phase || (ready ? "READY TO START" : "RUNNING"))} color={bad ? B.red : ready ? "#2d9fd8" : B.green} w={140} /></div>
       {[["General state", !bad], ["Dryer alarm", true], ["Air compressor alarm", true]].map(([k, ok]) => (
         <div key={k} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11.5, marginBottom: 5 }}><span>{k}</span><StateBar text={ok ? "OK" : "ALARM"} color={ok ? B.green : B.red} w={104} /></div>
       ))}
@@ -4195,8 +4226,8 @@ function RemoteMonitoring({ complaints = [], siteNotes = [], shutdowns = [] }) {
   const Generators = () => (
     <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
       <div style={{ flex: 1, minWidth: 440, display: "flex", gap: 16, flexWrap: "wrap" }}>
-        <GenPanel title="O2 Generator 1" bad={gen1Bad} p="7.3 bar" flow="18.7 Nm3/h" hours="03726 h" />
-        <GenPanel title="O2 Generator 2" bad={gen2Bad} p="7.5 bar" flow="0.0 Nm3/h" hours="03487 h" ready />
+        <GenPanel title="O2 Generator 1" bad={gen1Bad} pu={f1(tv("gen1","purity")) + " %"} p={f1(tv("gen1","pressure")) + " bar"} flow={f1(tv("gen1","flow")) + " Nm3/h"} hours={String(tv("gen1","hours")).padStart(5,"0") + " h"} phase={genPhase(1, null)} />
+        <GenPanel title="O2 Generator 2" bad={gen2Bad} pu={f1(tv("gen2","purity")) + " %"} p={f1(tv("gen2","pressure")) + " bar"} flow={f1(tv("gen2","flow")) + " Nm3/h"} hours={String(tv("gen2","hours")).padStart(5,"0") + " h"} phase={genPhase(2, null)} ready />
       </div>
       <SideNav buttons={[["Previous", "home"], ["Next", "devices2"], ["Settings", "settings"], ["Trends", "trendmenu"], ["Alarms History", "alarms", true]]} />
     </div>
@@ -4206,7 +4237,7 @@ function RemoteMonitoring({ complaints = [], siteNotes = [], shutdowns = [] }) {
     <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
       <div style={{ flex: 1, minWidth: 440 }}>
         <div style={{ display: "flex", gap: 40, flexWrap: "wrap", marginBottom: 22 }}>
-          {[["Oxycheck", eq.oxycheck, "93.6 %"], ["Medgas Flow", eq.medgas, "17.8 m3/h"]].map(([label, serial, val]) => (
+          {[["Oxycheck", eq.oxycheck, f1(tv("oxycheck","o2")) + " %"], ["Medgas Flow", eq.medgas, f1(tv("medgasflow","flow")) + " m3/h"]].map(([label, serial, val]) => (
             <div key={label} style={{ textAlign: "center" }}>
               <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}><Dot ok={!fault(serial)} /></div>
               <MachineImg kind="dryer" bad={fault(serial)} />
@@ -4220,16 +4251,16 @@ function RemoteMonitoring({ complaints = [], siteNotes = [], shutdowns = [] }) {
           <div style={{ textAlign: "center" }}>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}><Dot ok={!fault(eq.hpox) && !isDown} /></div>
             <MachineImg kind="comp" bad={fault(eq.hpox)} />
-            <div style={{ fontSize: 11, color: "#5c6b76", marginTop: 3 }}>3.6 bar → 38.5 bar</div>
+            <div style={{ fontSize: 11, color: "#5c6b76", marginTop: 3 }}>{f1(tv("hpox","inp"))} bar → {f1(tv("hpox","out"))} bar</div>
             <div style={{ display: "flex", gap: 6, justifyContent: "center", marginTop: 3 }}><StateBar text="OK" color={B.green} w={58} /><StateBar text="STOP" color={B.red} w={58} /></div>
             <div style={{ fontSize: 11, fontWeight: 700, color: "#33404a", marginTop: 3 }}>Booster HPOX 450</div>
           </div>
           <div style={{ textAlign: "center" }}>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}><Dot ok={!fault(eq.medgas)} /></div>
             <div style={{ display: "flex", gap: 18, alignItems: "flex-end" }}>
-              <div style={{ fontSize: 10.5, color: "#5c6b76" }}>104.00 b<div style={{ display: "flex", gap: 2, marginTop: 3 }}>{[0,1,2,3,4].map(i => <div key={i} style={{ width: 7, height: 44, borderRadius: 3, border: "1px solid #aab6bf", background: "linear-gradient(180deg,#f2f5f7,#d8dee3)" }} />)}</div></div>
-              <div style={{ fontSize: 10.5, color: "#5c6b76" }}>9.20 b<div style={{ margin: "3px 0" }}><StateBar text="OK" color={B.green} w={70} /></div>Medgas Bank</div>
-              <div style={{ fontSize: 10.5, color: "#5c6b76" }}>58.00 b<div style={{ display: "flex", gap: 2, marginTop: 3 }}>{[0,1,2,3,4].map(i => <div key={i} style={{ width: 7, height: 44, borderRadius: 3, border: "1px solid #aab6bf", background: "linear-gradient(180deg,#f2f5f7,#d8dee3)" }} />)}</div></div>
+              <div style={{ fontSize: 10.5, color: "#5c6b76" }}>{f1(tv("bank","left"))} b<div style={{ display: "flex", gap: 2, marginTop: 3 }}>{[0,1,2,3,4].map(i => <div key={i} style={{ width: 7, height: 44, borderRadius: 3, border: "1px solid #aab6bf", background: "linear-gradient(180deg,#f2f5f7,#d8dee3)" }} />)}</div></div>
+              <div style={{ fontSize: 10.5, color: "#5c6b76" }}>{f1(tv("bank","network"))} b<div style={{ margin: "3px 0" }}><StateBar text="OK" color={B.green} w={70} /></div>Medgas Bank</div>
+              <div style={{ fontSize: 10.5, color: "#5c6b76" }}>{f1(tv("bank","right"))} b<div style={{ display: "flex", gap: 2, marginTop: 3 }}>{[0,1,2,3,4].map(i => <div key={i} style={{ width: 7, height: 44, borderRadius: 3, border: "1px solid #aab6bf", background: "linear-gradient(180deg,#f2f5f7,#d8dee3)" }} />)}</div></div>
             </div>
           </div>
         </div>
@@ -4248,12 +4279,12 @@ function RemoteMonitoring({ complaints = [], siteNotes = [], shutdowns = [] }) {
   const Details = () => (
     <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
       <div style={{ flex: 1, minWidth: 460, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-start" }}>
-        <DetailCol title="MEDGASFLOW" ok={!fault(eq.medgas)} rows={[["Flow", "17.7 m3/h"], ["Total counter", "138614.7 m3"], ["Current week", "2224.3 m3"], ["Current month", "6195.7 m3"], ["Current year", "82005.2 m3"], ["Previous week", "1751.4 m3"], ["Previous month", "9719.6 m3"], ["Previous year", "56609.4 m3"]]} states={[["Flow alarm", "OK", B.green]]} />
+        <DetailCol title="MEDGASFLOW" ok={!fault(eq.medgas)} rows={[["Flow", f1(tv("medgasflow","flow")) + " m3/h"], ["Total counter", f1(tv("medgasflow","total")) + " m3"], ["Current week", f1(tv("medgasflow","cweek")) + " m3"], ["Current month", f1(tv("medgasflow","cmonth")) + " m3"], ["Current year", f1(tv("medgasflow","cyear")) + " m3"], ["Previous week", f1(tv("medgasflow","pweek")) + " m3"], ["Previous month", f1(tv("medgasflow","pmonth")) + " m3"], ["Previous year", f1(tv("medgasflow","pyear")) + " m3"]]} states={[["Flow alarm", "OK", B.green]]} />
         <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: 1, minWidth: 250 }}>
-          <DetailCol title="HPOX 450" ok={!fault(eq.hpox)} rows={[["Output Pressure", "38.5 bar"], ["Input pressure", "3.6 bar"], ["Temperature 1", "140.0 °C"], ["Temperature 2", "95.0 °C"], ["Working hours", "983 h"], ["Status", "STOP"]]} states={[["General Alarm", "OK", B.green]]} />
-          <DetailCol title="MEDGAS BANK" ok={!fault(eq.medgas)} rows={[["Left bank pressure", "106.00 b"], ["Network pressure", "9.20 b"], ["Right bank pressure", "59.00 b"]]} states={[["Left bank state", "OK", B.green], ["Network state", "OK", B.green], ["Right bank state", "OK", B.green]]} />
+          <DetailCol title="HPOX 450" ok={!fault(eq.hpox)} rows={[["Output Pressure", f1(tv("hpox","out")) + " bar"], ["Input pressure", f1(tv("hpox","inp")) + " bar"], ["Temperature 1", f1(tv("hpox","t1")) + " °C"], ["Temperature 2", f1(tv("hpox","t2")) + " °C"], ["Working hours", tv("hpox","hours") + " h"], ["Status", String(tv("hpox","status"))]]} states={[["General Alarm", "OK", B.green]]} />
+          <DetailCol title="MEDGAS BANK" ok={!fault(eq.medgas)} rows={[["Left bank pressure", f1(tv("bank","left")) + " b"], ["Network pressure", f1(tv("bank","network")) + " b"], ["Right bank pressure", f1(tv("bank","right")) + " b"]]} states={[["Left bank state", "OK", B.green], ["Network state", "OK", B.green], ["Right bank state", "OK", B.green]]} />
         </div>
-        <DetailCol title="Oxycheck" ok={!fault(eq.oxycheck)} rows={[["O2", "93.6 %"]]} states={[["Low alarm", "OK", B.green], ["High alarm", "OK", B.green]]} />
+        <DetailCol title="Oxycheck" ok={!fault(eq.oxycheck)} rows={[["O2", f1(tv("oxycheck","o2")) + " %"]]} states={[["Low alarm", "OK", B.green], ["High alarm", "OK", B.green]]} />
       </div>
       <SideNav buttons={[["Home", "home"], ["Previous", "devices2"], ["Settings", "settings"], ["Trends", "trendmenu"], ["Alarms History", "alarms", true]]} />
     </div>
@@ -4359,12 +4390,12 @@ function RemoteMonitoring({ complaints = [], siteNotes = [], shutdowns = [] }) {
   );
   const Network = () => (
     <div style={{ maxWidth: 560, margin: "10px auto" }}>
-      <IpRow label="O2 Generator 1" last={31} ok={!gen1Bad} />
-      <IpRow label="O2 Generator 2" last={11} ok={!gen2Bad} />
-      <IpRow label="Oxycheck" last={12} ok={!fault(eq.oxycheck)} />
-      <IpRow label="Medgasflow" last={14} ok={!fault(eq.medgas)} />
-      <IpRow label="Medgas Bank" last={27} ok={!fault(eq.medgas)} />
-      <IpRow label="HPOX 450" last={13} ok={!fault(eq.hpox)} />
+      <IpRow label="O2 Generator 1" last={31} ok={nodeOk("gen1", !gen1Bad)} />
+      <IpRow label="O2 Generator 2" last={11} ok={nodeOk("gen2", !gen2Bad)} />
+      <IpRow label="Oxycheck" last={12} ok={nodeOk("oxycheck", !fault(eq.oxycheck))} />
+      <IpRow label="Medgasflow" last={14} ok={nodeOk("medgasflow", !fault(eq.medgas))} />
+      <IpRow label="Medgas Bank" last={27} ok={nodeOk("bank", !fault(eq.medgas))} />
+      <IpRow label="HPOX 450" last={13} ok={nodeOk("hpox", !fault(eq.hpox))} />
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}><div style={{ width: 130 }}><HmiBtn label="Previous" onClick={() => setScreen("tcpip")} /></div></div>
     </div>
   );
@@ -4395,10 +4426,13 @@ function RemoteMonitoring({ complaints = [], siteNotes = [], shutdowns = [] }) {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 16px", background: "#f2f5f7", borderBottom: "1px solid #d7dde2", flexWrap: "wrap" }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: "#c02428", letterSpacing: 0.3, cursor: "pointer" }} onClick={() => setScreen("home")}>OXYTRACK <span style={{ color: "#5c6b76", fontWeight: 600 }}>· {displayName(site)}</span></div>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#1f2a33", background: "#dfe7ec", padding: "5px 14px", borderRadius: 6, fontFamily: "ui-monospace, monospace" }}>{now.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })} {now.toLocaleTimeString("en-GB")}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#7a8791" }}><Dot ok={!isDown} size={12} />Modbus state</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {teleFresh && <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", background: "#3fae4a", borderRadius: 4, padding: "3px 8px", letterSpacing: 0.5 }}>● LIVE</span>}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#7a8791" }}><Dot ok={!isDown} size={12} />Modbus state</div>
+          </div>
         </div>
         <div style={{ padding: 20 }}>{body}</div>
-        <div style={{ padding: "8px 16px", borderTop: "1px solid #e6ebef", fontSize: 10.5, color: "#a7b2ba" }}>Status derives from OxyTrack tickets and shutdown records. Readings, counters and network values are nominal display values — live plant telemetry is not connected.</div>
+        <div style={{ padding: "8px 16px", borderTop: "1px solid #e6ebef", fontSize: 10.5, color: "#a7b2ba" }}>{teleFresh ? `LIVE telemetry · last update ${Math.max(0, Math.round((Date.now() - new Date(tele.updated_at).getTime()) / 1000))}s ago. Fault/alarm states also reflect OxyTrack tickets and shutdown records.` : "Status derives from OxyTrack tickets and shutdown records. Readings are nominal display values — no live telemetry received for this site yet."}</div>
       </div>
     </div>
   );
