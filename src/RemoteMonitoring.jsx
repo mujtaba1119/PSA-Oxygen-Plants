@@ -458,9 +458,20 @@ function Trends({ rows }) {
 }
 
 /* ─── page 6: alarm history (css_alarm_state) ─── */
-function Alarms({ list, css }) {
+function Alarms({ list: raw, css }) {
+  // Merge the CSS's own history (seeded once from its screen) with what the Pi has seen since:
+  // newest "last triggered" wins, counts add up, alarms with no history at all stay hidden.
+  const list = raw
+    .map(a => {
+      const seedT = a.seed_last_on ? new Date(a.seed_last_on).getTime() : 0;
+      const piT = a.last_on ? new Date(a.last_on).getTime() : 0;
+      return { ...a, show_on: piT >= seedT ? a.last_on : a.seed_last_on, show_off: piT >= seedT ? a.last_off : null,
+               total: (a.count || 0) + (a.seed_count || 0), seen: !!(a.active || a.count || a.seed_last_on) };
+    })
+    .filter(a => a.seen);
   const active = list.filter(a => a.active).length;
-  const since = list.find(a => a.since)?.since;
+  const since = raw.find(a => a.since)?.since;
+  const seeded = raw.find(a => a.seed_note)?.seed_note;
   return (
     <div>
       <div className="asum">
@@ -468,7 +479,7 @@ function Alarms({ list, css }) {
         <span>PLC active <b>{css?.alarms_active ?? "–"}</b></span>
         <span>Pending acknowledge <b>{css?.alarms_pending_ack ?? "–"}</b></span>
         <span>Pending view <b>{css?.alarms_pending_view ?? "–"}</b></span>
-        <span className="since">History since {fmtTs(since)}</span>
+        <span className="since">{seeded ? `${seeded} + live since ${fmtTs(since)}` : `History since ${fmtTs(since)}`}</span>
       </div>
       <div className="atable-wrap">
         <table className="atable">
@@ -479,17 +490,17 @@ function Alarms({ list, css }) {
               <tr key={al.alarm_id} className={al.active ? "live" : (al.count ? "" : "never")}>
                 <td className="id">{String(al.alarm_id).padStart(3, "0")}</td>
                 <td className="name">{al.name}</td>
-                <td className="dt">{fmtTs(al.last_on)}</td>
-                <td className="dt">{fmtTs(al.last_off)}</td>
-                <td><Box cls={al.active ? "alarm" : (al.count ? "ok" : "off")}>{al.active ? "ACTIVE" : (al.count ? "CLEARED" : "–")}</Box></td>
+                <td className="dt">{fmtTs(al.show_on)}</td>
+                <td className="dt">{fmtTs(al.show_off)}</td>
+                <td><Box cls={al.active ? "alarm" : "ok"}>{al.active ? "ACTIVE" : "CLEARED"}</Box></td>
                 <td><span className={`pr ${al.priority}`}>{al.priority}</span></td>
-                <td className="n">{al.count}</td>
+                <td className="n">{al.total}</td>
               </tr>))}
           </tbody>
         </table>
       </div>
-      <p className="anote">Rebuilt from the plant readings: each alarm is counted when its trigger operand goes active, and the time shown is the reading that caught it.
-        Alarms in brackets are defined in the CSS but have never been seen on its screen. Acknowledgement state stays on the CSS only.</p>
+      <p className="anote">Dates and counts up to the seed date were copied from the CSS screen; everything after comes from the plant readings, one per minute.
+        Acknowledgement state stays on the CSS only.</p>
     </div>
   );
 }
