@@ -590,8 +590,8 @@ export default function RemoteMonitoring() {
         </div>
       </header>
       {err && <div className="warnbar">Could not load data: {err}</div>}
-      {!err && !latest && <div className="infobar">No readings received from this plant yet. The Raspberry Pi at the plant posts one reading per minute once it is running.</div>}
-      {stale && <div className="warnbar">No new reading since {fmtTs(latest.ts)} ({Math.round(ageMs / 60000)} min ago). The plant, the Pi or its internet link may be down; the values below are the last received.</div>}
+      {!err && !latest && <div className="infobar">No readings received from this plant yet.</div>}
+      {stale && <div className="warnbar">No new reading since {fmtTs(latest.ts)} ({Math.round(ageMs / 60000)} min ago). The plant or its internet link may be down; the values below are the last received.</div>}
       <nav className="tabs">
         {PAGES.map(([id, label]) => <button key={id} type="button" className={`tab${page === id ? " active" : ""}`} onClick={() => setPage(id)}>{label}</button>)}
       </nav>
