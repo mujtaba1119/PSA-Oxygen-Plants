@@ -4096,7 +4096,69 @@ function HospitalDashboard({ user, complaints, onRefresh, onLogout }) {
   );
 }
 
-/* ─── Remote Monitoring (admin-only): live CSS view, see src/RemoteMonitoring.jsx ─── */
+/* ─── Remote Monitoring (admin + Amex): site tiles like the Equipment tab; Rahim Yar Khan opens
+   the live CSS view (src/RemoteMonitoring.jsx), every other site is "Coming soon". ─── */
+const MONITORED_SITES = ["Rahim Yar Khan"];
+function MonitoringHome() {
+  const [selectedSite, setSelectedSite] = useState(null);
+  const [search, setSearch] = useState("");
+  if (selectedSite) {
+    const live = MONITORED_SITES.includes(selectedSite);
+    const imgSrc = SITE_CODES[selectedSite] ? `/sites/${SITE_CODES[selectedSite]}.jpg` : null;
+    return (
+      <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16, flexWrap: "wrap" }}>
+          <button onClick={() => setSelectedSite(null)} style={{ fontSize: 13, fontWeight: 700, color: "#0f766e", background: "#f0fdfa", border: "1.5px solid #ccfbf1", borderRadius: 10, padding: "8px 14px", cursor: "pointer" }}>← All sites</button>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>{displayName(selectedSite)}</div>
+          <div style={{ fontSize: 12.5, color: "#8a9199" }}>{fullHospitalName(selectedSite)}</div>
+        </div>
+        {live ? <RemoteMonitoring /> : (
+          <div style={{ background: "#fff", border: "1px solid #e8ecf0", borderRadius: 16, overflow: "hidden", maxWidth: 560, boxShadow: "0 1px 3px rgba(15,23,25,0.05)" }}>
+            <div style={{ position: "relative", width: "100%", aspectRatio: "16 / 7", background: "linear-gradient(135deg, #0b3b38, #0f766e)", overflow: "hidden" }}>
+              {imgSrc && <img src={imgSrc} alt={displayName(selectedSite)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: 0.85 }} onError={e => { e.target.style.display = "none"; }} />}
+            </div>
+            <div style={{ padding: "26px 24px", textAlign: "center" }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>Coming soon</div>
+              <div style={{ fontSize: 13.5, color: "#5c6b76", marginTop: 6 }}>Remote monitoring for {displayName(selectedSite)} is not connected yet.</div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+  const filtered = search.trim() ? ALL_HOSPITALS.filter(h => h.toLowerCase().includes(search.toLowerCase()) || displayName(h).toLowerCase().includes(search.toLowerCase())) : ALL_HOSPITALS;
+  return (
+    <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22, flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>Remote Monitoring</div>
+          <div style={{ fontSize: 12, color: "#8a9199", marginTop: 3 }}>Live Central Supervision System view · select a site</div>
+        </div>
+        <input style={{ padding: "8px 14px", fontSize: 13, border: "1.5px solid #ccfbf1", borderRadius: 10, outline: "none", width: 220, background: "#fff", color: "#111" }} placeholder="Search sites..." value={search} onChange={e => setSearch(e.target.value)} onFocus={e => e.target.style.borderColor = "#0d9488"} onBlur={e => e.target.style.borderColor = "#ccfbf1"} />
+      </div>
+      <div className="ox-stagger" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
+        {Object.entries(GROUPS).map(([provider, sites]) => sites.filter(s => filtered.includes(s)).map(h => {
+          const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null;
+          const live = MONITORED_SITES.includes(h);
+          return (
+            <div key={h} onClick={() => setSelectedSite(h)} className="ox-imgzoom" style={{ background: "#fff", borderRadius: 16, overflow: "hidden", cursor: "pointer", transition: "all 0.28s cubic-bezier(0.16,1,0.3,1)", border: "1px solid #e8ecf0", boxShadow: "0 1px 3px rgba(15,23,25,0.05)" }} onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 12px 32px rgba(15,118,110,0.16)"; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.borderColor = "#0d9488"; }} onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 1px 3px rgba(15,23,25,0.05)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.borderColor = "#e8ecf0"; }}>
+              <div style={{ position: "relative", width: "100%", aspectRatio: "4 / 3", background: "linear-gradient(135deg, #0b3b38, #0f766e)", overflow: "hidden" }}>
+                <img src={imgSrc} alt={displayName(h)} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
+                <div style={{ display: "none", position: "absolute", inset: 0, alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #0b3b38, #0f766e)" }}>
+                  <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="rgba(94,234,212,0.55)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7z"/><circle cx="12" cy="12" r="3.5"/></svg>
+                </div>
+                <div style={{ position: "absolute", top: 10, right: 10, fontSize: 10.5, fontWeight: 800, letterSpacing: 0.6, color: "#fff", background: live ? "#16a34a" : "rgba(15,23,25,0.55)", borderRadius: 6, padding: "3px 8px" }}>{live ? "LIVE" : "COMING SOON"}</div>
+              </div>
+              <div style={{ padding: "14px 16px", textAlign: "center" }}>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: "#1a1d21", letterSpacing: "-0.01em" }}>{displayName(h)}</div>
+              </div>
+            </div>
+          );
+        }))}
+      </div>
+    </div>
+  );
+}
 
 /* ─── Storage Diagnostics (temporary, admin-only) — tests PDF uploads to the attachments
    bucket and shows the exact result/error on screen, so no DevTools digging is needed. ─── */
@@ -6037,7 +6099,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
             {hospitalUsers.filter(u => hospitals.some(h => h.toLowerCase().replace(/\s+/g, "") === u.id.toLowerCase().replace(/\s+/g, ""))).map(u => (<div key={u.id} style={{ ...styles.pwCard, marginBottom: 4 }}><div style={styles.pwRow}><div><strong style={styles.pwName}>{u.name}</strong></div><div style={styles.pwRight}>{editingUser === u.id ? (<div style={styles.pwEditRow}><input style={styles.pwInput} type="password" placeholder="New password (min 8)" value={newPw} onChange={e => setNewPw(e.target.value)} onKeyDown={e => e.key === "Enter" && handlePasswordChange(u.id)} /><button style={styles.pwSaveBtn} onClick={() => handlePasswordChange(u.id)}>{saving ? "…" : "Save"}</button><button style={styles.pwCancelBtn} onClick={() => { setEditingUser(null); setNewPw(""); }}>✕</button></div>) : (<button style={styles.pwChangeBtn} onClick={() => { setEditingUser(u.id); setNewPw(""); }}>Password</button>)}<button style={{ fontSize: 11, color: C.red, background: "none", border: "none", cursor: "pointer" }} onClick={() => handleDeleteUser(u.id)}>Delete</button></div></div>{pwSuccess === u.id && <p style={styles.successMsg}>Password updated.</p>}</div>))}
           </div>))}
         </>)}
-        {tab === "monitoring" && <RemoteMonitoring complaints={complaints} siteNotes={siteNotes} shutdowns={shutdowns} />}
+        {tab === "monitoring" && <MonitoringHome />}
         {tab === "emails" && (<>
           <StorageDiagnostics complaints={complaints} />
           <h2 style={styles.sectionTitle}>Email Notifications</h2><p style={{ fontSize: 14, color: "#4a5568", marginBottom: 20, lineHeight: 1.5 }}>When a complaint is submitted, emails go to that hospital&apos;s service-provider group plus Amex and UNDP (via Resend / <code>RESEND_API_KEY</code>). Shutdown emails are sent manually from the Overview tab.</p>
@@ -6280,7 +6342,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
           {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={["Intexim","Z-Corps"].includes(companyName) ? companyName : null} currentUser={user} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "maintenance" && <MaintenanceTab hospitals={myHospitals} siteNotes={siteNotes} complaints={complaints} isAdmin={false} onRefresh={onRefresh} />}
           {tab === "analytics" && <AnalyticsPage complaints={complaints} shutdowns={shutdowns} />}
-          {tab === "monitoring" && isAmex && <RemoteMonitoring />}
+          {tab === "monitoring" && isAmex && <MonitoringHome />}
           {tab === "guide" && <NovairGuide />}
           </div>
         </main>
