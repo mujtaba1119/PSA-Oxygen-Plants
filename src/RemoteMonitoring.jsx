@@ -175,7 +175,7 @@ function Unit({ n, g }) {
   const stale = g.stale ? " stale" : "";
   return (
     <section className="unit">
-      <div className="unit-head"><h2>Unit {n}</h2></div>
+      <div className="unit-head"><h2>Unit {n}</h2><span className="link"><Dot on={g.dot} />{g.dot ? "link OK" : "no link"}</span></div>
       <div className="row">
         <div className={`tile${stale}`}>
           <div className="icon"><img src={ICON.compressor} alt="" /></div>
@@ -190,7 +190,6 @@ function Unit({ n, g }) {
         <div className={`tile gen${stale}`}>
           <div className="icon"><img src={ICON.generator} alt="" /></div>
           <div className="name">Oxygen generator</div>
-          <div className="link"><Dot on={g.dot} />{g.dot ? "link OK" : "no link"}</div>
           <dl className="kv">
             <dt>Pressure</dt><dd><Num v={g.pressure_bar} u="bar" /></dd>
             <dt>Purity</dt><dd><Num v={g.purity_pct} u="%" /></dd>
