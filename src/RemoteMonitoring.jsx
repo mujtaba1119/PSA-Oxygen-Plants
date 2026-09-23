@@ -352,19 +352,19 @@ function Details2({ r }) {
 /* ─── page 5: trends (latest 24 h from css_trend_points; Y ranges = the CSS project's curve ranges) ─── */
 const TRENDS = {
   generators: { name: "Generators", charts: [
-    { title: "Purity", unit: "%", min: 0, max: 110, d: 1, series: [{ k: "gen1_purity", l: "Gen 1" }, { k: "gen2_purity", l: "Gen 2" }] },
-    { title: "Output pressure", unit: "bar", min: 0, max: 100, d: 1, series: [{ k: "gen1_pressure", l: "Gen 1" }, { k: "gen2_pressure", l: "Gen 2" }] },
+    { title: "Purity", unit: "%", min: 0, max: 110, d: 1, series: [{ k: "gen1_purity", l: "Gen 1", link: "gen1_link" }, { k: "gen2_purity", l: "Gen 2", link: "gen2_link" }] },
+    { title: "Output pressure", unit: "bar", min: 0, max: 100, d: 1, series: [{ k: "gen1_pressure", l: "Gen 1", link: "gen1_link" }, { k: "gen2_pressure", l: "Gen 2", link: "gen2_link" }] },
   ] },
-  oxycheck: { name: "Oxycheck", charts: [{ title: "O₂", unit: "%", min: 0, max: 100, d: 1, series: [{ k: "oxy_o2", l: "O₂" }] }] },
+  oxycheck: { name: "Oxycheck", charts: [{ title: "O₂", unit: "%", min: 0, max: 100, d: 1, series: [{ k: "oxy_o2", l: "O₂", link: "oxy_link" }] }] },
   medgasflow: { name: "Medgasflow", charts: [{ title: "Flow", unit: "m³/h", min: 0, max: 30, d: 1, series: [{ k: "mgf_flow", l: "Flow" }] }] },
   bank: { name: "Medgas Bank", charts: [
-    { title: "Network pressure", unit: "bar", min: 0, max: 10, d: 2, series: [{ k: "bank_network", l: "Network" }] },
-    { title: "Bank pressures", unit: "bar", min: 0, max: 250, d: 1, series: [{ k: "bank_left", l: "Left bank" }, { k: "bank_right", l: "Right bank" }] },
+    { title: "Network pressure", unit: "bar", min: 0, max: 10, d: 2, series: [{ k: "bank_network", l: "Network", link: "bank_link" }] },
+    { title: "Bank pressures", unit: "bar", min: 0, max: 250, d: 1, series: [{ k: "bank_left", l: "Left bank", link: "bank_link" }, { k: "bank_right", l: "Right bank", link: "bank_link" }] },
   ] },
   hpox: { name: "HPOX 450", charts: [
-    { title: "Output pressure", unit: "bar", min: 0, max: 250, d: 1, series: [{ k: "hpox_out", l: "Output" }] },
-    { title: "Input pressure", unit: "bar", min: 0, max: 10, d: 1, series: [{ k: "hpox_in", l: "Input" }] },
-    { title: "Temperatures", unit: "°C", min: 0, max: 200, d: 1, series: [{ k: "hpox_t1", l: "Temperature 1" }, { k: "hpox_t2", l: "Temperature 2" }] },
+    { title: "Output pressure", unit: "bar", min: 0, max: 250, d: 1, series: [{ k: "hpox_out", l: "Output", link: "hpox_link" }] },
+    { title: "Input pressure", unit: "bar", min: 0, max: 10, d: 1, series: [{ k: "hpox_in", l: "Input", link: "hpox_link" }] },
+    { title: "Temperatures", unit: "°C", min: 0, max: 200, d: 1, series: [{ k: "hpox_t1", l: "Temperature 1", link: "hpox_link" }, { k: "hpox_t2", l: "Temperature 2", link: "hpox_link" }] },
   ] },
 };
 const svgEl = (tag, attrs = {}) => { const e = document.createElementNS("http://www.w3.org/2000/svg", tag); for (const a in attrs) e.setAttribute(a, attrs[a]); return e; };
@@ -396,10 +396,11 @@ function buildChart(spec, rows, now) {
   if (pts.length) {
     spec.series.forEach((s, i) => {
       let d = "", pen = false;
-      for (const r of pts) { const v = r[s.k]; if (v === null || v === undefined) { pen = false; continue; }
+      const has = r => r[s.k] !== null && r[s.k] !== undefined && (!s.link || r[s.link] === true);
+      for (const r of pts) { const v = r[s.k]; if (!has(r)) { pen = false; continue; }
         d += `${pen ? "L" : "M"}${x(r.t).toFixed(1)} ${y(v).toFixed(1)}`; pen = true; }
       svg.append(svgEl("path", { class: "ln", d, stroke: `var(--series-${i + 1})` }));
-      const last = [...pts].reverse().find(r => r[s.k] !== null && r[s.k] !== undefined);
+      const last = [...pts].reverse().find(has);
       if (last) svg.append(svgEl("circle", { class: "endpt", cx: x(last.t), cy: y(last[s.k]), r: 4, fill: `var(--series-${i + 1})` }));
     });
   }
@@ -419,7 +420,7 @@ function buildChart(spec, rows, now) {
     const t = document.createElement("div"); t.className = "t"; t.textContent = fmtTs(row.t); tip.append(t);
     spec.series.forEach((s, i) => { const r = document.createElement("div"); r.className = "r";
       const key = document.createElement("span"); key.style.cssText = `display:inline-block;width:14px;border-top:2px solid var(--series-${i + 1})`;
-      const b = document.createElement("b"); b.textContent = `${fmt(row[s.k], spec.d)} ${spec.unit}`;
+      const b = document.createElement("b"); b.textContent = (s.link && row[s.link] !== true) ? "no link" : `${fmt(row[s.k], spec.d)} ${spec.unit}`;
       r.append(key, document.createTextNode(s.l), b); tip.append(r); });
     tip.style.display = "block";
     const cx = ev.clientX - rect.left, flip = cx > rect.width * 0.65;
@@ -496,7 +497,7 @@ function Alarms({ list, css }) {
 /* ─── data ─── */
 async function fetchTrendRows(siteId) {
   const since = new Date(Date.now() - 24 * 3600000).toISOString();
-  const cols = "ts,gen1_purity,gen2_purity,gen1_pressure,gen2_pressure,oxy_o2,mgf_flow,bank_network,bank_left,bank_right,hpox_out,hpox_in,hpox_t1,hpox_t2";
+  const cols = "ts,gen1_purity,gen2_purity,gen1_pressure,gen2_pressure,oxy_o2,mgf_flow,bank_network,bank_left,bank_right,hpox_out,hpox_in,hpox_t1,hpox_t2,gen1_link,gen2_link,oxy_link,bank_link,hpox_link";
   const out = [];
   for (let page = 0; page < 3; page++) {                       // 1440 rows/day; server pages are 1000
     const { data, error } = await supabase.from("css_trend_points").select(cols).eq("site_id", siteId).gte("ts", since)
