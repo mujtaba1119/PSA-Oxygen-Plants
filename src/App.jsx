@@ -4131,13 +4131,14 @@ function MonitoringHome() {
     <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 22, flexWrap: "wrap", gap: 12 }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>Remote Monitoring</div>
-          <div style={{ fontSize: 12, color: "#8a9199", marginTop: 3 }}>Live Central Supervision System view · select a site</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>Central Remote Monitoring System</div>
+          <div style={{ fontSize: 12, color: "#8a9199", marginTop: 3 }}>Click to view any site</div>
         </div>
         <input style={{ padding: "8px 14px", fontSize: 13, border: "1.5px solid #ccfbf1", borderRadius: 10, outline: "none", width: 220, background: "#fff", color: "#111" }} placeholder="Search sites..." value={search} onChange={e => setSearch(e.target.value)} onFocus={e => e.target.style.borderColor = "#0d9488"} onBlur={e => e.target.style.borderColor = "#ccfbf1"} />
       </div>
       <div className="ox-stagger" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
-        {Object.entries(GROUPS).map(([provider, sites]) => sites.filter(s => filtered.includes(s)).map(h => {
+        {[...MONITORED_SITES.filter(h => filtered.includes(h)),
+          ...Object.values(GROUPS).flat().filter(h => filtered.includes(h) && !MONITORED_SITES.includes(h))].map(h => {
           const imgSrc = SITE_CODES[h] ? `/sites/${SITE_CODES[h]}.jpg` : null;
           const live = MONITORED_SITES.includes(h);
           return (
@@ -4154,7 +4155,7 @@ function MonitoringHome() {
               </div>
             </div>
           );
-        }))}
+        })}
       </div>
     </div>
   );
