@@ -6231,6 +6231,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
   const NAV_ITEMS = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "sites", icon: "sites", label: "Site Status" },
+    ...(isAmex ? [{ id: "monitoring", icon: "monitor", label: "Monitoring" }] : []),   // live CSS view: admin + Amex only
     ...(showActivity ? [{ id: "activity", icon: "activity", label: "Activity", badge: hasNewActivity && tab !== "activity" }] : []),
     { id: "tickets", icon: "tickets", label: "Tickets" },
     { id: "equipment", icon: "equipment", label: "Equipment" },
@@ -6241,7 +6242,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
 
   const PAGE_TITLES = {
     dashboard: "Dashboard", sites: "Site Status", equipment: "Equipment", tickets: "Tickets",
-    activity: "Activity", maintenance: "Maintenance", analytics: "Analytics", guide: "Help"
+    activity: "Activity", maintenance: "Maintenance", analytics: "Analytics", guide: "Help", monitoring: "Remote Monitoring"
   };
 
   return (
@@ -6279,6 +6280,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
           {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={["Intexim","Z-Corps"].includes(companyName) ? companyName : null} currentUser={user} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "maintenance" && <MaintenanceTab hospitals={myHospitals} siteNotes={siteNotes} complaints={complaints} isAdmin={false} onRefresh={onRefresh} />}
           {tab === "analytics" && <AnalyticsPage complaints={complaints} shutdowns={shutdowns} />}
+          {tab === "monitoring" && isAmex && <RemoteMonitoring />}
           {tab === "guide" && <NovairGuide />}
           </div>
         </main>
