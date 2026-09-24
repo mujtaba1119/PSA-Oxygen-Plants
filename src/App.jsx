@@ -4109,8 +4109,7 @@ function MonitoringHome() {
       <div style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16, flexWrap: "wrap" }}>
           <button onClick={() => setSelectedSite(null)} style={{ fontSize: 13, fontWeight: 700, color: "#0f766e", background: "#f0fdfa", border: "1.5px solid #ccfbf1", borderRadius: 10, padding: "8px 14px", cursor: "pointer" }}>← All sites</button>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>{displayName(selectedSite)}</div>
-          <div style={{ fontSize: 12.5, color: "#8a9199" }}>{fullHospitalName(selectedSite)}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "#1a1d21", letterSpacing: "-0.01em" }}>PSA Oxygen Plant ({displayName(selectedSite)})</div>
         </div>
         {live ? <RemoteMonitoring /> : (
           <div style={{ background: "#fff", border: "1px solid #e8ecf0", borderRadius: 16, overflow: "hidden", maxWidth: 560, boxShadow: "0 1px 3px rgba(15,23,25,0.05)" }}>

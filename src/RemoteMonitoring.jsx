@@ -141,12 +141,11 @@ const CSS = `
 .ox .asum .since{margin-left:auto;background:var(--teal-bg);border-color:var(--teal-light);color:var(--teal-dark)}
 .ox .atable-wrap{background:#fff;border:1px solid var(--line);border-radius:16px;overflow-x:auto;box-shadow:0 1px 3px rgba(15,23,25,.05)}
 .ox .atable{width:100%;border-collapse:collapse;min-width:720px}
-.ox .atable th{text-align:left;font-weight:800;font-size:11.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--teal-dark);padding:12px 16px;background:var(--teal-bg);border-bottom:1.5px solid var(--teal-light);white-space:nowrap}
-.ox .atable td{padding:9px 16px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:middle;white-space:nowrap}
+.ox .atable th{text-align:center;font-weight:800;font-size:11.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--teal-dark);padding:12px 16px;background:var(--teal-bg);border-bottom:1.5px solid var(--teal-light);white-space:nowrap}
+.ox .atable td{text-align:center;padding:9px 16px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:middle;white-space:nowrap}
 .ox .atable tr:last-child td{border-bottom:0}
 .ox .atable td.id,.ox .atable td.n,.ox .atable td.dt{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .ox .atable td.id{color:var(--faint)}
-.ox .atable td.n,.ox .atable th.n{text-align:right}
 .ox .atable td.name{font-weight:700}
 .ox .atable tr.never td{color:var(--faint)}
 .ox .atable tr.live td{background:#fff5f5}
@@ -474,8 +473,7 @@ function Alarms({ list: raw, css }) {
     })
     .filter(a => a.seen);
   const active = list.filter(a => a.active).length;
-  const since = raw.find(a => a.since)?.since;
-  const seeded = raw.find(a => a.seed_note)?.seed_note;
+
   return (
     <div>
       <div className="asum">
@@ -483,7 +481,6 @@ function Alarms({ list: raw, css }) {
         <span>PLC active <b>{css?.alarms_active ?? "–"}</b></span>
         <span>Pending acknowledge <b>{css?.alarms_pending_ack ?? "–"}</b></span>
         <span>Pending view <b>{css?.alarms_pending_view ?? "–"}</b></span>
-        <span className="since">{seeded ? `${seeded} + live since ${fmtTs(since)}` : `History since ${fmtTs(since)}`}</span>
       </div>
       <div className="atable-wrap">
         <table className="atable">
@@ -536,6 +533,8 @@ export default function RemoteMonitoring() {
   const [page, setPage] = useState("p1");
   const [err, setErr] = useState("");
   const [tick, setTick] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const iv = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(iv); }, []);
 
   useEffect(() => {                                    // fonts once
     if (!document.querySelector(`link[href="${FONT_HREF}"]`)) { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = FONT_HREF; document.head.append(l); }
@@ -579,6 +578,10 @@ export default function RemoteMonitoring() {
 
   const site = sites.find(s => s.id === siteId);
   const r = latest?.payload;
+  // plant clock = CSS clock at the last reading + time elapsed since, shown in the site's time zone
+  const clockOffset = (latest && latest.plant_clock) ? new Date(latest.plant_clock).getTime() - new Date(latest.ts).getTime() : null;
+  const plantNow = clockOffset === null ? null : new Date(now + clockOffset);
+  const fmtZone = d => { try { return d.toLocaleString("en-GB", { timeZone: site?.timezone || "Asia/Karachi", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).replace(",", ""); } catch (e) { return fmtTs(d); } };
   const ageMs = latest ? Date.now() - new Date(latest.ts).getTime() : null;
   const stale = ageMs !== null && ageMs > STALE_MS;
   const ready = r && r.gen1 && r.gen2 && r.oxycheck && r.medgasflow && r.hpox && r.bank;
@@ -587,10 +590,9 @@ export default function RemoteMonitoring() {
     <div className="ox">
       <style>{CSS}</style>
       <header className="top">
-        <div className="brand">{site?.name || "Remote monitoring"}</div>
         {sites.length > 1 && <select className="site" value={siteId} onChange={e => setSiteId(e.target.value)}>{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>}
         <div className="meta">
-          <span>Plant clock <b>{r ? fmtNaive(r.plant_clock) : "–"}</b></span>
+          <span>Plant clock <b>{plantNow ? fmtZone(plantNow) : "–"}</b></span>
           <span>Last read at: <b>{latest ? fmtTs(latest.ts) : "–"}</b></span>
         </div>
       </header>
