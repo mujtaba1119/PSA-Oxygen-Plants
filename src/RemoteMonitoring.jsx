@@ -578,11 +578,10 @@ export default function RemoteMonitoring() {
 
   const site = sites.find(s => s.id === siteId);
   const r = latest?.payload;
-  // plant clock = CSS clock at the last reading + time elapsed since, shown in the site's time zone
-  const clockOffset = (latest && latest.plant_clock) ? new Date(latest.plant_clock).getTime() - new Date(latest.ts).getTime() : null;
-  const plantNow = clockOffset === null ? null : new Date(now + clockOffset);
-  // "Last read at" is shown on the plant clock too, so the two times agree on screen
-  const lastReadPlant = latest ? new Date(new Date(latest.ts).getTime() + (clockOffset || 0)) : null;
+  // plant clock = the real local time at the site (its time zone), ticking every second;
+  // the CSS's own clock (payload.plant_clock) is stored but not shown, it runs slow
+  const plantNow = new Date(now);
+  const lastReadPlant = latest ? new Date(latest.ts) : null;
   const fmtZone = d => { try { return d.toLocaleString("en-GB", { timeZone: site?.timezone || "Asia/Karachi", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).replace(",", ""); } catch (e) { return fmtTs(d); } };
   const ageMs = latest ? Date.now() - new Date(latest.ts).getTime() : null;
   const stale = ageMs !== null && ageMs > STALE_MS;
