@@ -581,6 +581,8 @@ export default function RemoteMonitoring() {
   // plant clock = CSS clock at the last reading + time elapsed since, shown in the site's time zone
   const clockOffset = (latest && latest.plant_clock) ? new Date(latest.plant_clock).getTime() - new Date(latest.ts).getTime() : null;
   const plantNow = clockOffset === null ? null : new Date(now + clockOffset);
+  // "Last read at" is shown on the plant clock too, so the two times agree on screen
+  const lastReadPlant = latest ? new Date(new Date(latest.ts).getTime() + (clockOffset || 0)) : null;
   const fmtZone = d => { try { return d.toLocaleString("en-GB", { timeZone: site?.timezone || "Asia/Karachi", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }).replace(",", ""); } catch (e) { return fmtTs(d); } };
   const ageMs = latest ? Date.now() - new Date(latest.ts).getTime() : null;
   const stale = ageMs !== null && ageMs > STALE_MS;
@@ -593,12 +595,12 @@ export default function RemoteMonitoring() {
         {sites.length > 1 && <select className="site" value={siteId} onChange={e => setSiteId(e.target.value)}>{sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>}
         <div className="meta">
           <span>Plant clock <b>{plantNow ? fmtZone(plantNow) : "–"}</b></span>
-          <span>Last read at: <b>{latest ? fmtTs(latest.ts) : "–"}</b></span>
+          <span>Last read at: <b>{lastReadPlant ? fmtZone(lastReadPlant) : "–"}</b></span>
         </div>
       </header>
       {err && <div className="warnbar">Could not load data: {err}</div>}
       {!err && !latest && <div className="infobar">No readings received from this plant yet.</div>}
-      {stale && <div className="warnbar">No new reading since {fmtTs(latest.ts)} ({Math.round(ageMs / 60000)} min ago). The plant or its internet link may be down; the values below are the last received.</div>}
+      {stale && <div className="warnbar">No new reading since {fmtZone(lastReadPlant)} ({Math.round(ageMs / 60000)} min ago). The plant or its internet link may be down; the values below are the last received.</div>}
       <nav className="tabs">
         {PAGES.map(([id, label]) => <button key={id} type="button" className={`tab${page === id ? " active" : ""}`} onClick={() => setPage(id)}>{label}</button>)}
       </nav>
