@@ -5872,7 +5872,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
   const NAV_ITEMS = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "sites", icon: "sites", label: "Site Status" },
-    { id: "monitoring", icon: "monitor", label: "Monitoring" },
+    { id: "monitoring", icon: "monitor", label: "RMS" },
     { id: "activity", icon: "activity", label: "Activity", badge: hasNewActivity && tab !== "activity" },
     { id: "tickets", icon: "tickets", label: "Tickets" },
     { id: "equipment", icon: "equipment", label: "Equipment" },
@@ -5887,7 +5887,7 @@ function AdminDashboard({ user, users, complaints, notifEmails, escalationEmails
 
   const PAGE_TITLES = {
     dashboard: "Dashboard", sites: "Site Status", equipment: "Equipment", tickets: "Tickets", submit: "Submit Ticket",
-    maintenance: "Maintenance", analytics: "Analytics", users: "Users", emails: "Emails", activity: "Activity", monitoring: "Remote Monitoring"
+    maintenance: "Maintenance", analytics: "Analytics", users: "Users", emails: "Emails", activity: "Activity", monitoring: "RMS"
   };
 
   return (
@@ -6274,6 +6274,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
   const companyName = user.company || user.name;
   const seesAll = ["Novair", "Amex", "UNDP", "CMU", "Global Fund"].includes(companyName);
   const isAmex = companyName === "Amex";
+  const canSeeRms = ["Amex", "UNDP"].includes(companyName);   // RMS tab: admin, Amex, UNDP - nobody else
   const isProvider = ["Novair", "Intexim", "Z-Corps"].includes(companyName);
   const myGroups = {}; if (seesAll) { Object.assign(myGroups, GROUPS); } else if (GROUPS[companyName]) { myGroups[companyName] = GROUPS[companyName]; } else { Object.assign(myGroups, GROUPS); }
   const myHospitals = Object.values(myGroups).flat();
@@ -6294,7 +6295,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
   const NAV_ITEMS = [
     { id: "dashboard", icon: "dashboard", label: "Dashboard" },
     { id: "sites", icon: "sites", label: "Site Status" },
-    ...(isAmex ? [{ id: "monitoring", icon: "monitor", label: "Monitoring" }] : []),   // live CSS view: admin + Amex only
+    ...(canSeeRms ? [{ id: "monitoring", icon: "monitor", label: "RMS" }] : []),   // live CSS view: admin, Amex and UNDP only
     ...(showActivity ? [{ id: "activity", icon: "activity", label: "Activity", badge: hasNewActivity && tab !== "activity" }] : []),
     { id: "tickets", icon: "tickets", label: "Tickets" },
     { id: "equipment", icon: "equipment", label: "Equipment" },
@@ -6305,7 +6306,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
 
   const PAGE_TITLES = {
     dashboard: "Dashboard", sites: "Site Status", equipment: "Equipment", tickets: "Tickets",
-    activity: "Activity", maintenance: "Maintenance", analytics: "Analytics", guide: "Help", monitoring: "Remote Monitoring"
+    activity: "Activity", maintenance: "Maintenance", analytics: "Analytics", guide: "Help", monitoring: "RMS"
   };
 
   return (
@@ -6343,7 +6344,7 @@ function CompanyDashboard({ user, users, complaints, siteNotes, shutdowns, onRef
           {tab === "activity" && <ActivityLog complaints={complaints} scopeProvider={["Intexim","Z-Corps"].includes(companyName) ? companyName : null} currentUser={user} onViewSite={(h) => { setTab("tickets"); setSelected(h); }} />}
           {tab === "maintenance" && <MaintenanceTab hospitals={myHospitals} siteNotes={siteNotes} complaints={complaints} isAdmin={false} onRefresh={onRefresh} />}
           {tab === "analytics" && <AnalyticsPage complaints={complaints} shutdowns={shutdowns} />}
-          {tab === "monitoring" && isAmex && <MonitoringHome />}
+          {tab === "monitoring" && canSeeRms && <MonitoringHome />}
           {tab === "guide" && <NovairGuide />}
           </div>
         </main>
